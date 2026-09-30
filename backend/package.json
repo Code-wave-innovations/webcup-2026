@@ -7,7 +7,9 @@
     "build": "tsc",
     "dev": "nodemon --watch src -e js,ts,json, --exec \"npx nodemon index.ts\"",
     "generate:crud": "ts-node scripts/create-crud.ts",
-    "migrate": "npx prisma migrate dev"
+    "migrate": "npx prisma migrate dev",
+    "deploy": "npx prisma migrate deploy",
+    "generate": "npx prisma generate"
   },
   "keywords": [],
   "author": "",
