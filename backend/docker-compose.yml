@@ -1,0 +1,26 @@
+services:
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: webcup2026
+      MYSQL_DATABASE: webcup2026_db
+      MYSQL_USER: developer
+      MYSQL_PASSWORD: webcup2026
+    ports:
+      - "3300:3306"
+    volumes:
+      - webcup_db_data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    depends_on:
+      - db
+    ports:
+      - "88:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: webcup2026
+
+volumes:
+  webcup_db_data:
