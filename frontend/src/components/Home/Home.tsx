@@ -71,7 +71,7 @@ function Home() {
           Hello
         </p>
         <h1 className="max-w-4xl text-4xl font-semibold leading-[1.08] tracking-tight text-[#0A2342] sm:text-5xl md:text-6xl">
-          We are the team
+          We are team
           <span className="block text-[#4A90FF]">CodeWave</span>
         </h1>
 

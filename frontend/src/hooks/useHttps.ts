@@ -1,8 +1,8 @@
 import axios from "axios";
-export const rootApiUrl ="http://localhost:9002/api"; //
-export const aiUrl = "http://localhost:9002/face";
-export const imgUrl = "http://localhost:9002/public/"
-export const BaseUrl = "http://localhost:9002"
+// Fall back to the local backend when a variable is missing from .env
+export const BaseUrl = import.meta.env.VITE_BASE_URL || "http://localhost:9002"
+export const rootApiUrl = import.meta.env.VITE_API_URL || `${BaseUrl}/api`
+export const imgUrl = import.meta.env.VITE_IMG_URL || `${BaseUrl}/public/`
 
 // Created once at module level so the instances are stable across renders
 // (safe to use as useEffect dependencies)
@@ -20,18 +20,10 @@ const fileHttp = axios.create({
   },
 });
 
-const aiFileHttp = axios.create({
-  baseURL: aiUrl,
-  headers: {
-    "Content-Type": "multipart/form-data",
-  },
-});
-
 const useHttps = () => {
   return {
     http,
-    fileHttp,
-    aiFileHttp,
+    fileHttp
   };
 };
 
