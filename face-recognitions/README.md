@@ -70,16 +70,18 @@ cp .env.prod.example .env.prod
 # Edit DOMAIN, DUCKDNS_SUBDOMAIN, DUCKDNS_TOKEN, LETSENCRYPT_EMAIL, FACE_API_KEY, FACE_CORS_ORIGINS
 ./deploy/certbot/init-ssl.sh
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
-curl -fsS https://$DOMAIN/health
+curl -fsS https://your-subdomain.duckdns.org/health   # use the DOMAIN value from .env.prod
 ```
 
 3. Point the frontend `VITE_FACE_API_URL` to `https://your-subdomain.duckdns.org`.
 
-Renewal is automatic (certbot container every 12h). After renew, recreate/reload nginx if needed:
+Renewal is automatic: the certbot container runs `certbot renew` every 12h, and nginx reloads itself every 12h to pick up renewed certificates. To force a reload manually:
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.prod exec nginx nginx -s reload
 ```
+
+**Known limitation:** behind nginx, the app's rate limiter sees the nginx container IP (no `ProxyFix` yet), so `FACE_RATE_LIMIT` is effectively shared across all clients. Follow-up: wrap the Flask app with werkzeug `ProxyFix`.
 
 Local/simple Docker without TLS remains: `docker compose up -d` (see `docker-compose.yml`).
 

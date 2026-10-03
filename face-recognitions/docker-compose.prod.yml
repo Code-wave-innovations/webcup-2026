@@ -1,13 +1,25 @@
 services:
   face-engine:
     build: .
-    env_file: .env.prod
+    # Explicit list only: .env.prod also holds DUCKDNS_TOKEN, which must not reach this container.
     environment:
       ENV: production
       FACE_DEBUG: "false"
       FACE_HOST: 0.0.0.0
       FACE_PORT: "9000"
+      FACE_API_KEY: ${FACE_API_KEY:?set FACE_API_KEY in .env.prod}
       FACE_CORS_ORIGINS: ${FACE_CORS_ORIGINS}
+      FACE_MAX_UPLOAD_MB: ${FACE_MAX_UPLOAD_MB:-8}
+      FACE_RATE_LIMIT: ${FACE_RATE_LIMIT:-60 per minute}
+      FACE_VERIFY_THRESHOLD: ${FACE_VERIFY_THRESHOLD:-0.45}
+      FACE_IDENTIFY_THRESHOLD: ${FACE_IDENTIFY_THRESHOLD:-0.40}
+      FACE_LIVENESS_THRESHOLD: ${FACE_LIVENESS_THRESHOLD:-0.55}
+      FACE_REQUIRE_LIVENESS_VERIFY: ${FACE_REQUIRE_LIVENESS_VERIFY:-true}
+      FACE_REQUIRE_LIVENESS_IDENTIFY: ${FACE_REQUIRE_LIVENESS_IDENTIFY:-false}
+      FACE_MIN_ENROLL_SAMPLES: ${FACE_MIN_ENROLL_SAMPLES:-3}
+      FACE_MAX_ENROLL_SAMPLES: ${FACE_MAX_ENROLL_SAMPLES:-5}
+      FACE_INSIGHTFACE_MODEL: ${FACE_INSIGHTFACE_MODEL:-buffalo_s}
+      FACE_DET_SIZE: ${FACE_DET_SIZE:-640}
     volumes:
       - face-data:/app/data
       - insightface-models:/root/.insightface
@@ -51,7 +63,6 @@ services:
       UPDATE_IP: ipv4
       LOG_FILE: "false"
     restart: unless-stopped
-    # no need to be on face-net; default bridge is fine
     networks: [face-net]
 
 networks:
