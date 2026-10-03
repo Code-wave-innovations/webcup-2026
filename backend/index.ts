@@ -57,7 +57,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.get('/api', (req: Request, res: Response) => {
-  res.send('Hello from API boilerplate');
+  res.send('Hello from API Terra Nova');
 });
 
 // All router here
