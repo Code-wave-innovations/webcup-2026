@@ -38,7 +38,7 @@ export default function ReportsPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title="Signalements citoyens"
         codes={['F25']}
         lead="Problèmes signalés sur l’espace public : où ils se trouvent, depuis quand, et qui s’en occupe."

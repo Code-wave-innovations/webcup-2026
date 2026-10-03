@@ -110,6 +110,7 @@ model User {
   appointment_slots AppointmentSlot[]     @relation("SlotAgent")
   interruptions     ServiceInterruption[]
   login_attempts    LoginAttempt[]
+  settings_updated  PlatformSetting[]
 
   @@index([role])
   @@index([district_id])
@@ -377,6 +378,19 @@ model LoginAttempt {
   @@index([email, created_at])
   @@index([ip, created_at])
   @@index([created_at])
+}
+
+// ─── Platform settings (D07, D08) ───────────────────────────────────────────
+
+// Admin-edited settings, one row per key. Keys, validation and defaults live in
+// src/lib/settings.ts: a key without a row uses its default, so new keys need no migration.
+model PlatformSetting {
+  key           String   @id @db.VarChar(64)
+  value         Json
+  updated_at    DateTime @updatedAt
+  updated_by_id Int?
+
+  updated_by User? @relation(fields: [updated_by_id], references: [id], onDelete: SetNull)
 }
 
 // ─── Service interruptions (F38) ────────────────────────────────────────────

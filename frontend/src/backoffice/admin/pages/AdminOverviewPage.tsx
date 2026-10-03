@@ -52,7 +52,7 @@ export default function AdminOverviewPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title="Supervision globale"
         codes={['D19', 'F47']}
         lead="L’état de Terra Nova en un écran : activité des habitants, charge des services, incidents et traçabilité."

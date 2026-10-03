@@ -17,9 +17,10 @@ export function FilmLayout() {
   const status = useDirectorStore((s) => s.status)
   const phase = useDirectorStore((s) => s.phase)
   const cinematic = useDirectorStore((s) => s.cinematic)
+  // console pages are usable at once: the city fades in behind them when it is ready
+  const consoleOpen = useDirectorStore((s) => s.console)
   const session = useAuthStore((s) => s.session)
   const debugSignIn = useRef(false)
-  
 
   // the letterbox bars retract once the city is reached (or after a return to the cockpit)
   useEffect(() => {
@@ -40,7 +41,7 @@ export function FilmLayout() {
         <i />
         <i />
       </div>
-      <div className={styles.loading} data-done={status !== 'loading'} role="status">
+      <div className={styles.loading} data-done={status !== 'loading' || consoleOpen} role="status">
         <b>Liaison avec le contrôle d'approche</b>
         <i />
       </div>

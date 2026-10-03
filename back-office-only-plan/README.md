@@ -172,7 +172,7 @@ Le détail est dans le BO-00.
 
 | Plan | Statut | Notes |
 |---|---|---|
-| BO-00 | À faire | Commence par la fusion de `plan-00` |
+| BO-00 | Fait | `plan-00` fusionné ; connexion, gardes, identité réelle, cloche, compteurs |
 | BO-01 | À faire | |
 | BO-02 | À faire | |
 | BO-03 | À faire | |

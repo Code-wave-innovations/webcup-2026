@@ -48,7 +48,7 @@ export default function AppointmentsPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader title="Rendez-vous" codes={['F39', 'F40']} lead="Votre agenda avec les citoyens. Cliquez sur un rendez-vous pour le préparer ou indiquer sa présence." />
+      <PageHeader simulated title="Rendez-vous" codes={['F39', 'F40']} lead="Votre agenda avec les citoyens. Cliquez sur un rendez-vous pour le préparer ou indiquer sa présence." />
 
       <motion.div className={layout.stats} variants={stagger}>
         <StatTile label="Aujourd’hui" value={todayCount} icon="calendar" tone="ice" />

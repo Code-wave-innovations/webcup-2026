@@ -1,0 +1,135 @@
+/* Console pages (/ville/*): a reading surface over the city, which stays visible behind */
+.console {
+  position: relative;
+  z-index: 2;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* dims and blurs the city so text keeps its contrast whatever passes behind */
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, var(--color-veil-strong) 0%, var(--color-veil) 45%, var(--color-veil-strong) 100%);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.skip {
+  position: fixed;
+  z-index: 20;
+  left: var(--gutter);
+  top: 10px;
+  padding: 12px 18px;
+  background: var(--color-ice);
+  color: var(--color-ink);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+.main {
+  flex: 1;
+  width: min(1120px, 100% - 2 * var(--gutter));
+  margin: 0 auto;
+  padding: calc(100px + env(safe-area-inset-top, 0px)) 0 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.main:focus {
+  outline: none;
+}
+
+.brand {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.signIn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--color-line);
+  background: var(--color-glass);
+  color: var(--color-ice-bright);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.signIn:hover {
+  background: var(--color-glass-light);
+}
+
+/* ConsolePage */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+
+.title {
+  font: 600 clamp(26px, 3.6vw, 40px) / 1.15 var(--font-display);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.title:focus-visible {
+  outline: 2px solid var(--color-ice-bright);
+  outline-offset: 6px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lead {
+  max-width: 70ch;
+  font-size: 17px;
+  color: var(--color-text-muted);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding: 18px var(--gutter) calc(18px + env(safe-area-inset-bottom, 0px));
+  font-size: 13px;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-line-thin);
+}
+
+@media (max-width: 860px) {
+  .main {
+    padding-top: calc(84px + env(safe-area-inset-top, 0px));
+  }
+}

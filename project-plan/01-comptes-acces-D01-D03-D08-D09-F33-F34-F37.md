@@ -66,7 +66,7 @@ Elles partagent la même session, les mêmes endpoints `/auth`, `/me` et `/users
 | Manque | Correctif |
 |---|---|
 | Les agents ne peuvent pas lister le personnel, car le filtre `role` est forcé à `CITIZEN`. Ils en ont besoin pour assigner une demande (PLAN-03). | `GET /api/users/staff` (personnel uniquement), qui ne renvoie que `id, name, last_name, role, is_active`. |
-| Inscriptions fermables avec le paramètre `registration_open` (PLAN-00, B1). | Contrôle dans `auth.controller.register`, qui répond `403 REGISTRATION_CLOSED`. |
+| Inscriptions fermables avec le paramètre `registration_open` (PLAN-00, B1). | **Fait au PLAN-00** : `auth.controller.register` répond `403 REGISTRATION_CLOSED`. |
 | La création d'un compte agent (`POST /api/users`) exige un mot de passe. | Aucun changement backend : le formulaire admin génère un mot de passe provisoire, affiché une seule fois. Extension possible : `must_change_password`. |
 | La matrice des droits (page Rôles) n'existe pas en base : les droits sont codés dans `middleware/auth.ts` et dans les contrôleurs. | Pas de table. Un fichier statique `frontend/src/api/permissions.ts` décrit la matrice ; chaque ligne y est commentée avec la règle serveur qu'elle reflète. |
 
@@ -203,8 +203,8 @@ Le fichier `stores/userStore.ts` et la fonction `configStore.togglePermission` s
 
 ## 6. Étapes
 
-- [ ] Backend : `GET /api/users/staff` et contrôle de `registration_open`
-- [ ] `src/api/auth.ts`, `me.ts`, `users.ts`, `security.ts`, `permissions.ts`
+- [ ] Backend : `GET /api/users/staff` (le contrôle de `registration_open` est fait)
+- [ ] `src/api/auth.ts` (déjà `login()`), `me.ts`, `users.ts`, `security.ts`, `permissions.ts` ; supprimer `src/dev/DevLogin.tsx` du panneau de la page Paramètres une fois `StaffLoginPage` en place
 - [ ] Sas : connexion par l'API, blocage géré par le serveur, comptes de démonstration du seed, redirection selon le rôle ; suppression de `accessLock.ts`, `demoAuthService` et `demoAccounts.ts`
 - [ ] Page `/inscription`
 - [ ] `/ville/espace` et `/ville/espace/profil` (profil, mot de passe, suppression du compte)

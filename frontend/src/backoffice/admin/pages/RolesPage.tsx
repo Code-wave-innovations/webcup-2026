@@ -29,7 +29,7 @@ export default function RolesPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title="Rôles & permissions"
         codes={['D08', 'D09']}
         lead="Chaque profil n’accède qu’aux outils de sa responsabilité. Les droits sensibles sont signalés ; tout changement est tracé dans le journal d’audit."

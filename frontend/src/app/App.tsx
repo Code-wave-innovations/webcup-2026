@@ -2,6 +2,8 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AirlockPage } from '../pages/AirlockPage/AirlockPage'
 import { CityPage } from '../pages/CityPage/CityPage'
+import { ConsoleLayout } from '../pages/Console/ConsoleLayout'
+import { NotFoundPage } from '../pages/Console/NotFoundPage'
 import { FilmLayout } from './FilmLayout'
 
 const ChatPage = lazy(() => import('../pages/ChatPage/ChatPage'))
@@ -12,6 +14,8 @@ const RealtimeTranscription = lazy(() => import('../components/Realtime/Realtime
 const BackofficeApp = lazy(() => import('../backoffice/BackofficeApp'))
 /** Nova's test bench, compiled out of production builds. */
 const NovaBench = import.meta.env.DEV ? lazy(() => import('../dev/NovaBench')) : null
+/** Check of the console chain (layout, API, session, forms), development only. */
+const ConsoleTestPage = import.meta.env.DEV ? lazy(() => import('../dev/ConsoleTestPage')) : null
 
 function App() {
   return (
@@ -19,7 +23,23 @@ function App() {
       <Routes>
         <Route element={<FilmLayout />}>
           <Route index element={<AirlockPage />} />
-          <Route path="ville" element={<CityPage />} />
+          <Route path="ville">
+            <Route index element={<CityPage />} />
+            {/* pages beyond the flyover, over the dimmed city */}
+            <Route element={<ConsoleLayout />}>
+              {ConsoleTestPage && (
+                <Route
+                  path="test"
+                  element={
+                    <Suspense fallback={null}>
+                      <ConsoleTestPage />
+                    </Suspense>
+                  }
+                />
+              )}
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
+          </Route>
           <Route
             path="nova"
             element={

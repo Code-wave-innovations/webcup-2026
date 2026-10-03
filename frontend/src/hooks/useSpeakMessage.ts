@@ -24,68 +24,15 @@ export function localeToBcp47(locale: SpeakLocale): string {
   return BCP47[locale]
 }
 
-/**
- * macOS novelty / effect voices (mechanical, not natural people).
- * Prefer these even when speaking FR/EN — locale human voices like Thomas/Samantha are last resort.
- */
-const ROBOT_VOICE_PRIORITY = [
-  'trinoids', // a bit clearer than Zarvox, still mechanical
-  'zarvox',
-  'fred',
-  'bad news',
-  'organ',
-  'cellos',
-  'bahh',
-  'boing',
-  'wobble',
-  'jester',
-  'superstar',
-  'bells',
-  'bubbles',
-  'good news',
-  'whisper',
-] as const
-
-function robotRank(name: string): number {
-  const lower = name.toLowerCase()
-  const idx = ROBOT_VOICE_PRIORITY.findIndex((key) => lower.includes(key))
-  return idx === -1 ? Number.POSITIVE_INFINITY : idx
-}
-
-/** Prefer a novelty/robot voice; fall back to a matching locale human voice. */
+/** Prefer a voice whose `lang` starts with the locale prefix (`fr`, `en`). */
 export function pickVoice(voices: readonly SpeechSynthesisVoice[], locale: SpeakLocale): SpeechSynthesisVoice | null {
-  const robots = voices
-    .filter((v) => robotRank(v.name) !== Number.POSITIVE_INFINITY)
-    .sort((a, b) => robotRank(a.name) - robotRank(b.name))
-  if (robots[0]) return robots[0]
-
   const prefix = locale === 'mg' ? 'mg' : locale
-  return voices.find((v) => v.lang.toLowerCase().startsWith(prefix)) ?? null
+  const match = voices.find((v) => v.lang.toLowerCase().startsWith(prefix))
+  return match ?? null
 }
-
-/** Slower + lower pitch ≈ more “robot / radio” over Web Speech. */
-const ROBOT_RATE = 0.72
-const ROBOT_PITCH = 0.68
 
 function hasSpeechSynthesis(): boolean {
   return typeof globalThis.speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined'
-}
-
-/** Chrome/Safari often return [] until `voiceschanged` fires. */
-function loadVoices(): Promise<SpeechSynthesisVoice[]> {
-  const synth = globalThis.speechSynthesis
-  const existing = synth.getVoices()
-  if (existing.length > 0) return Promise.resolve(existing)
-
-  return new Promise((resolve) => {
-    const done = () => {
-      synth.removeEventListener('voiceschanged', done)
-      resolve(synth.getVoices())
-    }
-    synth.addEventListener('voiceschanged', done)
-    // Fallback if the event never fires
-    globalThis.setTimeout(done, 300)
-  })
 }
 
 let muted = false
@@ -229,12 +176,10 @@ export async function speakMessage(
     return
   }
 
-  const voices = await loadVoices()
   const utterance = new SpeechSynthesisUtterance(trimmed)
   utterance.lang = localeToBcp47(locale)
-  utterance.rate = ROBOT_RATE
-  utterance.pitch = ROBOT_PITCH
-  const voice = pickVoice(voices, locale)
+  utterance.rate = 0.95
+  const voice = pickVoice(globalThis.speechSynthesis.getVoices(), locale)
   if (voice) utterance.voice = voice
 
   updateSnapshot({ speaking: true })

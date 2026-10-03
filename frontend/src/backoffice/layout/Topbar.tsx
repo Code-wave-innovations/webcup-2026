@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
+import { messageFor } from '../../api/errors'
+import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '../../api/notifications'
+import { signOut } from '../../api/session'
+import type { AppNotification } from '../../api/types'
 import { flatNav } from '../nav'
 import type { Persona } from '../mocks/types'
-import { ALL_USERS } from '../mocks/people'
-import { AUDIT_LABEL, ROLE_LABEL } from '../lib/labels'
+import { ROLE_LABEL } from '../lib/labels'
 import { formatRelative } from '../lib/format'
 import { useNow } from '../lib/useNow'
-import { useAuditStore } from '../stores/auditStore'
 import { useRequestStore } from '../stores/requestStore'
+import { toast } from '../stores/toastStore'
 import { Icon } from '../ui/Icon'
 import { Avatar, Kbd } from '../ui/Feedback'
-import { PERSONA_USER } from './persona'
+import { homePath, useActor } from './persona'
 import { useBadges } from './useBadges'
 import styles from './Shell.module.css'
 
@@ -66,6 +69,71 @@ function useDismiss(open: boolean, close: () => void) {
   return ref
 }
 
+/** Notification links point to the citizen space; the staff open the matching screen when there is one. */
+function staffLink(link: string | null, persona: Persona): string | null {
+  const request = link?.match(/^\/requests\/(\d+)/)
+  if (request) return `${homePath(persona)}/demandes/${request[1]}`
+  if (link?.startsWith('/appointments')) return `${homePath(persona)}/rendez-vous`
+  return null
+}
+
+/** The signed-in account's latest notifications, fetched while the panel is open. */
+function NotificationList({ persona, unread, now, onClose }: { persona: Persona; unread: number; now: number; onClose: () => void }) {
+  const navigate = useNavigate()
+  const notifications = useNotifications(8)
+  const markRead = useMarkRead()
+  const markAllRead = useMarkAllRead()
+
+  const open = (notification: AppNotification) => {
+    if (!notification.read_at) markRead.mutate(notification.id)
+    const to = staffLink(notification.link, persona)
+    if (to) {
+      onClose()
+      navigate(to)
+    }
+  }
+
+  return (
+    <>
+      <div className={styles.popHead}>
+        <p className={styles.popTitle}>Notifications</p>
+        {unread > 0 && (
+          <button
+            type="button"
+            className={styles.popAction}
+            disabled={markAllRead.isPending}
+            onClick={() => markAllRead.mutate(undefined, { onError: (error) => toast(messageFor(error), 'alert') })}
+          >
+            Tout marquer comme lu
+          </button>
+        )}
+      </div>
+      {notifications.isPending ? (
+        <p className={styles.popEmpty}>Chargement…</p>
+      ) : notifications.isError ? (
+        <p className={styles.popEmpty}>{messageFor(notifications.error)}</p>
+      ) : notifications.data.data.length === 0 ? (
+        <p className={styles.popEmpty}>Aucune notification pour le moment.</p>
+      ) : (
+        <ul className={styles.popList}>
+          {notifications.data.data.map((notification) => (
+            <li key={notification.id}>
+              <button type="button" className={styles.notif} data-unread={!notification.read_at || undefined} onClick={() => open(notification)}>
+                <strong>{notification.title}</strong>
+                {notification.body && <span className={styles.notifBody}>{notification.body}</span>}
+                <small>
+                  {!notification.read_at && 'Non lue · '}
+                  {formatRelative(notification.created_at, now)}
+                </small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  )
+}
+
 interface TopbarProps {
   persona: Persona
   onOpenMenu: () => void
@@ -76,14 +144,22 @@ export function Topbar({ persona, onOpenMenu, onOpenPalette }: TopbarProps) {
   const now = useNow()
   const navigate = useNavigate()
   const badges = useBadges()
-  const logs = useAuditStore((s) => s.logs)
+  const unreadCount = useUnreadCount()
+  const user = useActor()
   const [panel, setPanel] = useState<'bell' | 'profile' | null>(null)
   const close = () => setPanel(null)
   const bellRef = useDismiss(panel === 'bell', close)
   const profileRef = useDismiss(panel === 'profile', close)
-  const user = PERSONA_USER[persona]
-  const disruptions = badges.activeAlerts + badges.interruptions
-  const recent = logs.slice(0, 6)
+  const unread = unreadCount.data ?? 0
+  const known = badges.activeAlerts !== undefined && badges.interruptions !== undefined
+  const disruptions = (badges.activeAlerts ?? 0) + (badges.interruptions ?? 0)
+
+  // RequireStaff then shows the login page, which returns here after the next sign-in
+  const signOutNow = () => {
+    close()
+    signOut()
+    toast('Vous êtes déconnecté·e.', 'info')
+  }
 
   return (
     <header className={styles.topbar}>
@@ -103,29 +179,31 @@ export function Topbar({ persona, onOpenMenu, onOpenPalette }: TopbarProps) {
           </span>
         </button>
 
-        <span className={[styles.status, disruptions > 0 ? styles.statusWarn : styles.statusOk].join(' ')}>
-          <span className={styles.statusDot} aria-hidden="true" />
-          <span className={styles.statusText}>{disruptions > 0 ? `${disruptions} perturbation${disruptions > 1 ? 's' : ''}` : 'Systèmes nominaux'}</span>
-        </span>
+        {known && (
+          <span className={[styles.status, disruptions > 0 ? styles.statusWarn : styles.statusOk].join(' ')}>
+            <span className={styles.statusDot} aria-hidden="true" />
+            <span className={styles.statusText}>{disruptions > 0 ? `${disruptions} perturbation${disruptions > 1 ? 's' : ''}` : 'Systèmes nominaux'}</span>
+          </span>
+        )}
 
         <time className={styles.clock} dateTime={new Date(now).toISOString()}>
           {clockFormat.format(now)}
         </time>
 
-        <span className={styles.demoChip} title="Aucun appel API : interface de démonstration">
-          Démo
-        </span>
-
         <div className={styles.popWrap} ref={bellRef}>
           <button
             type="button"
             className={styles.iconButton}
-            aria-label="Activité récente"
+            aria-label={unread > 0 ? `Notifications : ${unread} non lue${unread > 1 ? 's' : ''}` : 'Notifications'}
             aria-expanded={panel === 'bell'}
             onClick={() => setPanel(panel === 'bell' ? null : 'bell')}
           >
             <Icon name="bell" size={19} />
-            <span className={styles.bellDot} aria-hidden="true" />
+            {unread > 0 && (
+              <span className={styles.bellCount} aria-hidden="true">
+                {unread > 9 ? '9+' : unread}
+              </span>
+            )}
           </button>
           <AnimatePresence>
             {panel === 'bell' && (
@@ -136,21 +214,7 @@ export function Topbar({ persona, onOpenMenu, onOpenPalette }: TopbarProps) {
                 exit={{ opacity: 0, y: -6 }}
                 style={{ originY: 0 }}
               >
-                <p className={styles.popTitle}>Activité récente</p>
-                <ul className={styles.popList}>
-                  {recent.map((log) => {
-                    const actor = ALL_USERS.find((u) => u.id === log.actor_id)
-                    return (
-                      <li key={log.id}>
-                        <strong>{actor ? `${actor.name} ${actor.last_name}` : 'Système'}</strong> {AUDIT_LABEL[log.action]} <em>{log.entity_label}</em>
-                        <small>{formatRelative(log.at, now)}</small>
-                      </li>
-                    )
-                  })}
-                </ul>
-                <Link className={styles.popLink} to={persona === 'ADMIN' ? '/admin/audit' : '/agent/activite'} onClick={close}>
-                  Tout l’historique <Icon name="chevronRight" size={14} />
-                </Link>
+                <NotificationList persona={persona} unread={unread} now={now} onClose={close} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -164,7 +228,7 @@ export function Topbar({ persona, onOpenMenu, onOpenPalette }: TopbarProps) {
             aria-label={`Profil : ${user.name} ${user.last_name}`}
             onClick={() => setPanel(panel === 'profile' ? null : 'profile')}
           >
-            <Avatar name={user.name} lastName={user.last_name} size={32} tone={persona === 'ADMIN' ? 'ember' : 'ice'} />
+            <Avatar name={user.name} lastName={user.last_name} size={32} tone={user.role === 'ADMIN' ? 'ember' : 'ice'} />
             <span className={styles.profileText}>
               {user.name} {user.last_name}
               <small>{ROLE_LABEL[user.role]}</small>
@@ -179,28 +243,45 @@ export function Topbar({ persona, onOpenMenu, onOpenPalette }: TopbarProps) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
               >
-                <p className={styles.popTitle}>Persona de démonstration</p>
-                {(['AGENT', 'ADMIN'] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    className={styles.popItem}
-                    aria-pressed={p === persona}
-                    onClick={() => {
-                      close()
-                      navigate(p === 'ADMIN' ? '/admin' : '/agent')
-                    }}
-                  >
-                    <Icon name={p === 'ADMIN' ? 'key' : 'user'} size={16} />
-                    {PERSONA_USER[p].name} — {p === 'ADMIN' ? 'Administratrice' : 'Agent'}
-                    {p === persona && <Icon name="check" size={16} />}
-                  </button>
-                ))}
+                <p className={styles.popTitle}>Mon compte</p>
+                <p className={styles.popIdentity}>
+                  <strong>
+                    {user.name} {user.last_name}
+                  </strong>
+                  <small>{user.email}</small>
+                  <small>{ROLE_LABEL[user.role]}</small>
+                </p>
+                {user.role === 'ADMIN' && (
+                  <>
+                    <hr className={styles.popRule} />
+                    <p className={styles.popTitle}>Vue</p>
+                    {(['ADMIN', 'AGENT'] as const).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        className={styles.popItem}
+                        aria-pressed={p === persona}
+                        onClick={() => {
+                          close()
+                          navigate(homePath(p))
+                        }}
+                      >
+                        <Icon name={p === 'ADMIN' ? 'key' : 'user'} size={16} />
+                        {p === 'ADMIN' ? 'Vue administration' : 'Vue agent'}
+                        {p === persona && <Icon name="check" size={16} />}
+                      </button>
+                    ))}
+                  </>
+                )}
                 <hr className={styles.popRule} />
-                <Link className={styles.popItem} to="/" onClick={close}>
-                  <Icon name="logout" size={16} />
-                  Retour au site citoyen
+                <Link className={styles.popItem} to="/ville" onClick={close}>
+                  <Icon name="globe" size={16} />
+                  Voir l’espace citoyen
                 </Link>
+                <button type="button" className={styles.popItem} onClick={signOutNow}>
+                  <Icon name="logout" size={16} />
+                  Se déconnecter
+                </button>
               </motion.div>
             )}
           </AnimatePresence>

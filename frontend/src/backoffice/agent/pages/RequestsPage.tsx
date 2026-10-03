@@ -51,7 +51,7 @@ export default function RequestsPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title={persona === 'ADMIN' ? 'Toutes les demandes' : 'Demandes citoyennes'}
         codes={['F22', 'D17']}
         lead="Les demandes urgentes sont marquées en rouge, celles qui attendent une prise en charge en ambre."
