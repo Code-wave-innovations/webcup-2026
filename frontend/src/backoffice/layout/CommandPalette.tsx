@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
+import { useRequests } from '../../api/requests'
 import { flatNav } from '../nav'
 import type { Persona } from '../mocks/types'
 import { STATUS_LABEL } from '../lib/labels'
-import { useRequestStore } from '../stores/requestStore'
 import { Icon, type IconName } from '../ui/Icon'
 import { Kbd } from '../ui/Feedback'
 import { useActor } from './persona'
@@ -23,11 +23,20 @@ interface Command {
 /** ⌘K / Ctrl+K: jump to any screen or request by typing. */
 export function CommandPalette({ persona, open, onClose }: { persona: Persona; open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
-  const requests = useRequestStore((s) => s.requests)
   const role = useActor().role
   const [query, setQuery] = useState('')
+  const [search, setSearch] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // F32 for the staff: a reference or a subject is searched on the server once typing pauses;
+  // with nothing typed, the most pressing requests are offered
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 250)
+    return () => clearTimeout(timer)
+  }, [query])
+  const found = useRequests(search ? { q: search, limit: 5 } : { scope: 'needs_action', sort: 'priority', limit: 4 }, open)
+  const requests = useMemo(() => found.data?.data ?? [], [found.data])
 
   const commands = useMemo<Command[]>(() => {
     const base = persona === 'ADMIN' ? '/admin' : '/agent'
@@ -66,7 +75,10 @@ export function CommandPalette({ persona, open, onClose }: { persona: Persona; o
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const list = q ? commands.filter((c) => `${c.label} ${c.hint}`.toLowerCase().includes(q)) : commands.filter((c) => c.group !== 'Demandes').concat(commands.filter((c) => c.group === 'Demandes').slice(0, 4))
+    // requests are already filtered by the server
+    const list = q
+      ? commands.filter((c) => c.group === 'Demandes' || `${c.label} ${c.hint}`.toLowerCase().includes(q))
+      : commands.filter((c) => c.group !== 'Demandes').concat(commands.filter((c) => c.group === 'Demandes'))
     return list.slice(0, 12)
   }, [commands, query])
 

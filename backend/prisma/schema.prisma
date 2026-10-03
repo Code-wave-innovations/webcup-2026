@@ -88,6 +88,8 @@ model User {
   last_name            String
   phone                String?
   address              String?
+  // Optional avatar file name under /public (set on register multipart)
+  profile              String?
   district_id          Int?
   role                 Role      @default(CITIZEN)
   locale               String    @default("fr")

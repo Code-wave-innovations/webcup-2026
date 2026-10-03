@@ -26,11 +26,13 @@ export function AnimatedNumber({ value }: { value: number }) {
 
 interface StatTileProps {
   label: string
-  value: number
+  /** null: nothing to measure yet, shown as a dash */
+  value: number | null
   icon: IconName
   tone?: Tone
-  /** Signed change vs the previous period, e.g. "+12 % vs semaine dernière". */
-  delta?: { text: string; good: boolean }
+  /** Signed change vs the previous period, e.g. "+12 % vs semaine dernière". The arrow follows
+   *  `direction` (a shorter delay goes down and is good), by default up when good. */
+  delta?: { text: string; good: boolean; direction?: 'up' | 'down' | 'flat' }
   trend?: number[]
   hint?: ReactNode
   unit?: string
@@ -38,6 +40,7 @@ interface StatTileProps {
 
 /** KPI tile: label, figure, optional delta and 12-point sparkline. */
 export function StatTile({ label, value, icon, tone = 'ice', delta, trend, hint, unit }: StatTileProps) {
+  const arrow = delta && (delta.direction ?? (delta.good ? 'up' : 'down'))
   return (
     <motion.div variants={rise} className={[styles.tile, styles[tone]].join(' ')}>
       <div className={styles.top}>
@@ -47,13 +50,13 @@ export function StatTile({ label, value, icon, tone = 'ice', delta, trend, hint,
         </span>
       </div>
       <p className={styles.value}>
-        <AnimatedNumber value={value} />
-        {unit && <span className={styles.unit}>{unit}</span>}
+        {value === null ? '—' : <AnimatedNumber value={value} />}
+        {unit && value !== null && <span className={styles.unit}>{unit}</span>}
       </p>
       <div className={styles.bottom}>
         {delta && (
           <span className={delta.good ? styles.good : styles.bad}>
-            <Icon name={delta.good ? 'arrowUp' : 'arrowDown'} size={12} />
+            {arrow !== 'flat' && <Icon name={arrow === 'up' ? 'arrowUp' : 'arrowDown'} size={12} />}
             {delta.text}
           </span>
         )}

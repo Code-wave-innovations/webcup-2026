@@ -13,7 +13,7 @@ WebCup 2026 hackathon monorepo ("Terra Nova" brief: build the central digital pl
 | `speech-to-text/` | Fastify 5 + TS (ESM, NodeNext) + Prisma, worker via RabbitMQ | 9100 | Postgres 16 :5432, Redis :6379, RabbitMQ :5672 (docker) |
 | `face-recognitions/` | Python 3.10–3.11 Flask + InsightFace (SCRFD + ArcFace) | 9000 | `.npy` files under `data/` |
 
-Only `speech-to-text/` has tests. `project-plan/` holds the implementation plans that wire the features to the API, one per group of complementary Terra Nova codes, with a status table and the code→plan matrix in its `README.md`; extend those files rather than planning elsewhere. Design docs live in `docs/superpowers/specs/` and `speech-to-text/docs/` (SPEC.md is the source of truth for STT behavior; PLAN.md is the task checklist).
+Only `speech-to-text/` (node:test) and `frontend/` (vitest) have tests; the backend's only check is `typecheck`. `project-plan/` holds the implementation plans that wire the features to the API, one per group of complementary Terra Nova codes, with a status table and the code→plan matrix in its `README.md`; extend those files rather than planning elsewhere. `back-office-only-plan/` (BO-00…BO-10) re-groups the same codes by back-office screen and role and also covers the later waves (D02, F49–F68); backend work shared by both folders is done once and ticked in both. Design docs live in `docs/superpowers/specs/` and `speech-to-text/docs/` (SPEC.md is the source of truth for STT behavior; PLAN.md is the task checklist).
 
 ## Backend (`cd backend`)
 
@@ -27,8 +27,11 @@ npx prisma migrate dev        # apply schema.prisma changes (also regenerates th
 npx prisma generate           # regenerate @prisma/client only
 npm run seed                  # idempotent demo scenario (prisma/seed.ts + prisma/demoScenario.ts); SEED_RESET=1 recreates it
 npm run typecheck             # tsc --noEmit; the only automated check
+npm run reminders             # one pass of the reminder job from dist/ (build first)
 npm run generate:crud -- <table> <field>:<type>[:<modifier>] ...
 ```
+
+Seed accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novaterra.local`, password `NovaTerra2026!` (`SEED_PASSWORD` overrides it).
 
 `rootDir` is the backend root, so the build outputs `dist/index.js` plus `dist/src/**`. The committed `backend/index.js` is a stale compiled copy of `index.ts`, not the build output. Run `npx prisma generate` after a fresh install; otherwise the server crashes on startup when a model is imported. `JWT_SECRET` comes from `.env`; `src/services/services.ts` falls back to a hardcoded dev secret and logs a warning.
 
@@ -79,9 +82,14 @@ Static uploads are served at `/public`. `index.ts` resolves the folder to `./pub
 npm run dev       # Vite dev server
 npm run build     # tsc -b && vite build
 npm run lint      # eslint (flat config in eslint.config.js)
-npm test          # vitest, src/**/*.test.ts
+npm run typecheck # tsc -b
+npm test          # vitest run, node environment, src/**/*.test.ts only (not .tsx)
+npx vitest run src/features/auth/loginMachine.test.ts   # single test file
 npm run preview
+npm run model:nova [src.glb] [out.glb]   # rig + optimize Nova's mesh into public/models/nova.glb; runs the .ts with plain node (needs native TS support)
 ```
+
+`scripts/tts/generate_mg.py` pre-generates Malagasy speech (Meta MMS-TTS) into `public/tts/`, which `useSpeakMessage` plays through `audioUrl`. It has its own Python 3.10–3.12 venv; setup is in the file's docstring.
 
 Install: `npm ci --legacy-peer-deps` (the `package-lock.json` was regenerated; the old `edgesOut` error came from an incomplete lockfile). Dependencies are also tracked in `yarn.lock` (yarn 1; add `--ignore-engines`, `camera-controls` declares Node ≥ 22). To add a dependency: `npm install --package-lock-only --legacy-peer-deps <pkg>`, then `git checkout yarn.lock && yarn add <pkg> --ignore-engines`, because npm also rewrites every resolved URL of an existing `yarn.lock`. The `.pnp.cjs` files are unused leftovers.
 
@@ -89,8 +97,10 @@ Install: `npm ci --legacy-peer-deps` (the `package-lock.json` was regenerated; t
 
 Routes are declared in `src/app/App.tsx`:
 - `/` (airlock login) and `/ville` (citizen app) run inside `FilmLayout`, which mounts the persistent three.js scene. `/ville` itself is the scroll-driven flyover; every other `/ville/*` page renders inside `pages/Console/ConsoleLayout` (see below). `/ville/test` (dev only) checks the API chain.
-- `/equipe` is the team page.
+- `/nova` (chat with Nova, `pages/ChatPage`) also runs inside `FilmLayout`.
+- `/equipe` is the team page. `/face` (`components/Face/FaceUnlock`) and `/transcription` (`components/Realtime/RealtimeTranscription`) are standalone demos of the two companion services.
 - `/agent/*` and `/admin/*` lazy-load the staff back-office (`src/backoffice/`) outside the film layout.
+- `/dev/nova` (`dev/NovaBench`) is Nova's test bench, compiled out of production builds like `/ville/test`.
 
 The citizen app ("NOVA") is styled with CSS Modules reading the design tokens of `src/styles/tokens.css` (`@theme static`, e.g. `--color-ice`, `--color-glass`, `--font-display`). The look is dark glass, cut corners via `clip-path` rather than border-radius, and a cyan "ice" light. Shared primitives live in `src/ui/`, feature widgets in `src/features/`, and state in zustand stores.
 
@@ -107,11 +117,12 @@ Console pages (`pages/Console/`): `ConsoleLayout` lays a reading surface over th
 
 ### Back-office (`src/backoffice/`)
 
-The agent and admin dashboards are a separate area: don't import it from the citizen app. It is being bound to the API plan by plan (`back-office-only-plan/`, BO-00 done). `admin/pages/SettingsPage` and the shell (identity, bell, menu counters) are bound; the other screens still read simulated zustand stores (`stores/`) seeded from `mocks/`, whose types in `mocks/types.ts` mirror the backend's Prisma models and API responses. An unbound screen passes `simulated` to its `PageHeader`, which shows « Données simulées »; drop the prop when binding it.
+The agent and admin dashboards are a separate area: don't import it from the citizen app. It is being bound to the API plan by plan (`back-office-only-plan/`, BO-00, BO-01 and BO-02 done). Bound: the shell (identity, bell, menu counters, ⌘K request search), `SettingsPage`, both dashboards (with the F50 « Vue simple » `shared/SimpleDashboard` and a staff activity feed from `/dashboard/activity` until the audit log), `NovaTerraPage`, the request screens (`RequestsPage`, `RequestDetailPage`, `ReportsPage`, `RequestsSupervisionPage`) and `CitizensPage`. The other screens still read simulated zustand stores (`stores/`) seeded from `mocks/`, whose types in `mocks/types.ts` mirror the backend's Prisma models and API responses. An unbound screen passes `simulated` to its `PageHeader`, which shows « Données simulées »; drop the prop when binding it.
 - **Binding the API:** replace each store action (`changeStatus`, `assignRequest`, `createAlert`…) with a hook from `src/api/`, documented in `backend/README.md`, and keep the screen's loading (`Skeleton`) and error states. A bound page reads no store. Delete a store and its mock once no page reads them. The simulated actions call `recordAudit()` client-side; the server audit table (F47/F48, PLAN-10) will replace it, with `AuditLog` in `mocks/types.ts` as the intended contract.
 - **Access:** `/agent/connexion` and `/admin/connexion` (`layout/StaffLoginPage`) sign the staff in with `POST /api/auth/login` and refuse citizens without opening their session. Everything else sits behind `layout/RequireStaff`: no session → login page with `?retour=`, citizen → refusal screen, agent on `/admin` → `/agent`. On `nova:session-expired`, `sessionNotice.ts` flags the redirect so the login page adds `?expiree=1` and explains it. `usePersona()` is the space from the URL, `useActor()` the session's user; admins can switch to the agent view.
 - **Shell data:** `useBadges()` reads real counters (`/dashboard/stats`, `/service-interruptions?scope=current`) and leaves a counter undefined, hence hidden, until an endpoint can give it; never show a simulated number next to real ones. The bell reads `/api/notifications`.
 - **Structure:** `layout/` holds the shell (sidebar, top bar, ⌘K palette, boot sequence), `ui/` its own primitives (`Panel`, `DataTable`, `Drawer`/`Modal`, `StatTile`…), `charts/` hand-made SVG charts animated with `motion`, `shared/` business components used by both spaces, and `agent/pages`/`admin/pages` the screens. Navigation and each screen's Terra Nova request codes live in `nav.ts`.
+- **Requests:** `src/api/requests.ts` (`useRequests` with filters kept in the URL, `useRequest`, `useUpdateRequest`, `useAddComment`, `useBulkUpdate`). The overdue rule (`OVERDUE_HOURS` by priority) exists on both sides: `backend/src/model/dashboard.model.ts` and `lib/thresholds.ts`. F49: `WAITING_CITIZEN`, `REJECTED` and `RESOLVED` need a public note (server 400 on `note`); `PATCH` answers `citizen_notified`.
 - **Lint constraints** (React Compiler rules): don't call `Date.now()` during render (use `useNow()` from `lib/useNow.ts`), and don't reassign variables inside render callbacks.
 - **Charts:** the categorical colors (`--series-1..3` in `charts/Charts.module.css`) were validated for colorblind safety on the dark surface. Every chart has a table view through `ChartFrame`.
 
@@ -135,21 +146,21 @@ node --import tsx --test test/pipeline.test.ts   # single test file
 npm run build                      # tsc -> dist/ (start / start:worker run the compiled output)
 ```
 
-`src/config.ts` validates env with zod at startup, so missing `STT_API_KEY` (min 8 chars), `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or `DATABASE_URL` crashes the process. Tests set dummy values themselves and need no real services. Preprocess tests are skipped when ffprobe is unavailable. ESM with NodeNext: relative imports must end in `.js`.
+`src/config.ts` validates env with zod at startup, so missing `STT_API_KEY` (min 8 chars), `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY` or `DATABASE_URL` crashes the process (`OPENAI_API_KEY` is optional). Tests set dummy values themselves and need no real services. Preprocess tests are skipped when ffprobe is unavailable. ESM with NodeNext: relative imports must end in `.js`.
 
 Architecture:
 - `src/app.ts` `buildApp(config, deps)` registers plugins in order. `plugins/auth.ts` is a `fastify-plugin` global `onRequest` Bearer check against `STT_API_KEY`, so it covers every route registered after it. It explicitly exempts `/health`, `/v1/realtime/tokens`, and the WebSocket path. Adding a new public route means adding it to that exemption list.
 - `POST /v1/transcriptions` (multipart) creates a `TranscriptionJob`, probes the duration, then either runs the pipeline inline (200) or publishes to RabbitMQ (202) when `options.async` is set or duration > `ASYNC_DURATION_THRESHOLD_SEC`. `GET /v1/transcriptions/:id` is used to poll.
-- `modules/pipeline/run-transcription.ts` is shared by the inline path and `workers/transcription.worker.ts`: FFmpeg preprocess (16 kHz mono) → `stt/providers/gpt-transcribe.ts` → Claude refiner (`refiner/claude-refiner.ts`, skipped in `FAST` mode, must correct only, never translate) → `timestamps/normalize.ts` → persist segments plus `ProviderCall` rows → delete audio unless `retainAudio`.
-- Realtime: the browser calls `POST /v1/realtime/tokens` (no auth) to get a short-lived HMAC token, opens `ws://…/v1/transcriptions/realtime?token=…`, sends a `session.start` JSON message, then binary webm/opus chunks (~5 s from MediaRecorder). `modules/realtime/session.ts` transcribes and refines each chunk and emits `transcript.partial` / `transcript.final` / `error` events. Realtime sessions are not persisted.
+- `modules/pipeline/run-transcription.ts` is shared by the inline path and `workers/transcription.worker.ts`: FFmpeg preprocess (16 kHz mono) → Whisper through OpenRouter (`stt/providers/openrouter-stt.ts`, `OPENROUTER_STT_MODEL`, prompted with the Terra Nova/Malagasy glossary in `stt/terra-nova-glossary.ts`) → Claude refiner (`refiner/claude-refiner.ts`, must correct only, never translate; skipped in `FAST` mode or when `refiner/should-refine.ts` judges the text clean enough, e.g. confidence above `CONFIDENCE_FALLBACK_THRESHOLD`) → `timestamps/normalize.ts` → persist segments plus `ProviderCall` rows → delete audio unless `retainAudio`. `gpt-transcribe.ts` is a legacy provider that only its test still uses.
+- Realtime: the browser calls `POST /v1/realtime/tokens` (no auth) to get a short-lived HMAC token, opens `ws://…/v1/transcriptions/realtime?token=…`, sends a `session.start` JSON message, then one binary webm/opus chunk per utterance. `useRealtimeTranscription` cuts utterances with a client-side energy VAD and restarts the MediaRecorder each time, so every chunk is a complete WebM with headers. `modules/realtime/session.ts` transcribes each chunk with the turbo model (`OPENROUTER_REALTIME_STT_MODEL`, no server speech gate by default), emits `transcript.partial` / `transcript.final`, then refines in the background and emits `transcript.refined` with the same `utteranceId` for the client to swap in. Realtime sessions are not persisted.
 - Routes, pipeline and session take an injectable `deps` object (db, publish, runJob, sttProvider, refine, …). Tests pass fakes through `buildApp(config, deps)` rather than mocking modules.
-- Provider keys (`STT_API_KEY`, OpenAI, Anthropic) must never go into `VITE_*` vars. Server-side consumers such as `backend/` call the REST API with `Authorization: Bearer $STT_API_KEY`. The integration examples are in `speech-to-text/README.md`.
+- Provider keys (`STT_API_KEY`, OpenRouter, Anthropic) must never go into `VITE_*` vars. Server-side consumers such as `backend/` call the REST API with `Authorization: Bearer $STT_API_KEY`. The integration examples are in `speech-to-text/README.md`.
 
 ## Face recognition (`cd face-recognitions`)
 
 ```bash
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt            # optional emotion model: requirements-emotion.txt (TensorFlow)
+pip install -r requirements.txt
 cp .env.example .env
 python scripts/download_models.py          # InsightFace buffalo_s (~120 MB) into ~/.insightface
 python api_pro.py                          # dev server on :9000 (entry point is app/main.py:create_app)
@@ -158,3 +169,7 @@ docker compose up --build                  # gunicorn, 1 worker
 ```
 
 Python 3.12+ is unsupported (InsightFace/onnxruntime wheels). `app/pipeline.py` lazy-loads InsightFace on the first face request, so `/health` reports `insightface_lazy` until then. The gallery lives in `app/store.py` as in-memory L2-normalized embeddings persisted to `data/embeddings/{name}.npy`, with samples in `data/identities/{name}/samples/`. Matching is a cosine dot product against the `FACE_VERIFY_THRESHOLD` / `FACE_IDENTIFY_THRESHOLD` thresholds (rationale in `docs/THRESHOLDS.md`). `/enroll` accumulates samples and only commits (`committed: true`) once `FACE_MIN_ENROLL_SAMPLES` (3) is reached. Liveness (`app/liveness.py`) uses RGB heuristics unless `.onnx` anti-spoof models are placed in `models/anti_spoof/`. It is required on `/verify` by default. `FACE_API_KEY` empty means no auth. Legacy aliases `/create-dataset`, `/recognize`, `/delete-dataset` are still routed.
+
+## Production deployment
+
+The backend runs on cPanel (Passenger; see `backend/README.md` « Deploying on cPanel »). `face-recognitions/` and `speech-to-text/` run on a VPS in the same way: `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build` (from `.env.prod.example`), with the host's nginx on public :80/:443 proxying to Docker on :84 (face) and :85 (STT), and Let's Encrypt certificates for DuckDNS subdomains set up by `deploy/host-nginx/install-host-nginx.sh` and `deploy/certbot/init-ssl.sh`. The steps are in each service's README. The face container runs gunicorn on `passenger_wsgi:application`. Behind nginx, its rate limiter sees the proxy IP because there is no `ProxyFix` yet.

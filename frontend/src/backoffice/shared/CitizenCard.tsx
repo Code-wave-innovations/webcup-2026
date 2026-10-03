@@ -1,4 +1,4 @@
-import type { User } from '../mocks/types'
+import type { User } from '../../api/types'
 import { formatDateTime, formatRelative } from '../lib/format'
 import { districtName } from '../lib/lookups'
 import { useNow } from '../lib/useNow'
@@ -8,7 +8,12 @@ import { Avatar } from '../ui/Feedback'
 import layout from '../ui/layout.module.css'
 
 /** F34: the citizen information an agent needs to process a request — nothing more. */
-export function CitizenCard({ citizen, requests, appointments }: { citizen: User; requests?: number; appointments?: number }) {
+type CardUser = Pick<
+  User,
+  'name' | 'last_name' | 'email' | 'is_active' | 'is_vulnerable' | 'onboarding_completed' | 'phone' | 'address' | 'district_id' | 'locale' | 'created_at' | 'last_login_at'
+> & { district?: User['district']; login_locked?: boolean }
+
+export function CitizenCard({ citizen, requests, appointments }: { citizen: CardUser; requests?: number; appointments?: number }) {
   const now = useNow()
   return (
     <div className={layout.stack}>
@@ -33,7 +38,7 @@ export function CitizenCard({ citizen, requests, appointments }: { citizen: User
         <dt>Adresse</dt>
         <dd>{citizen.address ?? '—'}</dd>
         <dt>Quartier</dt>
-        <dd>{districtName(citizen.district_id)}</dd>
+        <dd>{citizen.district?.name ?? districtName(citizen.district_id)}</dd>
         <dt>Langue</dt>
         <dd>{LOCALES.find((l) => l.code === citizen.locale)?.label ?? citizen.locale}</dd>
         <dt>Inscrit·e</dt>

@@ -18,6 +18,7 @@ export function useBadges(): Partial<Record<BadgeKey, number>> {
     activeAlerts: stats.data?.platform.active_alerts,
     // F38
     interruptions: interruptions.data?.length,
-    // appointmentsToday: BO-08 adds the date filter the count needs
+    // F39
+    appointmentsToday: stats.data?.appointments.today,
   }
 }

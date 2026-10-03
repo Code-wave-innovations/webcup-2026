@@ -24,3 +24,46 @@
   scrollbar-width: thin;
   scrollbar-color: var(--color-line) transparent;
 }
+
+/*
+  F50: printing a dashboard for a service meeting. Only the page content is kept (no sidebar,
+  top bar, HUD background or boot overlay), in black on white, without the glass effects.
+*/
+@media print {
+  .bo-root > :not(:has(#bo-main)),
+  .bo-root :has(> #bo-main) > :not(#bo-main),
+  .bo-root [data-print-hide] {
+    display: none !important;
+  }
+
+  .bo-root,
+  .bo-root * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    clip-path: none !important;
+    animation: none !important;
+  }
+
+  html:has(.bo-root),
+  html:has(.bo-root) body {
+    background: #fff !important;
+  }
+
+  /* the content takes the whole sheet once the sidebar is gone */
+  .bo-root,
+  .bo-root :has(> #bo-main),
+  .bo-root #bo-main {
+    display: block !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .bo-root [data-print-block] {
+    break-inside: avoid;
+    border: 1px solid #999 !important;
+  }
+}

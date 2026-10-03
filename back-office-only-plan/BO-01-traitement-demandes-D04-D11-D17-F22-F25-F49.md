@@ -172,20 +172,30 @@ Les autres encarts relèvent d'autres plans : activité (BO-03), Nova Terra et v
 
 ## 6. Étapes
 
-- [ ] Backend :
-  - [ ] filtre `citizen_id` ;
-  - [ ] `open_by_agent`, `overdue` et `incidents_by_district` ;
-  - [ ] message obligatoire pour les états qui demandent une explication ;
-  - [ ] `citizen_notified` ;
-  - [ ] `POST /bulk` (facultatif).
-- [ ] `src/api/requests.ts`, `src/api/dashboard.ts` et types `CitizenRequest` et `RequestEvent`
-- [ ] `RequestsPage` : filtres dans l'URL, pagination serveur
-- [ ] `RequestDetailPage` : actions, aperçu de l'avis (F49), « Voir comme l'habitant », réponse par e-mail (D04)
-- [ ] `ReportsPage` et grille des quartiers
-- [ ] Encarts « demandes » du tableau de bord agent
-- [ ] `RequestsSupervisionPage`
-- [ ] Badge `awaiting` et recherche ⌘K
-- [ ] Nettoyage des stores et mocks
+- [x] Backend :
+  - [x] filtre `citizen_id` ;
+  - [x] `open_by_agent`, `overdue` et `incidents_by_district` ;
+  - [x] message obligatoire pour les états qui demandent une explication ;
+  - [x] `citizen_notified` ;
+  - [x] `POST /bulk` (facultatif).
+- [x] `src/api/requests.ts`, `src/api/dashboard.ts` et types `CitizenRequest` et `RequestEvent`
+- [x] `RequestsPage` : filtres dans l'URL, pagination serveur
+- [x] `RequestDetailPage` : actions, aperçu de l'avis (F49), « Voir comme l'habitant », réponse par e-mail (D04)
+- [x] `ReportsPage` et grille des quartiers
+- [x] Encarts « demandes » du tableau de bord agent
+- [x] `RequestsSupervisionPage`
+- [x] Badge `awaiting` et recherche ⌘K
+- [x] Nettoyage des stores et mocks
+
+**Réalisé (4 octobre 2026) :**
+- **Retard :** même règle que le BO-02 (`OVERDUE_HOURS` : 4 h urgente, 24 h haute, 72 h normale, 120 h basse) plutôt qu'un seuil unique de 3 jours, pour que la supervision, la vue simple et l'horloge de la liste disent la même chose (`lib/thresholds.ts` côté front).
+- **Liste du personnel :** `GET /api/users/staff` est ajouté ici (morceau du BO-04), ouvert à tout le personnel.
+- **Assignation :** l'événement `ASSIGNED` garde le nom de l'agent dans `message`, pour que l'historique reste juste après une réassignation. Les anciens événements affichent « Assignation modifiée ».
+- **F49 :** la règle est dans le schéma zod du `PATCH` (`EXPLAINED_STATUSES`) ; l'erreur arrive sur `note` et le front la traduit. Une note interne n'est jamais acceptée comme explication.
+- **Fil d'activité :** `GET /api/dashboard/activity` lit les `RequestEvent` du personnel. Il remplace les panneaux « Disponible prochainement » des deux tableaux de bord en attendant le journal d'audit (BO-03).
+- **`CitizensPage`** (F34, BO-04) est branchée sur `GET /api/users` et `?citizen_id=`, car elle lisait `requestStore`. Le nombre de rendez-vous (BO-08) et le verrou de connexion (BO-05) n'y sont plus affichés.
+- **Supprimés :** `stores/requestStore.ts`, `mocks/requests.ts`. `RequestTable`, `RequestTimeline` et `CitizenCard` sont typés sur `src/api/types.ts` ; `DistrictMap` accepte les quartiers de `GET /api/districts`.
+- **Vérifié dans le navigateur** avec des demandes de test supprimées ensuite : les 5 critères ci-dessous passent, ainsi que la recherche ⌘K.
 
 ## 7. Critères d'acceptation (scénario de démo)
 

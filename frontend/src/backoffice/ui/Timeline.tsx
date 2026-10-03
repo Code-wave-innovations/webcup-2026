@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { motion } from 'motion/react'
 import type { Tone } from '../lib/labels'
+import { Icon } from './Icon'
 import styles from './Timeline.module.css'
 
 export interface TimelineItem {
@@ -9,8 +10,10 @@ export interface TimelineItem {
   meta?: ReactNode
   body?: ReactNode
   tone?: Tone
-  /** Agent-only entry (internal note, assignment). */
+  /** true: agent-only entry (internal note, assignment). false: said « Visible par l'habitant » (D11). */
   internal?: boolean
+  /** F49: the citizen received a notification for this step */
+  notified?: boolean
   current?: boolean
 }
 
@@ -33,6 +36,12 @@ export function Timeline({ items, label }: { items: TimelineItem[]; label: strin
             <p className={styles.title}>
               {item.title}
               {item.internal && <span className={styles.badge}>Interne</span>}
+              {item.internal === false && <span className={[styles.badge, styles.public].join(' ')}>Visible par l’habitant</span>}
+              {item.notified && (
+                <span className={[styles.badge, styles.public].join(' ')}>
+                  <Icon name="bell" size={11} /> Habitant prévenu
+                </span>
+              )}
             </p>
             {item.meta && <p className={styles.meta}>{item.meta}</p>}
             {item.body && <div className={styles.body}>{item.body}</div>}

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
 import { messageFor } from '../../api/errors'
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '../../api/notifications'
+import { useRequest } from '../../api/requests'
 import { signOut } from '../../api/session'
 import type { AppNotification } from '../../api/types'
 import { flatNav } from '../nav'
@@ -10,7 +11,6 @@ import type { Persona } from '../mocks/types'
 import { ROLE_LABEL } from '../lib/labels'
 import { formatRelative } from '../lib/format'
 import { useNow } from '../lib/useNow'
-import { useRequestStore } from '../stores/requestStore'
 import { toast } from '../stores/toastStore'
 import { Icon } from '../ui/Icon'
 import { Avatar, Kbd } from '../ui/Feedback'
@@ -22,12 +22,14 @@ const clockFormat = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: 
 
 function Breadcrumbs({ persona }: { persona: Persona }) {
   const { pathname } = useLocation()
-  const requests = useRequestStore((s) => s.requests)
   const items = flatNav(persona)
   const root = items[0]
   const section = [...items].sort((a, b) => b.path.length - a.path.length).find((i) => i !== root && pathname.startsWith(i.path))
   const rest = section ? pathname.slice(section.path.length).split('/').filter(Boolean) : []
-  const detail = rest[0] && section?.path.endsWith('/demandes') ? requests.find((r) => String(r.id) === rest[0])?.reference : rest[0]
+  const requestId = rest[0] && section?.path.endsWith('/demandes') ? Number(rest[0]) : undefined
+  // same query as the detail page: no extra request
+  const request = useRequest(requestId).data
+  const detail = requestId !== undefined ? (request?.reference ?? '…') : rest[0]
 
   const crumbs = [
     { label: persona === 'ADMIN' ? 'Administration' : 'Espace agent', to: root.path },
