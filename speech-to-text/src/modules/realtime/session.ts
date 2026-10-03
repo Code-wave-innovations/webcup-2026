@@ -23,6 +23,9 @@ import {
 import { createOpenRouterSttProvider } from "../stt/providers/openrouter-stt.js";
 import type { SttProvider, SttResult, TranscriptSegment } from "../stt/types.js";
 
+/** Max time end() waits for in-flight refines before cleaning up anyway. */
+const REFINE_DRAIN_TIMEOUT_MS = 2000;
+
 export type RealtimeMode = "FAST" | "BALANCED" | "ACCURATE";
 
 export interface RealtimeSessionOptions {
@@ -348,8 +351,19 @@ export class RealtimeSession {
   async end(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
-    await Promise.allSettled([...this.pendingRefines]);
+    // Refines are fire-and-forget and ignore emit after close; never pin the WS
+    // close on a hung refine. Give in-flight ones a short grace period only.
+    const pending = [...this.pendingRefines];
     this.pendingRefines.clear();
+    if (pending.length > 0) {
+      let timer: NodeJS.Timeout | undefined;
+      const timeout = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, REFINE_DRAIN_TIMEOUT_MS);
+        timer.unref?.();
+      });
+      await Promise.race([Promise.allSettled(pending), timeout]);
+      if (timer) clearTimeout(timer);
+    }
     if (this.workDir) {
       await fs.rm(this.workDir, { recursive: true, force: true }).catch(() => undefined);
       this.workDir = null;
