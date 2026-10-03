@@ -21,16 +21,16 @@ export type RealtimeError = { code: string; message: string }
 const SPEECH_START_RMS = 0.018
 const SPEECH_CONTINUE_RMS = 0.012 // hystérésis : plus bas une fois en parole
 const MIN_SPEECH_MS = 200
-const MAX_CHUNK_MS = 8000
+const MAX_CHUNK_MS = 6000
 const ENERGY_CHECK_INTERVAL_MS = 40
 /** Silence toujours ignoré (respiration / entre-mots). */
-const WORD_GAP_MS = 250
+const WORD_GAP_MS = 200
 /** Silence requis si l’utterance est encore courte. */
-const END_SILENCE_EARLY_MS = 750
+const END_SILENCE_EARLY_MS = 420
 /** Silence requis une fois qu’on a déjà parlé un moment. */
-const END_SILENCE_LATE_MS = 520
+const END_SILENCE_LATE_MS = 320
 /** À partir de cette durée de parole, on bascule vers END_SILENCE_LATE. */
-const LONG_UTTERANCE_MS = 1600
+const LONG_UTTERANCE_MS = 1200
 
 function requiredEndSilenceMs(spokeForMs: number): number {
     if (spokeForMs <= 0) return END_SILENCE_EARLY_MS
@@ -69,20 +69,32 @@ export function useRealtimeTranscription(options?: {
     const stopRecorder = useCallback(() => {
         const recorder = recorderRef.current
         if (recorder && recorder.state !== 'inactive') {
-            // stop() émet un dernier ondataavailable : c'est ce chunk qui contient
-            // l'utterance complète envoyée au serveur.
             recorder.stop()
+        }
+    }, [])
+
+    const flushUtterance = useCallback(() => {
+        const recorder = recorderRef.current
+        if (recorder && recorder.state === 'recording') {
+            recorder.requestData()
         }
     }, [])
 
     const startRecorder = useCallback((stream: MediaStream) => {
         const ws = wsRef.current
         if (!ws || ws.readyState !== WebSocket.OPEN) return
-        const recorder = new MediaRecorder(stream)
+        if (recorderRef.current && recorderRef.current.state !== 'inactive') return
+
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : undefined
+        const recorder = mimeType
+            ? new MediaRecorder(stream, { mimeType })
+            : new MediaRecorder(stream)
         recorderRef.current = recorder
         recorder.ondataavailable = (e) => {
             if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-                ws.send(e.data) // binary audio chunk
+                ws.send(e.data)
             }
         }
         recorder.start()
@@ -125,8 +137,7 @@ export function useRealtimeTranscription(options?: {
                     } else if (silentFor >= requiredEndSilenceMs(spokeFor)) {
                         state.speaking = false
                         state.silenceStart = 0
-                        stopRecorder()
-                        startRecorder(stream)
+                        flushUtterance()
                     }
                 }
 
@@ -135,12 +146,11 @@ export function useRealtimeTranscription(options?: {
                     state.speaking = false
                     state.silenceStart = 0
                     state.speechStart = now
-                    stopRecorder()
-                    startRecorder(stream)
+                    flushUtterance()
                 }
             }, ENERGY_CHECK_INTERVAL_MS)
         },
-        [startRecorder, stopRecorder],
+        [flushUtterance],
     )
 
     const stopVad = useCallback(() => {
