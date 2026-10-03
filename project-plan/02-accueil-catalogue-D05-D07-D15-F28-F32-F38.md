@@ -19,7 +19,7 @@ Ces demandes reposent toutes sur les mêmes données (`/api/home`, `/api/service
 | D07 | Mairie | Comprendre tout de suite où l'on est et ce qu'on peut faire | Accueil hiérarchisé, avec les accès principaux visibles sans faire défiler |
 | D15 | Citoyen | Savoir où l'on se trouve et revenir aux niveaux précédents | Fil d'Ariane sur toutes les pages, rubrique active signalée |
 | F28 | Mairie | Mettre en avant les services prioritaires ou les plus utilisés | Les services marqués d'une étoile par l'admin passent en tête de l'accueil |
-| F32 | Citoyenne | Trouver vite, par exemple les services de santé | Recherche tolérante aux synonymes, résultats groupés par type |
+| F32 | Citoyenne | Trouver vite les services de santé ; quand le volume augmente, retrouver vite ce qui demande son attention | Recherche tolérante aux synonymes qui propose la catégorie Santé ; bloc « À traiter » en tête de la recherche et de « Mon espace » |
 | F38 | Citoyen | Savoir qu'un service est indisponible avant de commencer, et quand revenir | Pastille et encart de disponibilité partout, action bloquée avec une explication |
 
 ## 2. Existant
@@ -56,6 +56,13 @@ Ces demandes reposent toutes sur les mêmes données (`/api/home`, `/api/service
 Rien de bloquant. Petits ajouts :
 
 - **Seed : mots-clés (F32).** Remplir `keywords` avec des synonymes. Pour la santé, par exemple : « médecin, docteur, hôpital, soins, urgence, vaccin, consultation, infirmier ». Il en faut au moins 5 par service.
+- **Ce qui demande l'attention (F32, seconde phrase).** Nouvel endpoint `GET /api/me/attention` (personne connectée). Il renvoie les éléments à traiter, chacun avec sa raison et son lien :
+  - demandes en `WAITING_CITIZEN` (« Réponse attendue depuis 2 j ») ;
+  - rendez-vous dans les 48 h ;
+  - alertes actives qui la concernent (`concernsUser`) ;
+  - nombre de notifications non lues.
+
+  Une seule requête suffit, que la recherche, « Mon espace » et le badge de la barre du haut réutilisent.
 - **Compteur de vues (F28, optionnel).** Ne pas incrémenter `view_count` quand c'est le personnel qui consulte, pour que « les plus utilisés » reflète bien les habitants.
 - **Paramètres.** `home_blocks` et `maintenance_banner` viennent de PLAN-00 (B1).
 
@@ -107,11 +114,24 @@ Chaque section reste liée à sa pose de caméra : on ne change pas leur ordre, 
 
 ### 4.4 Recherche `/ville/recherche?q=` (F32)
 
+F32 a deux volets : trouver un service (« les services de santé ») et, quand le volume augmente, retrouver vite ce qui demande son attention.
+
+**Trouver un service**
 - Le champ est dans la barre du haut ; la touche `/` y place le curseur.
+- Quand le terme correspond à une catégorie, par son nom ou ses synonymes (« santé », « médecin », « malade », « docteur »), la catégorie apparaît en premier résultat : « Tous les services Santé (2) ». Elle mène au catalogue filtré.
+- La catégorie Santé a aussi sa pastille sur l'accueil et dans le catalogue : un clic suffit, sans rien taper.
 - Les résultats sont groupés : Services, Démarches, Annonces et, si l'on est connecté, Mes demandes. Chaque groupe affiche son nombre de résultats, et le terme cherché est mis en évidence.
 - Sans résultat, la page propose les catégories et « Écrire à la mairie » (PLAN-03, D04).
 - La recherche part 250 ms après la dernière frappe. Le nombre de résultats est annoncé aux lecteurs d'écran (`aria-live`), par exemple « 6 résultats ».
 - Après le PLAN-07, les lieux apparaissent aussi dans les résultats.
+
+**Ce qui demande mon attention**
+- Quand on est connecté, la page de recherche affiche en tête un bloc « À traiter », même avant d'avoir tapé quoi que ce soit. Il est alimenté par `GET /api/me/attention`.
+  - Chaque élément dit pourquoi il est là : « Réponse attendue depuis 2 j », « Rendez-vous demain à 9:30 », « Alerte : vous êtes concerné·e ».
+  - Chaque élément mène directement à sa page.
+- « Mon espace » (PLAN-01) affiche le même bloc en premier. La barre du haut montre le nombre d'éléments à traiter.
+- Les demandes de l'habitant qui correspondent au terme cherché passent avant les autres résultats, triées par « à traiter » puis par date.
+- Côté agents, l'équivalent est le filtre « Nécessite une action » (F22, PLAN-03). La palette ⌘K du back-office cherche aussi dans les vraies demandes : par référence, par objet ou par nom du citoyen (`GET /api/requests?q=`).
 
 ### 4.5 Fil d'Ariane et repères (D15)
 
@@ -150,7 +170,8 @@ Chaque section reste liée à sa pose de caméra : on ne change pas leur ordre, 
 - [ ] Composants `AvailabilityPill`, `AvailabilityNotice` et `ServiceCard`
 - [ ] Survol : sections Arrivée, Services et État de la ville branchées sur `useHome()` ; raccourcis ; bandeau de maintenance
 - [ ] `/ville/services` et `/ville/services/:slug`
-- [ ] `/ville/recherche` et le champ de recherche dans la barre du haut
+- [ ] `/ville/recherche` et le champ de recherche dans la barre du haut ; catégorie proposée en premier résultat
+- [ ] Backend `GET /api/me/attention`, puis le bloc « À traiter » dans la recherche, dans « Mon espace » et en badge dans la barre du haut
 - [ ] `Breadcrumbs` et le `handle.crumb` de chaque route `/ville/*`
 - [ ] Back-office : `ServicesPage` (dont l'onglet Démarches), `MaintenancePage`, blocs de la `SettingsPage`, badge
 - [ ] Suppression de `ServiceList`, `services.ts` et `catalogStore`
@@ -161,8 +182,9 @@ Chaque section reste liée à sa pose de caméra : on ne change pas leur ordre, 
 2. **D05.** Le catalogue liste tous les services actifs, par catégorie. Chaque fiche donne le contact, les horaires, l'adresse et les démarches.
 3. **F28.** L'admin met « Prévention santé » en avant : il passe en tête de l'accueil après le rafraîchissement suivant (60 s au plus).
 4. **F32.**
-   - « médecin », « santé » et « vaccin » trouvent le centre de santé et la prévention.
+   - « médecin », « santé » et « vaccin » trouvent le centre de santé et la prévention, avec la catégorie Santé en premier résultat.
    - « zzz » ne trouve rien et propose les catégories et le contact de la mairie.
+   - Connecté avec `citoyen@`, qui a une demande en attente de sa réponse et un rendez-vous dans les 48 h : la recherche (même vide) et « Mon espace » affichent d'abord ces deux éléments, avec leur raison et un lien direct.
 5. **D15.** Sur toute page hors survol, le fil d'Ariane est cliquable au clavier, et le niveau courant est annoncé par les lecteurs d'écran.
 6. **F38.**
    - L'admin déclare une interruption de « État civil » jusqu'à 14:00.
