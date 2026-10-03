@@ -13,7 +13,7 @@ function ensureTestEnv(): void {
 
 type Row = Record<string, any>;
 
-async function harness(opts: { duration?: number } = {}) {
+async function harness(opts: { duration?: number; publishError?: Error } = {}) {
   ensureTestEnv();
   const { buildApp } = await import("../src/app.js");
   const { loadConfig } = await import("../src/config.js");
@@ -44,10 +44,15 @@ async function harness(opts: { duration?: number } = {}) {
           rows.set(row.id as string, row);
           return row;
         },
+        update: async ({ where, data }) => {
+          Object.assign(rows.get(where.id)!, data);
+          return rows.get(where.id);
+        },
         findUnique: async ({ where }) => (rows.get(where.id) as any) ?? null,
       },
     },
     publish: async (id) => {
+      if (opts.publishError) throw opts.publishError;
       published.push(id);
     },
     runJob: async (id) => {
@@ -222,5 +227,30 @@ test("GET unknown id returns 404; health stays public", async () => {
 
   const health = await app.inject({ method: "GET", url: "/health" });
   assert.equal(health.statusCode, 200);
+  await app.close();
+});
+
+test("publish failure marks job failed, deletes upload and returns 502", async () => {
+  const { app, config, rows, published, uploadDir } = await harness({
+    publishError: new Error("amqp://guest:guest@broker ECONNREFUSED"),
+  });
+  const { payload, contentType } = multipartBody({ options: '{"async":true}' });
+  const res = await app.inject({
+    method: "POST",
+    url: "/v1/transcriptions",
+    headers: { authorization: `Bearer ${config.STT_API_KEY}`, "content-type": contentType },
+    payload,
+  });
+  assert.equal(res.statusCode, 502, res.body);
+  assert.equal(res.json().error.code, "QUEUE_UNAVAILABLE");
+  assert.ok(!res.body.includes("amqp"));
+  assert.deepEqual(published, []);
+  assert.equal(rows.size, 1);
+  const row = [...rows.values()][0];
+  assert.equal(row.status, "failed");
+  assert.equal(row.errorCode, "QUEUE_UNAVAILABLE");
+  assert.ok(!String(row.errorMessage).includes("amqp"));
+  assert.equal(row.audioPath, null);
+  assert.deepEqual(await fs.readdir(uploadDir), []);
   await app.close();
 });

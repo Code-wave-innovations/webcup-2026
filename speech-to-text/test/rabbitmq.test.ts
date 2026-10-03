@@ -130,3 +130,44 @@ test("handleTranscriptionDelivery nacks invalid payload without requeue", async 
   assert.equal(nacks.length, 1);
   assert.equal(nacks[0]?.requeue, false);
 });
+
+test("handleTranscriptionDelivery publishes retry BEFORE acking", async () => {
+  const order: string[] = [];
+  const { channel } = mockChannel();
+  const ch = channel as unknown as Record<string, unknown>;
+  const origSend = ch.sendToQueue as (...a: unknown[]) => boolean;
+  ch.sendToQueue = (...a: unknown[]) => {
+    order.push("publish");
+    return origSend(...a);
+  };
+  ch.ack = () => {
+    order.push("ack");
+  };
+  await handleTranscriptionDelivery(
+    channel,
+    fakeMessage("j", 0),
+    async () => {
+      throw new Error("boom");
+    },
+    MAX_JOB_RETRIES,
+  );
+  assert.deepEqual(order, ["publish", "ack"]);
+});
+
+test("handleTranscriptionDelivery does not ack and requeues when retry publish fails", async () => {
+  const { channel, acks, nacks } = mockChannel();
+  (channel as unknown as Record<string, unknown>).sendToQueue = () => {
+    throw new Error("channel closed");
+  };
+  await handleTranscriptionDelivery(
+    channel,
+    fakeMessage("j", 0),
+    async () => {
+      throw new Error("boom");
+    },
+    MAX_JOB_RETRIES,
+  );
+  assert.equal(acks.length, 0);
+  assert.equal(nacks.length, 1);
+  assert.equal(nacks[0]?.requeue, true);
+});

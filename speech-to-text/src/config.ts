@@ -11,7 +11,7 @@ const schema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1),
   OPENROUTER_API_KEY: z.string().optional(),
   MAX_AUDIO_BYTES: z.coerce.number().default(25_000_000),
-  MAX_AUDIO_DURATION_SEC: z.coerce.number().default(7200),
+  MAX_AUDIO_DURATION_SEC: z.coerce.number().default(720),
   ASYNC_DURATION_THRESHOLD_SEC: z.coerce.number().default(120),
   CONFIDENCE_FALLBACK_THRESHOLD: z.coerce.number().default(0.55),
   RETAIN_AUDIO_DEFAULT: z

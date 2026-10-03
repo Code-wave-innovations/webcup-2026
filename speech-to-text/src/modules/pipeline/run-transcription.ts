@@ -84,11 +84,54 @@ function collectLanguages(result: SttResult, segments: TranscriptSegment[]): str
   return [...set];
 }
 
+const GENERIC_PIPELINE_MESSAGE = "Transcription failed due to an internal error";
+
+/** Redacts API-key-looking tokens before anything is logged. */
+function redactSecrets(text: string): string {
+  return text.replace(/\b(sk|key|rk)-[A-Za-z0-9_*.-]{4,}/g, "$1-***");
+}
+
+/** Full detail for server-side logs only; never persisted or returned to clients. */
+function errorDetail(err: unknown): string {
+  return redactSecrets(err instanceof Error ? err.message : String(err));
+}
+
+/**
+ * Maps a raw provider SDK error (OpenAI/Anthropic) to a client-safe message.
+ * Based on HTTP status / error code only; the raw message is never exposed.
+ */
+export function sanitizeProviderError(err: unknown, provider: "stt" | "refine"): string {
+  const label = provider === "stt" ? "Speech-to-text provider" : "Transcript refiner";
+  const e = (typeof err === "object" && err !== null ? err : {}) as {
+    status?: unknown;
+    code?: unknown;
+  };
+  const status = typeof e.status === "number" ? e.status : undefined;
+  const code = typeof e.code === "string" ? e.code : undefined;
+  if (status === 401 || status === 403) return `${label} is not authorized`;
+  if (status === 429 || code === "rate_limit_exceeded" || code === "insufficient_quota") {
+    return `${label} is rate limited or over quota; try again later`;
+  }
+  if (status === 413) return `${label} rejected the audio as too large`;
+  if (status !== undefined && status >= 400 && status < 500) {
+    return `${label} rejected the request`;
+  }
+  if (
+    (status !== undefined && status >= 500) ||
+    code === "ECONNRESET" ||
+    code === "ETIMEDOUT" ||
+    code === "ECONNREFUSED" ||
+    code === "ENOTFOUND"
+  ) {
+    return `${label} is temporarily unavailable`;
+  }
+  return `${label} request failed`;
+}
+
 function toErrorInfo(err: unknown): { code: string; message: string } {
   if (isAudioPreprocessError(err)) return { code: err.code, message: err.message };
   if (err instanceof PipelineError) return { code: err.code, message: err.message };
-  const message = err instanceof Error ? err.message : String(err);
-  return { code: "PIPELINE_ERROR", message };
+  return { code: "PIPELINE_ERROR", message: GENERIC_PIPELINE_MESSAGE };
 }
 
 /**
@@ -133,7 +176,17 @@ export async function runTranscriptionJob(
   const languageHints = stringArray(job.languageHints);
   const context = asRecord(job.context);
 
+  const deleteAudioFile = async (): Promise<void> => {
+    if (!job.audioPath) return;
+    try {
+      await removeFile(job.audioPath);
+    } catch (err) {
+      logMetric("audio.delete_failed", { jobId, error: errorDetail(err) });
+    }
+  };
+
   let workDir: string | undefined;
+  const deleteAudio = !retainAudio;
   try {
     if (!job.audioPath) {
       throw new PipelineError("NO_AUDIO", "Job has no audio file");
@@ -166,11 +219,8 @@ export async function runTranscriptionJob(
           success: false,
         },
       });
-      logMetric("stt.failed", { jobId, provider: stt.name });
-      throw new PipelineError(
-        "STT_FAILED",
-        err instanceof Error ? err.message : String(err),
-      );
+      logMetric("stt.failed", { jobId, provider: stt.name, error: errorDetail(err) });
+      throw new PipelineError("STT_FAILED", sanitizeProviderError(err, "stt"));
     }
 
     await db.providerCall.create({
@@ -236,17 +286,14 @@ export async function runTranscriptionJob(
           jobId,
           provider: "claude-refiner",
           latencyMs,
-          error: err instanceof Error ? err.message : String(err),
+          error: errorDetail(err),
         });
-        throw new PipelineError(
-          "REFINE_FAILED",
-          err instanceof Error ? err.message : String(err),
-        );
+        // Graceful degradation: keep the raw STT text/segments and still complete the job.
+        logMetric("refine.fallback", { jobId, provider: "claude-refiner" });
       }
     }
 
     const normalized = normalizeSegments(segments);
-    const deleteAudio = !retainAudio;
 
     await db.transcriptionJob.update({
       where: { id: jobId },
@@ -274,16 +321,7 @@ export async function runTranscriptionJob(
       },
     });
 
-    if (deleteAudio) {
-      try {
-        await removeFile(job.audioPath);
-      } catch (err) {
-        logMetric("audio.delete_failed", {
-          jobId,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    }
+    if (deleteAudio) await deleteAudioFile();
 
     logMetric("job.completed", {
       jobId,
@@ -297,6 +335,7 @@ export async function runTranscriptionJob(
       jobId,
       latencyMs: Date.now() - jobStarted,
       errorCode: code,
+      error: errorDetail(err),
     });
     await db.transcriptionJob.update({
       where: { id: jobId },
@@ -305,8 +344,11 @@ export async function runTranscriptionJob(
         errorCode: code,
         errorMessage: message,
         completedAt: new Date(),
+        ...(deleteAudio ? { audioPath: null } : {}),
       },
     });
+    // Failed jobs are terminal (never retried), so audio is deleted unless retainAudio is set.
+    if (deleteAudio) await deleteAudioFile();
   } finally {
     if (workDir) {
       await fs.rm(workDir, { recursive: true, force: true }).catch(() => undefined);

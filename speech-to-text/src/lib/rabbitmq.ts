@@ -64,18 +64,39 @@ function getRetryCount(msg: ConsumeMessage): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-async function getSharedChannel(): Promise<Channel> {
+async function getSharedHandles(): Promise<{ attempt: Promise<RabbitHandles>; handles: RabbitHandles }> {
   if (!sharedConnect) {
     const url = loadConfig().RABBITMQ_URL;
-    sharedConnect = connectRabbit(url);
+    const attempt: Promise<RabbitHandles> = connectRabbit(url).then((h) => {
+      const invalidate = () => {
+        if (sharedConnect === attempt) sharedConnect = null;
+      };
+      h.connection.on("error", invalidate);
+      h.connection.on("close", invalidate);
+      h.channel.on("error", invalidate);
+      h.channel.on("close", invalidate);
+      return h;
+    });
+    sharedConnect = attempt;
+    // A failed connect must not stay cached, or every later publish would fail forever.
+    attempt.catch(() => {
+      if (sharedConnect === attempt) sharedConnect = null;
+    });
   }
-  const handles = await sharedConnect;
-  return handles.channel;
+  const attempt = sharedConnect;
+  return { attempt, handles: await attempt };
 }
 
 export async function publishTranscriptionJob(jobId: string): Promise<void> {
-  const channel = await getSharedChannel();
-  await publishTranscriptionJobOnChannel(channel, jobId);
+  const { attempt, handles } = await getSharedHandles();
+  try {
+    await publishTranscriptionJobOnChannel(handles.channel, jobId);
+  } catch (err) {
+    // Drop the (likely broken) cached connection so the next publish reconnects.
+    if (sharedConnect === attempt) sharedConnect = null;
+    void closeRabbit(handles).catch(() => undefined);
+    throw err;
+  }
 }
 
 export async function publishTranscriptionJobOnChannel(
@@ -114,14 +135,24 @@ export async function handleTranscriptionDelivery(
       channel.nack(msg, false, false);
       return;
     }
-    channel.ack(msg);
-    await publishTranscriptionJobOnChannel(channel, jobId, retryCount + 1);
+    // Publish the retry BEFORE acking: if publish fails the original stays
+    // unacked and is requeued instead of being lost.
+    try {
+      await publishTranscriptionJobOnChannel(channel, jobId, retryCount + 1);
+      channel.ack(msg);
+    } catch {
+      try {
+        channel.nack(msg, false, true);
+      } catch {
+        // channel already closed: the broker will redeliver the unacked message
+      }
+    }
   }
 }
 
 /**
  * Registers a durable-queue consumer. Prefetch 1; ack on success; re-publish with
- * incremented retry header until {@link maxRetries}, then nack without requeue.
+ * incremented retry header (publish first, then ack) until {@link maxRetries}, then nack without requeue.
  */
 export async function consumeTranscriptionJobs(
   channel: Channel,
@@ -133,6 +164,13 @@ export async function consumeTranscriptionJobs(
   const maxRetries = options?.maxRetries ?? MAX_JOB_RETRIES;
   await channel.consume(TRANSCRIPTION_QUEUE, (msg) => {
     if (!msg) return;
-    void handleTranscriptionDelivery(channel, msg, handler, maxRetries);
+    void handleTranscriptionDelivery(channel, msg, handler, maxRetries).catch((err: unknown) => {
+      console.error(
+        JSON.stringify({
+          event: "worker.delivery_error",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    });
   });
 }

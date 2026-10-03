@@ -9,6 +9,7 @@ import {
   type PipelineDb,
   type PipelineDeps,
   type PipelineJobRecord,
+  sanitizeProviderError,
 } from "../src/modules/pipeline/run-transcription.js";
 import { normalizeSegments } from "../src/modules/timestamps/normalize.js";
 import type { SttProvider } from "../src/modules/stt/types.js";
@@ -165,13 +166,14 @@ test("preprocess failure marks job failed with error code", async () => {
     assert.equal(final.errorCode, "AUDIO_TOO_LARGE");
     assert.equal(final.errorMessage, "too long");
     assert.equal(h.calls.length, 0);
-    assert.deepEqual(h.removed, []);
+    assert.equal(final.audioPath, null);
+    assert.deepEqual(h.removed, ["/tmp/in.mp3"]);
   } finally {
     restore();
   }
 });
 
-test("STT and refine failures record failed ProviderCall and job error", async () => {
+test("STT failure records failed ProviderCall and sanitized job error", async () => {
   const restore = setMetricSink(() => {});
   try {
     const a = makeHarness();
@@ -179,16 +181,97 @@ test("STT and refine failures record failed ProviderCall and job error", async (
       throw new Error("boom");
     };
     await runTranscriptionJob("job-1", a.deps);
-    assert.equal(a.updates.at(-1)!.errorCode, "STT_FAILED");
+    const final = a.updates.at(-1)!;
+    assert.equal(final.status, "failed");
+    assert.equal(final.errorCode, "STT_FAILED");
     assert.equal(a.calls[0].success, false);
+    assert.deepEqual(a.removed, ["/tmp/in.mp3"]);
+    assert.equal(final.audioPath, null);
+  } finally {
+    restore();
+  }
+});
 
+test("provider error messages are sanitized (no raw message persisted) and logged server-side", async () => {
+  const lines: string[] = [];
+  const restore = setMetricSink((l) => lines.push(l));
+  try {
+    const secret = "Incorrect API key provided: sk-proj-abcdef123456. Account org-SECRET";
+    const err = Object.assign(new Error(secret), { status: 401, code: "invalid_api_key" });
+    const h = makeHarness();
+    h.stt.transcribe = async () => {
+      throw err;
+    };
+    await runTranscriptionJob("job-1", h.deps);
+    const final = h.updates.at(-1)!;
+    assert.equal(final.status, "failed");
+    assert.equal(final.errorCode, "STT_FAILED");
+    assert.equal(final.errorMessage, "Speech-to-text provider is not authorized");
+    assert.ok(!String(final.errorMessage).includes("sk-"));
+    assert.ok(!String(final.errorMessage).includes("SECRET"));
+
+    // detail stays server-side, with the key redacted
+    const logged = lines.join("\n");
+    assert.ok(logged.includes("Incorrect API key provided"));
+    assert.ok(!logged.includes("abcdef123456"));
+
+    assert.equal(sanitizeProviderError(Object.assign(new Error("x"), { status: 429 }), "stt"),
+      "Speech-to-text provider is rate limited or over quota; try again later");
+    assert.equal(sanitizeProviderError(Object.assign(new Error("x"), { status: 503 }), "stt"),
+      "Speech-to-text provider is temporarily unavailable");
+    assert.equal(sanitizeProviderError(new Error("anything secret"), "stt"),
+      "Speech-to-text provider request failed");
+
+    // unexpected non-provider errors also get a generic message
+    const g = makeHarness();
+    g.deps.toWav = async () => {
+      throw new Error("ffmpeg exited: /var/secret/path");
+    };
+    await runTranscriptionJob("job-1", g.deps);
+    const gf = g.updates.at(-1)!;
+    assert.equal(gf.errorCode, "PIPELINE_ERROR");
+    assert.ok(!String(gf.errorMessage).includes("secret"));
+  } finally {
+    restore();
+  }
+});
+
+test("failed job keeps audio when retainAudio is true", async () => {
+  const restore = setMetricSink(() => {});
+  try {
+    const h = makeHarness({ options: { retainAudio: true } });
+    h.stt.transcribe = async () => {
+      throw new Error("boom");
+    };
+    await runTranscriptionJob("job-1", h.deps);
+    const final = h.updates.at(-1)!;
+    assert.equal(final.status, "failed");
+    assert.ok(!("audioPath" in final));
+    assert.deepEqual(h.removed, []);
+  } finally {
+    restore();
+  }
+});
+
+test("refine failure falls back to raw STT text/segments and still completes", async () => {
+  const restore = setMetricSink(() => {});
+  try {
     const b = makeHarness();
     b.deps.refine = async () => {
-      throw new Error("bad json");
+      throw new Error("bad json from anthropic");
     };
     await runTranscriptionJob("job-1", b.deps);
-    assert.equal(b.updates.at(-1)!.errorCode, "REFINE_FAILED");
+    const final = b.updates.at(-1)!;
+    assert.equal(final.status, "completed");
+    assert.equal(final.text, "bonjour monde");
+    assert.equal(final.errorCode, null);
+    assert.equal(final.errorMessage, null);
+    assert.equal(final.confidence, 0.9);
+    const created = (final.segments as { create: { text: string }[] }).create;
+    assert.deepEqual(created.map((s) => s.text), ["bonjour", "monde"]);
     assert.equal(b.calls.at(-1)!.success, false);
+    assert.equal(b.calls.at(-1)!.operation, "refine");
+    assert.deepEqual(b.removed, ["/tmp/in.mp3"]);
   } finally {
     restore();
   }

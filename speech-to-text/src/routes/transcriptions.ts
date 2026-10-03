@@ -44,6 +44,7 @@ export interface JobRow {
 export interface TranscriptionRouteDb {
   transcriptionJob: {
     create(args: { data: Record<string, unknown> }): Promise<unknown>;
+    update(args: { where: { id: string }; data: Record<string, unknown> }): Promise<unknown>;
     findUnique(args: {
       where: { id: string };
       include?: { segments: { orderBy: { ord: "asc" } } };
@@ -273,7 +274,39 @@ export const transcriptionRoutes =
       logMetric("job.created", { jobId: id, mode: parsed.mode, durationSec, async: goAsync });
 
       if (goAsync) {
-        await publish(id);
+        try {
+          await publish(id);
+        } catch (err) {
+          // Never leave a forever-queued orphan: fail the job and drop the upload.
+          logMetric("job.publish_failed", {
+            jobId: id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          await fs.rm(audioPath, { force: true }).catch(() => undefined);
+          await db.transcriptionJob
+            .update({
+              where: { id },
+              data: {
+                status: "failed",
+                errorCode: "QUEUE_UNAVAILABLE",
+                errorMessage: "Could not enqueue transcription job",
+                completedAt: new Date(),
+                audioPath: null,
+              },
+            })
+            .catch((updateErr: unknown) => {
+              logMetric("job.publish_failed_update_error", {
+                jobId: id,
+                error: updateErr instanceof Error ? updateErr.message : String(updateErr),
+              });
+            });
+          return apiError(
+            reply,
+            502,
+            "QUEUE_UNAVAILABLE",
+            "Could not enqueue transcription job; please retry",
+          );
+        }
         const row = await fetchJob(id);
         return reply.code(202).send(toTranscriptionResponse(row!));
       }

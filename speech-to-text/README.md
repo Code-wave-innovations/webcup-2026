@@ -51,6 +51,8 @@ npm run worker       # RabbitMQ transcription worker (required for async / long 
 
 Ensure **ffmpeg** and **ffprobe** are on your `PATH` before uploading audio.
 
+`MAX_AUDIO_DURATION_SEC` defaults to 720 (12 min): 16 kHz mono PCM-as-WAV is ~32 KB/s, so 12 min stays under OpenAI's ~25 MB upload limit; raising it requires chunking.
+
 ## Ops smoke (manual)
 
 Set `STT_API_KEY` in `.env` (same value as `Authorization: Bearer …` below).
