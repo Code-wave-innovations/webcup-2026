@@ -9,7 +9,7 @@ const FACE_UNDECIDED: Record<Inconclusive, string> = {
   unknown: "Je ne connais pas encore ce visage. Entrez votre code, je m'en souviendrai.",
   noFace: 'Je vous vois mal… approchez-vous, face à la lumière.',
   unavailable: 'Mon module de reconnaissance ne répond pas. Passons par le code.',
-  mismatch: 'Ce visage ne correspond pas à cet identifiant. Vérifiez l’e-mail, ou entrez avec votre code.',
+  mismatch: 'Ce visage ne correspond pas à l’identifiant saisi. Vérifiez l’e-mail, ou entrez avec votre code.',
 }
 
 /**
