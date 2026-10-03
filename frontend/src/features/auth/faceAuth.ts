@@ -6,7 +6,8 @@ import { emailFromFaceIdentity, faceIdentityFromEmail } from './faceIdentity'
 
 /** Recognises a face against the gallery, then opens a session via `GET /api/auth/by-email`. */
 export interface FaceAuthService {
-  identify(frame: Blob): Promise<SignInResult>
+  /** `expectedIdentifier` is the e-mail / short id the visitor typed on the login step. */
+  identify(frame: Blob, expectedIdentifier: string): Promise<SignInResult>
   /** Enrols the frames under the gallery name derived from the account key (e-mail preferred). */
   link(accountKey: string, frames: Blob[]): Promise<boolean>
 }
@@ -32,25 +33,45 @@ function normalizeKey(value: string): string {
 }
 
 /**
+ * True when the gallery identity belongs to the same account as the typed identifier.
+ * Compares short demo ids, e-mails, and encoded face identities (`user.at.domain`).
+ */
+export function identityMatchesIdentifier(identity: string, expectedIdentifier: string): boolean {
+  const key = normalizeKey(expectedIdentifier)
+  const expectedEmail = resolveAuthEmail(expectedIdentifier)
+  const expectedFace = faceIdentityFromEmail(expectedEmail)
+
+  if (identity === key || identity === expectedFace) return true
+
+  const demo = accountForIdentity(identity)
+  if (demo) return demo.id === key || demo.email === expectedEmail
+
+  const faceEmail = emailFromFaceIdentity(identity)
+  return faceEmail === expectedEmail
+}
+
+/**
  * Face login:
- * 1. `POST /identify` on the face engine → gallery identity
- * 2. decode identity → e-mail (`.at.` → `@`)
- * 3. `GET /api/auth/by-email` → same `{ token, user }` payload as password login
+ * 1. `POST /identify` → gallery identity
+ * 2. compare identity to the identifier typed on the login step
+ * 3. decode → e-mail → `GET /api/auth/by-email` (same payload as password login)
  *
  * Demo gallery short ids (miora, conseil) stay local — they are not in the Express DB.
  */
 export const faceAuthService: FaceAuthService = {
-  async identify(frame) {
+  async identify(frame, expectedIdentifier) {
     try {
       const identity = (await identifyFrame(frame)).identity
       if (!identity) return { ok: false, inconclusive: 'unknown' }
 
+      if (!identityMatchesIdentifier(identity, expectedIdentifier)) {
+        return { ok: false, inconclusive: 'mismatch' }
+      }
+
       const demo = accountForIdentity(identity)
       if (demo) return { ok: true, session: toSession(demo) }
 
-      const email = emailFromFaceIdentity(identity)
-      if (!email) return { ok: false, inconclusive: 'unknown' }
-
+      const email = emailFromFaceIdentity(identity) ?? resolveAuthEmail(expectedIdentifier)
       return sessionByEmail(email)
     } catch (error) {
       return { ok: false, inconclusive: faceFailure(error) }

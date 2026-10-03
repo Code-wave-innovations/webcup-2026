@@ -15,7 +15,7 @@ export interface Session {
  * Why a check could not decide (the face engine did not know the face, saw none, or did not answer).
  * Such a failure is not a refusal: it costs no attempt.
  */
-export type Inconclusive = 'unknown' | 'noFace' | 'unavailable'
+export type Inconclusive = 'unknown' | 'noFace' | 'unavailable' | 'mismatch'
 
 export type SignInResult = { ok: true; session: Session } | { ok: false; inconclusive?: Inconclusive }
 

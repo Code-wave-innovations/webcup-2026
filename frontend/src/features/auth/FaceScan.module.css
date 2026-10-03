@@ -82,6 +82,11 @@
   opacity: 0.55;
 }
 
+.scan[data-phase='mismatch'] .ring line {
+  stroke: var(--color-alert);
+  opacity: 0.55;
+}
+
 .scan[data-phase='unavailable'] .ring line,
 .scan[data-phase='denied'] .ring line {
   stroke: var(--color-alert);
@@ -127,6 +132,7 @@
 }
 
 .scan[data-phase='unknown'] .video,
+.scan[data-phase='mismatch'] .video,
 .scan[data-phase='unavailable'] .video {
   filter: saturate(0.3) brightness(0.6);
 }
