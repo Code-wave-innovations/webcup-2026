@@ -33,25 +33,15 @@ describe('pickVoice', () => {
     voice({ lang: 'en-GB', name: 'Google UK' }),
     voice({ lang: 'fr-FR', name: 'Thomas' }),
     voice({ lang: 'en-US', name: 'Samantha' }),
-    voice({ lang: 'en-US', name: 'Zarvox' }),
-    voice({ lang: 'en-US', name: 'Trinoids' }),
   ]
 
-  it('prefers novelty robot voices over human locale voices', () => {
-    expect(pickVoice(voices, 'fr')?.name).toBe('Trinoids')
-    expect(pickVoice(voices, 'en')?.name).toBe('Trinoids')
-  })
-
-  it('falls back to locale voice when no robot is available', () => {
-    const humans = [
-      voice({ lang: 'fr-FR', name: 'Thomas' }),
-      voice({ lang: 'en-US', name: 'Samantha' }),
-    ]
-    expect(pickVoice(humans, 'fr')?.name).toBe('Thomas')
+  it('prefers a matching language prefix', () => {
+    expect(pickVoice(voices, 'fr')?.name).toBe('Thomas')
+    expect(pickVoice(voices, 'en')?.name).toBe('Google UK')
   })
 
   it('returns null when nothing matches', () => {
-    expect(pickVoice([], 'mg')).toBeNull()
+    expect(pickVoice(voices, 'mg')).toBeNull()
   })
 })
 
@@ -79,7 +69,6 @@ describe('speakMessage', () => {
         text = ''
         lang = ''
         rate = 1
-        pitch = 1
         voice: SpeechSynthesisVoice | null = null
         onend: ((ev: SpeechSynthesisEvent) => void) | null = null
         onerror: ((ev: SpeechSynthesisErrorEvent) => void) | null = null
@@ -142,8 +131,6 @@ describe('speakMessage', () => {
     const utterance = speak.mock.calls[0]![0] as SpeechSynthesisUtterance
     expect(utterance.text).toBe('Bonjour Terra Nova')
     expect(utterance.lang).toBe('fr-FR')
-    expect(utterance.rate).toBe(0.72)
-    expect(utterance.pitch).toBe(0.68)
     expect(playSpy).not.toHaveBeenCalled()
   })
 
