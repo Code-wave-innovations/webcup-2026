@@ -12,6 +12,7 @@ import {
 } from "../lib/loginGuard";
 import { notifyUser } from "../lib/notify";
 import { clientIp } from "../lib/rateLimit";
+import { audit, personName } from "../lib/audit";
 import { getSetting } from "../lib/settings";
 import { zBool, zId, zLocale } from "../lib/validation";
 import { generateToken } from "../services/services";
@@ -94,6 +95,16 @@ const authController = {
     const failedSinceLastLogin = await failuresSinceLastLogin(email);
     await recordAttempt({ email, ip, userAgent, success: true, reason: "OK", userId: account.id });
     const user = await userModel.update(account.id, { last_login_at: new Date() });
+    if (user.role !== "CITIZEN") {
+      await audit(req, {
+        action: "auth.staff_login",
+        entity: "User",
+        entityId: user.id,
+        label: personName(user),
+        actor: { id: user.id, role: user.role, name: personName(user) },
+        always: true,
+      });
+    }
     res.json({
       token: generateToken(user.id, user.email, user.role),
       user,

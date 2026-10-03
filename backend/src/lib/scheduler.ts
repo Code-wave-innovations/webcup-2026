@@ -1,6 +1,7 @@
 import prisma from "./prisma";
 import { notifyUser } from "./notify";
 import { formatSlotLabel } from "./datetime";
+import { audit } from "./audit";
 
 // F40: appointment reminders, checked every minute by the API process.
 export const MAX_REMINDER_OFFSET_MINUTES = 7 * 24 * 60;
@@ -38,6 +39,16 @@ export const sendDueReminders = async (now = new Date()) => {
       data: { appointment_id: appointment.id, reference: appointment.reference, starts_at: slot.starts_at.toISOString() },
     });
     sent += 1;
+  }
+  if (sent > 0) {
+    await audit(null, {
+      action: "reminders.run",
+      entity: "Appointment",
+      label: "Rappels de rendez-vous",
+      metadata: { sent },
+      actor: null,
+      always: true,
+    });
   }
   return sent;
 };

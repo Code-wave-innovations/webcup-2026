@@ -4,6 +4,7 @@ import districtModel from "../model/district.model";
 import { notFound } from "../lib/errors";
 import { parseId } from "../lib/validation";
 import { resolveLocale, translate, translateOne } from "../lib/translations";
+import { audit, diffChanges } from "../lib/audit";
 
 const createSchema = z.object({
   code: z.string().trim().min(1).max(50),
@@ -23,13 +24,43 @@ const districtController = {
     res.json(await translateOne("District", district, resolveLocale(req)));
   },
   create: async (req: Request, res: Response) => {
-    res.status(201).json(await districtModel.create(createSchema.parse(req.body)));
+    const district = await districtModel.create(createSchema.parse(req.body));
+    await audit(req, {
+      action: "district.created",
+      entity: "District",
+      entityId: district.id,
+      label: district.name,
+      always: true,
+    });
+    res.status(201).json(district);
   },
   update: async (req: Request, res: Response) => {
-    res.json(await districtModel.update(parseId(req.params.id), updateSchema.parse(req.body)));
+    const id = parseId(req.params.id);
+    const before = await districtModel.getOne(id);
+    if (!before) throw notFound("District not found");
+    const district = await districtModel.update(id, updateSchema.parse(req.body));
+    await audit(req, {
+      action: "district.updated",
+      entity: "District",
+      entityId: district.id,
+      label: district.name,
+      changes: diffChanges(before, district, ["code", "name", "description"]),
+    });
+    res.json(district);
   },
   delete: async (req: Request, res: Response) => {
-    res.json(await districtModel.delete(parseId(req.params.id)));
+    const id = parseId(req.params.id);
+    const before = await districtModel.getOne(id);
+    if (!before) throw notFound("District not found");
+    const deleted = await districtModel.delete(id);
+    await audit(req, {
+      action: "district.deleted",
+      entity: "District",
+      entityId: id,
+      label: before.name,
+      always: true,
+    });
+    res.json(deleted);
   },
 };
 

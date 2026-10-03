@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { ALERTS, ANNOUNCEMENTS, BROADCASTS } from '../mocks/content'
 import { CITIZENS } from '../mocks/people'
 import type { Alert, AlertAudience, Announcement, Broadcast } from '../mocks/types'
-import { recordAudit } from './auditStore'
 import { toast } from './toastStore'
 
 interface ContentState {
@@ -45,16 +44,8 @@ export function saveAnnouncement(input: Omit<Announcement, 'id' | 'created_at' |
     announcements: existing ? s.announcements.map((a) => (a.id === announcement.id ? announcement : a)) : [announcement, ...s.announcements],
   }))
   const goesLive = announcement.status === 'PUBLISHED' && existing?.status !== 'PUBLISHED'
-  if (goesLive) {
-    recordAudit({
-      actor_id: actorId,
-      action: 'announcement.published',
-      entity: 'Announcement',
-      entity_id: announcement.id,
-      entity_label: announcement.title,
-      changes: [{ field: 'status', before: existing?.status ?? null, after: 'PUBLISHED' }],
-    })
-    if (announcement.is_important) sendBroadcast({ title: `Annonce importante : ${announcement.title}`, body: announcement.summary ?? '', audience: 'ALL', district_ids: [] }, actorId, true)
+  if (goesLive && announcement.is_important) {
+    sendBroadcast({ title: `Annonce importante : ${announcement.title}`, body: announcement.summary ?? '', audience: 'ALL', district_ids: [] }, actorId, true)
   }
   toast(goesLive ? `« ${announcement.title} » publiée${announcement.is_important ? ' et notifiée' : ''}` : 'Annonce enregistrée')
 }
@@ -65,38 +56,19 @@ export function setAnnouncementStatus(id: number, status: Announcement['status']
   saveAnnouncement({ ...announcement, status }, actorId)
 }
 
-export function createAlert(input: Omit<Alert, 'id' | 'notified' | 'is_active' | 'starts_at' | 'ends_at'>, actorId: number) {
+export function createAlert(input: Omit<Alert, 'id' | 'notified' | 'is_active' | 'starts_at' | 'ends_at'>) {
   const notified = estimateAudience(input.audience, input.district_ids)
   const alert: Alert = { ...input, id: nextId++, notified, is_active: true, starts_at: new Date().toISOString(), ends_at: null }
   useContentStore.setState((s) => ({ alerts: [alert, ...s.alerts] }))
-  recordAudit({
-    actor_id: actorId,
-    action: 'alert.created',
-    entity: 'Alert',
-    entity_id: alert.id,
-    entity_label: alert.title,
-    changes: [
-      { field: 'severity', before: null, after: alert.severity },
-      { field: 'audience', before: null, after: alert.audience },
-    ],
-  })
   toast(`Alerte diffusée à ${notified.toLocaleString('fr-FR')} personnes`, 'alert')
 }
 
-export function closeAlert(id: number, actorId: number) {
+export function closeAlert(id: number) {
   const alert = useContentStore.getState().alerts.find((a) => a.id === id)
   if (!alert) return
   useContentStore.setState((s) => ({
     alerts: s.alerts.map((a) => (a.id === id ? { ...a, is_active: false, ends_at: new Date().toISOString() } : a)),
   }))
-  recordAudit({
-    actor_id: actorId,
-    action: 'alert.created',
-    entity: 'Alert',
-    entity_id: id,
-    entity_label: alert.title,
-    changes: [{ field: 'is_active', before: 'true', after: 'false' }],
-  })
   toast(`Alerte « ${alert.title} » terminée`, 'info')
 }
 
@@ -110,13 +82,5 @@ export function sendBroadcast(input: Pick<Broadcast, 'title' | 'body' | 'audienc
     author_id: actorId,
   }
   useContentStore.setState((s) => ({ broadcasts: [broadcast, ...s.broadcasts] }))
-  recordAudit({
-    actor_id: actorId,
-    action: 'broadcast.sent',
-    entity: 'Broadcast',
-    entity_id: broadcast.id,
-    entity_label: broadcast.title,
-    changes: [{ field: 'destinataires', before: null, after: String(broadcast.recipients) }],
-  })
   if (!silent) toast(`Notification envoyée à ${broadcast.recipients.toLocaleString('fr-FR')} personnes`)
 }

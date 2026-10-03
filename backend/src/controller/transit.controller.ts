@@ -9,6 +9,7 @@ import { HHMM_RE, dayTypeOf, hhmmToMinutes, toHHMM } from "../lib/datetime";
 import { parseId, zBool, zId } from "../lib/validation";
 import { resolveLocale, translate, translateOne } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
+import { audit, diffChanges } from "../lib/audit";
 
 // F36: municipal transport lines, stops, timetables and live line status.
 
@@ -200,17 +201,39 @@ const transitController = {
   },
 
   createLine: async (req: Request, res: Response) => {
-    res.status(201).json(await prisma.transitLine.create({ data: lineSchema.parse(req.body) }));
+    const line = await prisma.transitLine.create({ data: lineSchema.parse(req.body) });
+    await audit(req, {
+      action: "transit.line_status",
+      entity: "TransitLine",
+      entityId: line.id,
+      label: `${line.code} ${line.name}`,
+      changes: [{ field: "status", to: line.status }],
+      metadata: { created: true },
+      always: true,
+    });
+    res.status(201).json(line);
   },
 
   updateLine: async (req: Request, res: Response) => {
-    res.json(
-      await prisma.transitLine.update({ where: { id: parseId(req.params.id) }, data: lineSchema.partial().parse(req.body) })
-    );
+    const id = parseId(req.params.id);
+    const input = lineSchema.partial().parse(req.body);
+    const before = await prisma.transitLine.findUnique({ where: { id } });
+    if (!before) throw notFound("Line not found");
+    const line = await prisma.transitLine.update({ where: { id }, data: input });
+    await audit(req, {
+      action: "transit.line_status",
+      entity: "TransitLine",
+      entityId: line.id,
+      label: `${line.code} ${line.name}`,
+      changes: diffChanges(before, line, ["name", "color", "mode", "status", "status_message", "is_active"]),
+    });
+    res.json(line);
   },
 
   updateStatus: async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
+    const before = await prisma.transitLine.findUnique({ where: { id } });
+    if (!before) throw notFound("Line not found");
     const { notify, ...data } = statusSchema.parse(req.body);
     if (data.status === "NORMAL" && data.status_message === undefined) data.status_message = null;
     const line = await prisma.transitLine.update({
@@ -237,6 +260,14 @@ const transitController = {
         );
       }
     }
+    await audit(req, {
+      action: "transit.line_status",
+      entity: "TransitLine",
+      entityId: line.id,
+      label: `${line.code} ${line.name}`,
+      changes: diffChanges(before, line, ["status", "status_message"]),
+      metadata: { notified },
+    });
     const { stops: _stops, ...rest } = line;
     res.json({ ...rest, notified });
   },
@@ -251,6 +282,15 @@ const transitController = {
         data: stop_ids.map((stop_id, position) => ({ line_id: id, stop_id, position })),
       }),
     ]);
+    const line = await prisma.transitLine.findUnique({ where: { id }, select: { code: true, name: true } });
+    await audit(req, {
+      action: "transit.stops",
+      entity: "TransitLine",
+      entityId: id,
+      label: line ? `${line.code} ${line.name}` : null,
+      metadata: { stops: stop_ids.length },
+      always: true,
+    });
     res.json({ line_id: id, stop_ids });
   },
 
@@ -283,25 +323,77 @@ const transitController = {
       prisma.transitDeparture.deleteMany({ where: { line_id: id, day_type: input.day_type } }),
       prisma.transitDeparture.createMany({ data: rows }),
     ]);
+    const line = await prisma.transitLine.findUnique({ where: { id }, select: { code: true, name: true } });
+    await audit(req, {
+      action: "transit.timetable",
+      entity: "TransitLine",
+      entityId: id,
+      label: line ? `${line.code} ${line.name}` : null,
+      metadata: { day_type: input.day_type, departures: rows.length },
+      always: true,
+    });
     res.json({ line_id: id, day_type: input.day_type, departures: rows.length });
   },
 
   deleteLine: async (req: Request, res: Response) => {
-    res.json(await prisma.transitLine.delete({ where: { id: parseId(req.params.id) }, select: { id: true } }));
+    const id = parseId(req.params.id);
+    const line = await prisma.transitLine.findUnique({ where: { id }, select: { code: true, name: true } });
+    if (!line) throw notFound("Line not found");
+    const deleted = await prisma.transitLine.delete({ where: { id }, select: { id: true } });
+    await audit(req, {
+      action: "transit.line_status",
+      entity: "TransitLine",
+      entityId: id,
+      label: `${line.code} ${line.name}`,
+      metadata: { deleted: true },
+      always: true,
+    });
+    res.json(deleted);
   },
 
   createStop: async (req: Request, res: Response) => {
-    res.status(201).json(await prisma.transitStop.create({ data: stopSchema.parse(req.body) }));
+    const stop = await prisma.transitStop.create({ data: stopSchema.parse(req.body) });
+    await audit(req, {
+      action: "transit.stops",
+      entity: "TransitStop",
+      entityId: stop.id,
+      label: stop.name,
+      metadata: { created: true },
+      always: true,
+    });
+    res.status(201).json(stop);
   },
 
   updateStop: async (req: Request, res: Response) => {
-    res.json(
-      await prisma.transitStop.update({ where: { id: parseId(req.params.id) }, data: stopSchema.partial().parse(req.body) })
-    );
+    const id = parseId(req.params.id);
+    const input = stopSchema.partial().parse(req.body);
+    const before = await prisma.transitStop.findUnique({ where: { id } });
+    if (!before) throw notFound("Stop not found");
+    const stop = await prisma.transitStop.update({ where: { id }, data: input });
+    await audit(req, {
+      action: "transit.stops",
+      entity: "TransitStop",
+      entityId: stop.id,
+      label: stop.name,
+      changes: diffChanges(before, stop, ["name", "code", "address", "district_id", "accessible"]),
+    });
+    res.json(stop);
   },
 
   deleteStop: async (req: Request, res: Response) => {
-    res.json(await prisma.transitStop.delete({ where: { id: parseId(req.params.id) }, select: { id: true } }));
+    const id = parseId(req.params.id);
+    const stop = await prisma.transitStop.findUnique({ where: { id }, select: { name: true } });
+    if (!stop) throw notFound("Stop not found");
+    const deleted = await prisma.transitStop.delete({ where: { id }, select: { id: true } });
+    await audit(req, {
+      action: "transit.stops",
+      entity: "TransitStop",
+      entityId: id,
+      label: stop.name,
+      metadata: { deleted: true },
+      always: true,
+    });
+    res.json(deleted);
   },
 };
 

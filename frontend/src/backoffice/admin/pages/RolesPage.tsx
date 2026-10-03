@@ -1,5 +1,4 @@
 import { motion } from 'motion/react'
-import { useActor } from '../../layout/persona'
 import { PERMISSIONS } from '../../mocks/config'
 import type { Role } from '../../mocks/types'
 import { togglePermission, useConfigStore } from '../../stores/configStore'
@@ -22,7 +21,6 @@ const ROLES: { role: Role; label: string }[] = [
 
 /** D08 / D09: which profile can do what. Admin keeps every right so the platform can't be locked out. */
 export default function RolesPage() {
-  const actor = useActor()
   const matrix = useConfigStore((s) => s.rolePermissions)
   const users = useUserStore((s) => s.users)
   const groups = [...new Set(PERMISSIONS.map((p) => p.group))]
@@ -64,7 +62,7 @@ export default function RolesPage() {
             </thead>
             <tbody>
               {groups.map((group) => (
-                <PermissionGroup key={group} group={group} matrix={matrix} actorId={actor.id} />
+                <PermissionGroup key={group} group={group} matrix={matrix} />
               ))}
             </tbody>
           </table>
@@ -74,7 +72,7 @@ export default function RolesPage() {
   )
 }
 
-function PermissionGroup({ group, matrix, actorId }: { group: string; matrix: Record<Role, string[]>; actorId: number }) {
+function PermissionGroup({ group, matrix }: { group: string; matrix: Record<Role, string[]> }) {
   return (
     <>
       <tr className={styles.group}>
@@ -113,7 +111,7 @@ function PermissionGroup({ group, matrix, actorId }: { group: string; matrix: Re
             }
             return (
               <td key={role}>
-                <Toggle hideLabel checked={granted} onChange={() => togglePermission(role, permission.key, actorId)} label={`${permission.label} pour le rôle ${role}`} />
+                <Toggle hideLabel checked={granted} onChange={() => togglePermission(role, permission.key)} label={`${permission.label} pour le rôle ${role}`} />
               </td>
             )
           })}

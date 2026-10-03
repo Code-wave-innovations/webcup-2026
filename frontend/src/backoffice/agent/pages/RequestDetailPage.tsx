@@ -8,6 +8,7 @@ import { districtName, fullName, useServiceName, useUsersById } from '../../lib/
 import { useNow } from '../../lib/useNow'
 import type { RequestPriority, RequestStatus } from '../../mocks/types'
 import { CitizenCard } from '../../shared/CitizenCard'
+import { LinkedHistory } from '../../shared/EntityHistory'
 import { RequestTimeline } from '../../shared/RequestTimeline'
 import { useAppointmentStore } from '../../stores/appointmentStore'
 import { addComment, assignRequest, changeStatus, setPriority, useRequestStore } from '../../stores/requestStore'
@@ -220,6 +221,10 @@ export default function RequestDetailPage() {
           </Panel>
         </div>
       </div>
+
+      <Panel kicker="F48" title="Historique des modifications">
+        <LinkedHistory entity="CitizenRequest" match={request.reference} />
+      </Panel>
     </motion.div>
   )
 }

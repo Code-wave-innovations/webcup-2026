@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { useActor } from '../../layout/persona'
 import { categoryName } from '../../lib/lookups'
 import { formatNumber } from '../../lib/format'
 import { CATEGORIES } from '../../mocks/catalog'
 import type { CityService } from '../../mocks/types'
 import { updateService, useCatalogStore } from '../../stores/catalogStore'
+import { LinkedHistory } from '../../shared/EntityHistory'
+import { messageFor } from '../../../api/errors'
+import { setServicePriority } from '../../../api/recordId'
+import { toast } from '../../stores/toastStore'
 import { Tag } from '../../ui/Badges'
 import { Button } from '../../ui/Button'
-import { Field, FilterChips, SearchInput, Select, TextArea, TextInput, Toggle } from '../../ui/Controls'
+import { Field, FilterChips, SearchInput, Select, Tabs, TextArea, TextInput, Toggle } from '../../ui/Controls'
 import { Icon } from '../../ui/Icon'
 import { Drawer } from '../../ui/Overlay'
 import { PageHeader } from '../../ui/PageHeader'
@@ -21,13 +24,20 @@ import styles from './admin.module.css'
 const homeOrder = (a: CityService, b: CityService) =>
   Number(b.is_featured) - Number(a.is_featured) || b.priority - a.priority || b.view_count - a.view_count
 
+function changePriority(service: CityService, priority: number) {
+  if (priority === service.priority) return
+  void setServicePriority(service.slug, priority)
+    .then(() => updateService(service.id, { priority }))
+    .catch((error: unknown) => toast(messageFor(error), 'alert'))
+}
+
 /** D05 / F28: the municipal service catalog and what the home page highlights. */
 export default function ServicesPage() {
-  const actor = useActor()
   const services = useCatalogStore((s) => s.services)
   const [category, setCategory] = useState<number | 'all'>('all')
   const [query, setQuery] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [drawerTab, setDrawerTab] = useState<'fiche' | 'history'>('fiche')
   const [draft, setDraft] = useState<Partial<CityService>>({})
 
   const q = query.trim().toLowerCase()
@@ -40,6 +50,7 @@ export default function ServicesPage() {
 
   const openEdit = (s: CityService) => {
     setEditingId(s.id)
+    setDrawerTab('fiche')
     setDraft({ name: s.name, summary: s.summary, category_id: s.category_id, contact_phone: s.contact_phone, address: s.address })
   }
 
@@ -80,7 +91,7 @@ export default function ServicesPage() {
                     className={styles.star}
                     aria-pressed={s.is_featured}
                     aria-label={s.is_featured ? `Retirer ${s.name} de la mise en avant` : `Mettre en avant ${s.name}`}
-                    onClick={() => updateService(s.id, { is_featured: !s.is_featured }, actor.id)}
+                    onClick={() => updateService(s.id, { is_featured: !s.is_featured })}
                   >
                     <Icon name="star" size={18} />
                   </button>
@@ -91,17 +102,21 @@ export default function ServicesPage() {
                     <Icon name="eye" size={13} /> {formatNumber(s.view_count)} vues
                   </span>
                   <span className={styles.priority} aria-label={`Priorité ${s.priority}`}>
-                    <button type="button" aria-label="Baisser la priorité" onClick={() => updateService(s.id, { priority: Math.max(0, s.priority - 1) }, actor.id)}>
+                    <button
+                      type="button"
+                      aria-label="Baisser la priorité"
+                      onClick={() => changePriority(s, Math.max(0, s.priority - 1))}
+                    >
                       <Icon name="arrowDown" size={13} />
                     </button>
                     <strong>{s.priority}</strong>
-                    <button type="button" aria-label="Augmenter la priorité" onClick={() => updateService(s.id, { priority: s.priority + 1 }, actor.id)}>
+                    <button type="button" aria-label="Augmenter la priorité" onClick={() => changePriority(s, s.priority + 1)}>
                       <Icon name="arrowUp" size={13} />
                     </button>
                   </span>
                 </div>
                 <div className={layout.row} style={{ justifyContent: 'space-between' }}>
-                  <Toggle checked={s.is_active} onChange={(v) => updateService(s.id, { is_active: v }, actor.id)} label={s.is_active ? 'En ligne' : 'Hors ligne'} />
+                  <Toggle checked={s.is_active} onChange={(v) => updateService(s.id, { is_active: v })} label={s.is_active ? 'En ligne' : 'Hors ligne'} />
                   <Button size="sm" variant="subtle" icon="edit" onClick={() => openEdit(s)}>
                     Modifier
                   </Button>
@@ -137,7 +152,7 @@ export default function ServicesPage() {
               variant="primary"
               icon="check"
               onClick={() => {
-                updateService(editing.id, draft, actor.id)
+                updateService(editing.id, draft)
                 setEditingId(null)
               }}
             >
@@ -148,6 +163,21 @@ export default function ServicesPage() {
       >
         {editing && (
           <>
+            <Tabs
+              label="Fiche du service"
+              idPrefix="service-drawer"
+              value={drawerTab}
+              onChange={setDrawerTab}
+              tabs={[
+                { value: 'fiche', label: 'Fiche' },
+                { value: 'history', label: 'Historique' },
+              ]}
+            />
+            <div id="service-drawer-panel" role="tabpanel" aria-labelledby={`service-drawer-tab-${drawerTab}`}>
+              {drawerTab === 'history' ? (
+                <LinkedHistory entity="CityService" match={editing.slug} />
+              ) : (
+                <>
             <Field label="Nom">{(id) => <TextInput id={id} value={draft.name ?? ''} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />}</Field>
             <Field label="Résumé" hint="Une phrase : à quoi sert ce service.">
               {(id, d) => <TextArea id={id} aria-describedby={d} value={draft.summary ?? ''} onChange={(e) => setDraft({ ...draft, summary: e.target.value })} />}
@@ -166,6 +196,9 @@ export default function ServicesPage() {
             <div className={layout.formGrid}>
               <Field label="Téléphone">{(id) => <TextInput id={id} value={draft.contact_phone ?? ''} onChange={(e) => setDraft({ ...draft, contact_phone: e.target.value || null })} />}</Field>
               <Field label="Adresse">{(id) => <TextInput id={id} value={draft.address ?? ''} onChange={(e) => setDraft({ ...draft, address: e.target.value || null })} />}</Field>
+            </div>
+                </>
+              )}
             </div>
           </>
         )}

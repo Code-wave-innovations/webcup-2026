@@ -7,6 +7,7 @@ import { notifyUsers } from "../lib/notify";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zDate, zId, zJson } from "../lib/validation";
 import { resolveLocale, translate, translateOne } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
+import { audit, diffChanges } from "../lib/audit";
 
 // D18 city-wide message, F29 district alert (flood), F31 vulnerable people (heat wave)
 
@@ -99,26 +100,68 @@ const alertController = {
         data: { alert_id: alert.id, severity: alert.severity, category: alert.category },
       });
     }
+    await audit(req, {
+      action: "alert.created",
+      entity: "Alert",
+      entityId: alert.id,
+      label: alert.title,
+      changes: [
+        { field: "severity", to: alert.severity },
+        { field: "audience", to: alert.audience },
+      ],
+      metadata: { notified },
+      always: true,
+    });
     res.status(201).json({ ...alert, notified });
   },
 
   update: async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    const before = await alertModel.getOne({ id });
+    if (!before) throw notFound("Alert not found");
     const { district_ids, recommendations, ...input } = updateSchema.parse(req.body);
-    const alert = await alertModel.update(
-      parseId(req.params.id),
-      { ...input, recommendations: toJson(recommendations) },
-      district_ids
-    );
+    const alert = await alertModel.update(id, { ...input, recommendations: toJson(recommendations) }, district_ids);
+    const closing = before.is_active && alert.is_active === false;
+    await audit(req, {
+      action: closing ? "alert.closed" : "alert.updated",
+      entity: "Alert",
+      entityId: alert.id,
+      label: alert.title,
+      changes: diffChanges(before, alert, ["title", "severity", "audience", "category", "is_active"]),
+    });
     res.json(alert);
   },
 
   // End an alert now (it stays in the history)
   close: async (req: Request, res: Response) => {
-    res.json(await alertModel.update(parseId(req.params.id), { is_active: false, ends_at: new Date() }));
+    const id = parseId(req.params.id);
+    const before = await alertModel.getOne({ id });
+    if (!before) throw notFound("Alert not found");
+    const alert = await alertModel.update(id, { is_active: false, ends_at: new Date() });
+    await audit(req, {
+      action: "alert.closed",
+      entity: "Alert",
+      entityId: id,
+      label: alert.title,
+      changes: [{ field: "is_active", from: String(before.is_active), to: "false" }],
+      always: true,
+    });
+    res.json(alert);
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await alertModel.delete(parseId(req.params.id)));
+    const id = parseId(req.params.id);
+    const before = await alertModel.getOne({ id });
+    if (!before) throw notFound("Alert not found");
+    const deleted = await alertModel.delete(id);
+    await audit(req, {
+      action: "alert.deleted",
+      entity: "Alert",
+      entityId: id,
+      label: before.title,
+      always: true,
+    });
+    res.json(deleted);
   },
 };
 

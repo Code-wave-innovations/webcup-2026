@@ -118,7 +118,7 @@ export default function MaintenancePage() {
               accent={ongoing && i.impact === 'UNAVAILABLE' ? 'alert' : ongoing ? 'ember' : undefined}
               actions={
                 ongoing && (
-                  <Button size="sm" icon="check" onClick={() => endInterruption(i.id, actor.id)}>
+                  <Button size="sm" icon="check" onClick={() => endInterruption(i.id)}>
                     Service rétabli
                   </Button>
                 )

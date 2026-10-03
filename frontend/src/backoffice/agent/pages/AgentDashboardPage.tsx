@@ -7,11 +7,10 @@ import { SPARKS } from '../../mocks/stats'
 import { TERRA_NOVA_FEED } from '../../mocks/terraNova'
 import { LOADED_AT } from '../../mocks/time'
 import { RadialGauge } from '../../charts/RadialGauge'
-import { AuditFeed } from '../../shared/AuditFeed'
+import { LiveAuditFeed } from '../../shared/EntityHistory'
 import { RequestTable } from '../../shared/RequestTable'
 import { TerraNovaCard } from '../../shared/TerraNovaCard'
 import { useAppointmentStore } from '../../stores/appointmentStore'
-import { useAuditStore } from '../../stores/auditStore'
 import { useRequestStore } from '../../stores/requestStore'
 import { PriorityTag, Ref } from '../../ui/Badges'
 import { ButtonLink } from '../../ui/Button'
@@ -28,7 +27,6 @@ export default function AgentDashboardPage() {
   const actor = useActor()
   const now = useNow()
   const requests = useRequestStore((s) => s.requests)
-  const logs = useAuditStore((s) => s.logs)
   const appointments = useAppointmentStore((s) => s.appointments)
   const slots = useAppointmentStore((s) => s.slots)
 
@@ -107,7 +105,7 @@ export default function AgentDashboardPage() {
 
       <div className={[layout.grid, layout.split].join(' ')}>
         <Panel kicker="F47 · F48" title="Activité de l’équipe" actions={<LiveDot />}>
-          <AuditFeed logs={logs.slice(0, 6)} live />
+          <LiveAuditFeed limit={6} />
         </Panel>
 
         <Panel

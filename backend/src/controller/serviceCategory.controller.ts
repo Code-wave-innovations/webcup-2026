@@ -4,6 +4,8 @@ import serviceCategoryModel from "../model/serviceCategory.model";
 import { notFound } from "../lib/errors";
 import { parseId, slugify, zSlug } from "../lib/validation";
 import { resolveLocale, translate, translateOne } from "../lib/translations";
+import { audit, diffChanges } from "../lib/audit";
+import prisma from "../lib/prisma";
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(191),
@@ -30,13 +32,43 @@ const serviceCategoryController = {
   },
   create: async (req: Request, res: Response) => {
     const input = createSchema.parse(req.body);
-    res.status(201).json(await serviceCategoryModel.create({ ...input, slug: input.slug ?? slugify(input.name) }));
+    const category = await serviceCategoryModel.create({ ...input, slug: input.slug ?? slugify(input.name) });
+    await audit(req, {
+      action: "category.created",
+      entity: "ServiceCategory",
+      entityId: category.id,
+      label: category.name,
+      always: true,
+    });
+    res.status(201).json(category);
   },
   update: async (req: Request, res: Response) => {
-    res.json(await serviceCategoryModel.update(parseId(req.params.id), updateSchema.parse(req.body)));
+    const id = parseId(req.params.id);
+    const before = await prisma.serviceCategory.findUnique({ where: { id } });
+    if (!before) throw notFound("Category not found");
+    const category = await serviceCategoryModel.update(id, updateSchema.parse(req.body));
+    await audit(req, {
+      action: "category.updated",
+      entity: "ServiceCategory",
+      entityId: category.id,
+      label: category.name,
+      changes: diffChanges(before, category, ["name", "slug", "description", "icon", "sort_order"]),
+    });
+    res.json(category);
   },
   delete: async (req: Request, res: Response) => {
-    res.json(await serviceCategoryModel.delete(parseId(req.params.id)));
+    const id = parseId(req.params.id);
+    const before = await prisma.serviceCategory.findUnique({ where: { id }, select: { name: true } });
+    if (!before) throw notFound("Category not found");
+    const deleted = await serviceCategoryModel.delete(id);
+    await audit(req, {
+      action: "category.deleted",
+      entity: "ServiceCategory",
+      entityId: id,
+      label: before.name,
+      always: true,
+    });
+    res.json(deleted);
   },
 };
 

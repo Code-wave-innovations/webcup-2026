@@ -151,3 +151,53 @@ export interface ServiceInterruption {
   service: { id: number; slug: string; name: string }
   created_by: Pick<User, 'id' | 'name' | 'last_name'> | null
 }
+
+/* ─── Audit journal (F47, F48) ──────────────────────────────────────────── */
+
+export interface AuditChange {
+  field: string
+  from?: string | null
+  to?: string | null
+  /** Set when the value is a resident's phone or address: nothing was copied. */
+  masked?: boolean
+}
+
+export interface AuditEntry {
+  id: number
+  created_at: string
+  actor_id: number | null
+  actor_role: Role | null
+  actor_name: string | null
+  action: string
+  entity: string
+  entity_id: number | null
+  entity_label: string | null
+  changes: AuditChange[]
+  metadata: Record<string, unknown> | null
+  /** Present for administrators only. */
+  ip?: string | null
+}
+
+export interface AuditActorFacet {
+  actor_id: number | null
+  actor_name: string | null
+  actor_role: Role | null
+}
+
+export interface AuditSummary {
+  total: number
+  last_hour: number
+  sensitive: number
+}
+
+export interface AuditList extends Paginated<AuditEntry> {
+  summary?: AuditSummary
+  actors?: AuditActorFacet[]
+}
+
+export interface AuditStats {
+  days: number
+  from: string
+  by_day: { date: string; count: number }[]
+  by_actor: { actor_id: number | null; actor_name: string; count: number }[]
+}

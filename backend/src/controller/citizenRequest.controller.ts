@@ -13,6 +13,7 @@ import { notifyUser } from "../lib/notify";
 import { saveUpload } from "../lib/upload";
 import { assertServiceAvailable } from "../lib/availability";
 import { assertNotInMaintenance } from "../lib/settings";
+import { audit, personName, previewText } from "../lib/audit";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zId, zJson } from "../lib/validation";
 import { isStaff } from "../middleware/auth";
 import { zEmail } from "./auth.controller";
@@ -260,6 +261,42 @@ const citizenRequestController = {
       });
     }
 
+    const subject = { entity: "CitizenRequest" as const, entityId: id, label: request.reference };
+    if (statusChanged) {
+      await audit(req, {
+        action: "request.status_changed",
+        ...subject,
+        changes: [{ field: "status", from: current.status, to: request.status }],
+        metadata: note ? { note: previewText(note), internal: internal_note } : undefined,
+        always: true,
+      });
+    } else if (note) {
+      await audit(req, {
+        action: internal_note ? "request.internal_note" : "request.comment_added",
+        ...subject,
+        metadata: { note: previewText(note), internal: internal_note },
+        always: true,
+      });
+    }
+    if (changes.assigned_agent_id !== undefined && changes.assigned_agent_id !== current.assigned_agent_id) {
+      const nameOf = async (agentId: number | null) =>
+        agentId ? personName(await prisma.user.findUnique({ where: { id: agentId }, select: { name: true, last_name: true } })) : null;
+      await audit(req, {
+        action: "request.assigned",
+        ...subject,
+        changes: [{ field: "assigned_agent_id", from: await nameOf(current.assigned_agent_id), to: await nameOf(changes.assigned_agent_id) }],
+        always: true,
+      });
+    }
+    if (changes.priority !== undefined && changes.priority !== current.priority) {
+      await audit(req, {
+        action: "request.priority_changed",
+        ...subject,
+        changes: [{ field: "priority", from: current.priority, to: changes.priority }],
+        always: true,
+      });
+    }
+
     res.json(request);
   },
 
@@ -295,11 +332,33 @@ const citizenRequestController = {
       await notifyUser(request.assigned_agent_id, { type: "REQUEST_MESSAGE", ...notification });
     }
 
+    if (staff) {
+      await audit(req, {
+        action: internal ? "request.internal_note" : "request.comment_added",
+        entity: "CitizenRequest",
+        entityId: id,
+        label: request.reference,
+        metadata: { note: previewText(message), internal },
+        always: true,
+      });
+    }
+
     res.status(201).json(await citizenRequestModel.getDetail(id, staff));
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await citizenRequestModel.delete(parseId(req.params.id)));
+    const id = parseId(req.params.id);
+    const current = await citizenRequestModel.getById(id);
+    if (!current) throw notFound("Request not found");
+    const deleted = await citizenRequestModel.delete(id);
+    await audit(req, {
+      action: "request.deleted",
+      entity: "CitizenRequest",
+      entityId: id,
+      label: current.reference,
+      always: true,
+    });
+    res.json(deleted);
   },
 };
 

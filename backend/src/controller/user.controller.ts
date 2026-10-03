@@ -8,6 +8,7 @@ import { hashPassword } from "../lib/password";
 import { recordAttempt } from "../lib/loginGuard";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zId, zLocale } from "../lib/validation";
 import { registerSchema, zEmail, zPassword } from "./auth.controller";
+import { audit, diffChanges, personName } from "../lib/audit";
 
 // D08 / D09 user administration.
 // ADMIN: every account. AGENT (F34): citizen accounts only, and never their credentials
@@ -75,6 +76,14 @@ const userController = {
   create: async (req: Request, res: Response) => {
     const { password, ...input } = createSchema.parse(req.body);
     const user = await userModel.create({ ...input, password_hash: await hashPassword(password) });
+    await audit(req, {
+      action: "user.created",
+      entity: "User",
+      entityId: user.id,
+      label: personName(user),
+      changes: [{ field: "role", to: user.role }],
+      always: true,
+    });
     res.status(201).json(user);
   },
 
@@ -95,6 +104,48 @@ const userController = {
       ...input,
       ...(password ? { password_hash: await hashPassword(password) } : {}),
     });
+    const label = personName(user);
+    if (input.role && input.role !== target.role) {
+      await audit(req, {
+        action: "user.role_changed",
+        entity: "User",
+        entityId: user.id,
+        label,
+        changes: [{ field: "role", from: target.role, to: user.role }],
+        always: true,
+      });
+    }
+    if (input.is_active === false && target.is_active) {
+      await audit(req, {
+        action: "user.deactivated",
+        entity: "User",
+        entityId: user.id,
+        label,
+        changes: [{ field: "is_active", from: "true", to: "false" }],
+        always: true,
+      });
+    } else if (input.is_active === true && !target.is_active) {
+      await audit(req, {
+        action: "user.reactivated",
+        entity: "User",
+        entityId: user.id,
+        label,
+        changes: [{ field: "is_active", from: "false", to: "true" }],
+        always: true,
+      });
+    }
+    const profile = diffChanges(target, user, ["name", "last_name", "phone", "address", "district_id", "locale", "is_vulnerable", "email"]);
+    if (profile.length || password) {
+      await audit(req, {
+        action: "user.updated",
+        entity: "User",
+        entityId: user.id,
+        label,
+        changes: profile,
+        metadata: password ? { password_changed: true } : undefined,
+        always: true,
+      });
+    }
     res.json(user);
   },
 
@@ -108,13 +159,29 @@ const userController = {
       reason: "UNLOCKED_BY_STAFF",
       userId: target.id,
     });
+    await audit(req, {
+      action: "user.login_unlocked",
+      entity: "User",
+      entityId: target.id,
+      label: personName(target),
+      always: true,
+    });
     res.json({ unlocked: true });
   },
 
   delete: async (req: Request, res: Response) => {
     const target = await loadManageable(req);
     if (target.id === req.user!.id) throw badRequest("You cannot delete your own account");
-    res.json(await userModel.delete(target.id));
+    const deleted = await userModel.delete(target.id);
+    await audit(req, {
+      action: "user.deleted",
+      entity: "User",
+      entityId: target.id,
+      label: personName(target),
+      changes: [{ field: "role", from: target.role, to: null }],
+      always: true,
+    });
+    res.json(deleted);
   },
 };
 

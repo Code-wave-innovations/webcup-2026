@@ -7,6 +7,7 @@ import {
   settingsPatchSchema,
   updateSettings,
 } from "../lib/settings";
+import { audit } from "../lib/audit";
 
 // D07 / D08: platform settings (keys and defaults in lib/settings.ts)
 
@@ -27,7 +28,17 @@ const settingsController = {
   },
   update: async (req: Request, res: Response) => {
     const patch = settingsPatchSchema.parse(req.body);
-    res.json(await adminView(await updateSettings(patch, req.user!.id)));
+    const before = await getSettings();
+    const after = await updateSettings(patch, req.user!.id);
+    await audit(req, {
+      action: "settings.updated",
+      entity: "PlatformSetting",
+      label: "Paramètres de la plateforme",
+      before: before as unknown as Record<string, unknown>,
+      after: after as unknown as Record<string, unknown>,
+      fields: Object.keys(patch),
+    });
+    res.json(await adminView(after));
   },
 };
 

@@ -7,6 +7,7 @@ import { notifyUser } from "../lib/notify";
 import { notEndedWhere } from "../lib/availability";
 import { parseId, zDate, zId } from "../lib/validation";
 import { resolveLocale, translate } from "../lib/translations";
+import { audit, diffChanges } from "../lib/audit";
 
 // F38: maintenance windows and incidents making a service unavailable.
 
@@ -91,6 +92,18 @@ const serviceInterruptionController = {
       }
       notified = appointments.length;
     }
+    await audit(req, {
+      action: "interruption.created",
+      entity: "ServiceInterruption",
+      entityId: interruption.id,
+      label: interruption.service.name,
+      changes: [
+        { field: "impact", to: interruption.impact },
+        { field: "type", to: interruption.type },
+      ],
+      metadata: { notified },
+      always: true,
+    });
     res.status(201).json({ ...interruption, notified });
   },
 
@@ -100,22 +113,48 @@ const serviceInterruptionController = {
     const current = await prisma.serviceInterruption.findUnique({ where: { id } });
     if (!current) throw notFound("Interruption not found");
     checkDates(input.starts_at ?? current.starts_at, input.ends_at === undefined ? current.ends_at : input.ends_at);
-    res.json(await prisma.serviceInterruption.update({ where: { id }, data: input, include }));
+    const interruption = await prisma.serviceInterruption.update({ where: { id }, data: input, include });
+    await audit(req, {
+      action: "interruption.updated",
+      entity: "ServiceInterruption",
+      entityId: id,
+      label: interruption.service.name,
+      changes: diffChanges(current, interruption, ["type", "impact", "reason", "alternative", "starts_at", "ends_at"]),
+    });
+    res.json(interruption);
   },
 
   // The service is back: close the interruption now.
   end: async (req: Request, res: Response) => {
-    res.json(
-      await prisma.serviceInterruption.update({
-        where: { id: parseId(req.params.id) },
-        data: { ends_at: new Date() },
-        include,
-      })
-    );
+    const id = parseId(req.params.id);
+    const interruption = await prisma.serviceInterruption.update({
+      where: { id },
+      data: { ends_at: new Date() },
+      include,
+    });
+    await audit(req, {
+      action: "interruption.ended",
+      entity: "ServiceInterruption",
+      entityId: id,
+      label: interruption.service.name,
+      always: true,
+    });
+    res.json(interruption);
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await prisma.serviceInterruption.delete({ where: { id: parseId(req.params.id) }, select: { id: true } }));
+    const id = parseId(req.params.id);
+    const current = await prisma.serviceInterruption.findUnique({ where: { id }, include });
+    if (!current) throw notFound("Interruption not found");
+    const deleted = await prisma.serviceInterruption.delete({ where: { id }, select: { id: true } });
+    await audit(req, {
+      action: "interruption.deleted",
+      entity: "ServiceInterruption",
+      entityId: id,
+      label: current.service.name,
+      always: true,
+    });
+    res.json(deleted);
   },
 };
 

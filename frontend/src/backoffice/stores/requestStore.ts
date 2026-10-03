@@ -3,7 +3,6 @@ import { REQUESTS } from '../mocks/requests'
 import { ALL_USERS } from '../mocks/people'
 import type { CitizenRequest, RequestEvent, RequestPriority, RequestStatus } from '../mocks/types'
 import { FINAL_STATUSES, PRIORITY_LABEL, STATUS_LABEL } from '../lib/labels'
-import { recordAudit } from './auditStore'
 import { toast } from './toastStore'
 
 interface RequestState {
@@ -47,14 +46,6 @@ export function changeStatus(id: number, to: RequestStatus, actorId: number, not
     () => ({ status: to, resolved_at: FINAL_STATUSES.includes(to) ? new Date().toISOString() : null }),
     [{ type: 'STATUS_CHANGED', author_id: actorId, from_status: request.status, to_status: to, message: note || null, is_internal: internal }],
   )
-  recordAudit({
-    actor_id: actorId,
-    action: 'request.status_changed',
-    entity: 'CitizenRequest',
-    entity_id: id,
-    entity_label: request.subject,
-    changes: [{ field: 'status', before: request.status, after: to }],
-  })
   toast(`${request.reference} → ${STATUS_LABEL[to]}`)
 }
 
@@ -72,14 +63,6 @@ export function assignRequest(id: number, agentId: number | null, actorId: numbe
         : []),
     ],
   )
-  recordAudit({
-    actor_id: actorId,
-    action: 'request.assigned',
-    entity: 'CitizenRequest',
-    entity_id: id,
-    entity_label: request.subject,
-    changes: [{ field: 'assigned_agent', before: request.assigned_agent_id ? fullName(request.assigned_agent_id) : null, after: agentId ? fullName(agentId) : null }],
-  })
   toast(agentId ? `${request.reference} assignée à ${fullName(agentId)}` : `${request.reference} désassignée`)
 }
 
@@ -89,14 +72,6 @@ export function setPriority(id: number, priority: RequestPriority, actorId: numb
   update(id, () => ({ priority }), [
     { type: 'PRIORITY_CHANGED', author_id: actorId, from_status: null, to_status: null, message: PRIORITY_LABEL[priority], is_internal: true },
   ])
-  recordAudit({
-    actor_id: actorId,
-    action: 'request.priority_changed',
-    entity: 'CitizenRequest',
-    entity_id: id,
-    entity_label: request.subject,
-    changes: [{ field: 'priority', before: request.priority, after: priority }],
-  })
   toast(`Priorité ${PRIORITY_LABEL[priority].toLowerCase()} pour ${request.reference}`, 'info')
 }
 
@@ -104,13 +79,5 @@ export function addComment(id: number, message: string, actorId: number, interna
   const request = find(id)
   if (!request) return
   update(id, () => ({}), [{ type: 'COMMENT', author_id: actorId, from_status: null, to_status: null, message, is_internal: internal }])
-  recordAudit({
-    actor_id: actorId,
-    action: 'request.comment_added',
-    entity: 'CitizenRequest',
-    entity_id: id,
-    entity_label: request.subject,
-    changes: [{ field: internal ? 'note interne' : 'message au citoyen', before: null, after: message }],
-  })
   toast(internal ? 'Note interne ajoutée' : 'Message envoyé au citoyen')
 }

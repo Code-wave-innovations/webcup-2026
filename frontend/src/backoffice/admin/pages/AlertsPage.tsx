@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { useActor } from '../../layout/persona'
 import { AUDIENCE_LABEL, SEVERITY_LABEL, SEVERITY_TONE } from '../../lib/labels'
 import { formatRelative } from '../../lib/format'
 import { districtName } from '../../lib/lookups'
@@ -30,7 +29,6 @@ const TEMPLATES = [
 
 /** D18 / F29 / F31: compose and broadcast an alert to exactly the people concerned. */
 export default function AlertsPage() {
-  const actor = useActor()
   const now = useNow()
   const alerts = useContentStore((s) => s.alerts)
   const [form, setForm] = useState({
@@ -67,7 +65,6 @@ export default function AlertsPage() {
         recommendations: form.recommendations,
         source: form.source || null,
       },
-      actor.id,
     )
     setForm((f) => ({ ...f, title: '', message: '', instructions: '', recommendations: [], district_ids: [] }))
   }
@@ -89,7 +86,7 @@ export default function AlertsPage() {
               title={a.title}
               accent={a.severity === 'CRITICAL' ? 'alert' : 'ember'}
               actions={
-                <Button size="sm" icon="check" onClick={() => closeAlert(a.id, actor.id)}>
+                <Button size="sm" icon="check" onClick={() => closeAlert(a.id)}>
                   Terminer
                 </Button>
               }

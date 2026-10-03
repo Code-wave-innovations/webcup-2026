@@ -9,8 +9,7 @@ import { AreaTrend } from '../../charts/AreaTrend'
 import { BarChart } from '../../charts/BarChart'
 import { DonutRing } from '../../charts/DonutRing'
 import { Heatmap } from '../../charts/Heatmap'
-import { AuditFeed } from '../../shared/AuditFeed'
-import { useAuditStore } from '../../stores/auditStore'
+import { LiveAuditFeed } from '../../shared/EntityHistory'
 import { useCatalogStore } from '../../stores/catalogStore'
 import { useContentStore } from '../../stores/contentStore'
 import { useRequestStore } from '../../stores/requestStore'
@@ -41,7 +40,6 @@ export default function AdminOverviewPage() {
   const serviceName = useServiceName()
   const requests = useRequestStore((s) => s.requests)
   const users = useUserStore((s) => s.users)
-  const logs = useAuditStore((s) => s.logs)
   const alerts = useContentStore((s) => s.alerts)
   const interruptions = useCatalogStore((s) => s.interruptions)
 
@@ -144,7 +142,7 @@ export default function AdminOverviewPage() {
           </>
         }
       >
-        <AuditFeed logs={logs.slice(0, 8)} live showIp />
+        <LiveAuditFeed showIp />
       </Panel>
     </motion.div>
   )
