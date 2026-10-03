@@ -57,7 +57,7 @@ Rien de bloquant. Petits ajouts :
 
 - **Seed : mots-clés (F32).** Remplir `keywords` avec des synonymes. Pour la santé, par exemple : « médecin, docteur, hôpital, soins, urgence, vaccin, consultation, infirmier ». Il en faut au moins 5 par service.
 - **Compteur de vues (F28, optionnel).** Ne pas incrémenter `view_count` quand c'est le personnel qui consulte, pour que « les plus utilisés » reflète bien les habitants.
-- **Paramètres.** `home_blocks` et `maintenance_banner` viennent de PLAN-00 (B1).
+- **Paramètres.** `home_sections` (ordre et visibilité des blocs) et `maintenance_mode`/`maintenance_message` existent depuis le PLAN-00, de même que le refus `503 MAINTENANCE`.
 
 ## 4. Front citoyen
 
@@ -67,7 +67,7 @@ Chaque section reste liée à sa pose de caméra : on ne change pas leur ordre, 
 
 | Section (repère 3D) | Contenu |
 |---|---|
-| Arrivée | Message de bienvenue, puis **les alertes qui me concernent** (PLAN-04). Ensuite les raccourcis, dans l'ordre fixé par `home_blocks` : Signaler, Mes demandes, Prendre rendez-vous, Transports, Urgences (PLAN-07). Enfin les compteurs `me` : demandes ouvertes, prochain rendez-vous, notifications. |
+| Arrivée | Message de bienvenue, puis **les alertes qui me concernent** (PLAN-04). Ensuite les raccourcis, dans l'ordre fixé par `home_sections` : Signaler, Mes demandes, Prendre rendez-vous, Transports, Urgences (PLAN-07). Enfin les compteurs `me` : demandes ouvertes, prochain rendez-vous, notifications. |
 | Services (Dôme central) | Les `featured_services` (F28), chacun avec sa pastille de disponibilité (F38). Des pastilles de catégories et un lien « Tous les services » vers `/ville/services`. |
 | Signaler (Dôme 3) | Voir PLAN-03. |
 | État de la ville (Serre 1) | Les jauges simulées restent (hors périmètre). S'y ajoute **la liste réelle des perturbations** : `service_disruptions` (F38) et `transit_disruptions` (F36), chacune avec son heure de retour prévue. |
@@ -79,7 +79,7 @@ Chaque section reste liée à sa pose de caméra : on ne change pas leur ordre, 
   - **Rechercher** (F32) ;
   - « Mon espace » (PLAN-01) ;
   - « Urgences » (PLAN-07).
-- Le bandeau `maintenance_banner` s'affiche quand il est activé.
+- Un bandeau affiche `maintenance_message` quand `maintenance_mode` est activé.
 - Les textes « Exemples de services… » et « Maquette de démonstration, données simulées » disparaissent.
 
 ### 4.2 Catalogue `/ville/services` (D05, F32)
@@ -115,9 +115,9 @@ Chaque section reste liée à sa pose de caméra : on ne change pas leur ordre, 
 
 ### 4.5 Fil d'Ariane et repères (D15)
 
-- `ConsoleLayout` (PLAN-00) affiche par exemple « Accueil › Services › Santé › Centre de santé ».
-  - Chaque route déclare son libellé dans `handle.crumb`.
-  - Les libellés qui dépendent des données sont lus dans le cache de la requête de la page.
+- `ConsolePage` (PLAN-00) affiche déjà le fil d'Ariane, par exemple « Accueil › Services › Santé › Centre de santé ».
+  - Chaque page passe ses niveaux intermédiaires dans la prop `crumbs` ; l'accueil et la page courante sont ajoutés automatiquement.
+  - `useMatches()` et `handle.crumb` ne sont pas utilisables, car l'application utilise `<BrowserRouter>`.
 - Balisage : `<nav aria-label="Fil d'Ariane">`, chaque niveau est un lien, et le dernier porte `aria-current="page"`.
 - La rubrique active est mise en évidence dans la barre du haut.
 - Le bouton « Retour » suit l'historique de navigation.
@@ -138,7 +138,7 @@ Chaque section reste liée à sa pose de caméra : on ne change pas leur ordre, 
 | `ServicesPage` (D05, F28) | `GET /api/services?include_inactive=true&limit=100` et `GET /api/service-categories` | Étoile, priorité, actif, édition : `PATCH /api/services/:id`. Bouton « Nouveau service » : `POST /api/services`. L'aperçu « Ordre sur la page d'accueil » applique le même tri que `GET /api/home`. |
 | `ServicesPage`, onglet « Démarches » du panneau d'édition (D05, D11) | `GET /api/procedures?service_id=` | Créer ou modifier une démarche : titre, description, documents requis, délai estimé, champs du formulaire (`form_schema`). Les champs se saisissent dans un éditeur simple : nom, libellé, type (`text`, `textarea`, `date`, `number`, `select` avec ses options), obligatoire ou non. Enregistrement par `POST` ou `PATCH /api/procedures`. |
 | `MaintenancePage` (F38) | `GET /api/service-interruptions?scope=all` | Créer : `POST`. Modifier : `PATCH /:id`. « Terminer maintenant » : `POST /:id/end`. Supprimer : `DELETE /:id`. |
-| `SettingsPage` (D07) | `GET /api/settings` | Ordre et visibilité des blocs `home_blocks`, bandeau `maintenance_banner`. |
+| `SettingsPage` (D07) | Déjà branchée au PLAN-00 | Il reste à faire lire `home_sections` par l'accueil. |
 | Badge `interruptions` du menu | `GET /api/service-interruptions?scope=current`, puis le nombre de résultats | — |
 
 `stores/catalogStore.ts` et `mocks/catalog.ts` sont supprimés. Le contenu de `mocks/catalog.ts` sert d'abord à enrichir le seed.
@@ -152,7 +152,7 @@ Chaque section reste liée à sa pose de caméra : on ne change pas leur ordre, 
 - [ ] `/ville/services` et `/ville/services/:slug`
 - [ ] `/ville/recherche` et le champ de recherche dans la barre du haut
 - [ ] `Breadcrumbs` et le `handle.crumb` de chaque route `/ville/*`
-- [ ] Back-office : `ServicesPage` (dont l'onglet Démarches), `MaintenancePage`, blocs de la `SettingsPage`, badge
+- [ ] Back-office : `ServicesPage` (dont l'onglet Démarches), `MaintenancePage`, badge
 - [ ] Suppression de `ServiceList`, `services.ts` et `catalogStore`
 
 ## 7. Critères d'acceptation

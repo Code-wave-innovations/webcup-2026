@@ -37,6 +37,7 @@ export function Film() {
   return (
     <>
       <ResolutionGovernor profile={profile} />
+      <FrameLoopGovernor />
       <DirectorClock />
       <SpaceStage textures={textures} light={profile.light} />
       {cityData && <CityStage data={cityData} textures={textures} hdr={profile.hdr} />}
@@ -48,6 +49,28 @@ export function Film() {
 
 const activeCamera = () => director.cameras[director.stage]
 const filmTime = () => ({ dt: director.dt, time: director.time })
+
+const CONSOLE_SETTLE_MS = 1600
+
+/**
+ * While a console page covers the city, the scene stops redrawing once the camera has reached its pose
+ * (R3F then renders only on resize). The film resumes where it was when the console closes.
+ */
+function FrameLoopGovernor() {
+  const setFrameloop = useThree((s) => s.setFrameloop)
+  const consoleOpen = useDirectorStore((s) => s.console)
+
+  useEffect(() => {
+    if (!consoleOpen) {
+      setFrameloop('always')
+      return
+    }
+    const timer = setTimeout(() => setFrameloop('demand'), director.reducedMotion ? 0 : CONSOLE_SETTLE_MS)
+    return () => clearTimeout(timer)
+  }, [consoleOpen, setFrameloop])
+
+  return null
+}
 
 /** Advances the film once per frame, with a clamped step so a stalled tab does not skip the entry. */
 function DirectorClock() {

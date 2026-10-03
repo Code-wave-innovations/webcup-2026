@@ -56,6 +56,20 @@
   opacity: 0.75;
 }
 
+.required {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.hint {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.field [aria-invalid='true'] {
+  border-color: var(--color-alert);
+}
+
 .error {
   font-size: 14px;
   font-weight: 600;

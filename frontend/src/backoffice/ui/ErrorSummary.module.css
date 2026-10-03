@@ -1,0 +1,35 @@
+.summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--color-alert) 60%, transparent);
+  border-left: 3px solid var(--color-alert);
+  background: color-mix(in srgb, var(--color-alert) 12%, var(--color-glass-dense));
+  font-size: 14px;
+}
+
+.summary > svg {
+  color: var(--color-alert);
+  margin-top: 2px;
+}
+
+.summary:focus-visible {
+  outline: 2px solid var(--color-ice-bright);
+  outline-offset: 3px;
+}
+
+.title {
+  font-weight: 700;
+}
+
+.summary ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.summary a {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

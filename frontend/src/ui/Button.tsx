@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react'
+import { Link } from 'react-router'
 import styles from './Button.module.css'
 
 type Variant = 'solid' | 'ghost' | 'inverse'
@@ -19,4 +20,9 @@ export function Button({ variant, small, className, type = 'button', ...props }:
 /** Same look as `Button`, for navigation (in-page anchors). */
 export function ButtonLink({ variant, small, className, ...props }: Look & ComponentProps<'a'>) {
   return <a className={classes({ variant, small }, className)} {...props} />
+}
+
+/** Same look as `Button`, for navigation to another route of the app. */
+export function ButtonRouterLink({ variant, small, className, ...props }: Look & ComponentProps<typeof Link>) {
+  return <Link className={classes({ variant, small }, className)} {...props} />
 }

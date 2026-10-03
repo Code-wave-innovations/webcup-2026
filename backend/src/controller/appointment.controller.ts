@@ -9,6 +9,7 @@ import { HHMM_RE, formatSlotLabel } from "../lib/datetime";
 import { MAX_REMINDER_OFFSET_MINUTES, sendDueReminders } from "../lib/scheduler";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zDate, zId } from "../lib/validation";
 import { resolveLocale } from "../lib/translations";
+import { assertNotInMaintenance, getSetting } from "../lib/settings";
 import { isStaff } from "../middleware/auth";
 import {
   appointmentInclude,
@@ -63,7 +64,8 @@ const bookSchema = z.object({
   slot_id: zId,
   reason: z.string().trim().min(3).max(2000),
   procedure_id: zId.optional(),
-  reminder_offset_minutes: zReminder.default(1440),
+  // Defaults to the platform setting reminder_default_minutes
+  reminder_offset_minutes: zReminder.optional(),
 });
 
 const listQuerySchema = paginationSchema.extend({
@@ -226,7 +228,9 @@ const appointmentController = {
   },
 
   book: async (req: Request, res: Response) => {
-    const input = bookSchema.parse(req.body);
+    const { reminder_offset_minutes, ...rest } = bookSchema.parse(req.body);
+    await assertNotInMaintenance(req.user);
+    const input = { ...rest, reminder_offset_minutes: reminder_offset_minutes ?? (await getSetting("reminder_default_minutes")) };
     const citizenId = req.user!.id;
 
     const preview = await prisma.appointmentSlot.findUnique({ where: { id: input.slot_id } });

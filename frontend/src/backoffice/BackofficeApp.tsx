@@ -1,8 +1,11 @@
+import { useEffect } from 'react'
 import { MotionConfig } from 'motion/react'
 import { Navigate, Route, Routes } from 'react-router'
 import { Shell } from './layout/Shell'
 import { usePersona } from './layout/persona'
 import { Toaster } from './ui/Toaster'
+import { toast } from './stores/toastStore'
+import { onSessionExpired } from '../api/session'
 import AgentDashboardPage from './agent/pages/AgentDashboardPage'
 import RequestsPage from './agent/pages/RequestsPage'
 import RequestDetailPage from './agent/pages/RequestDetailPage'
@@ -27,12 +30,15 @@ import SettingsPage from './admin/pages/SettingsPage'
 import './backoffice.css'
 
 /*
-  Staff back-office (design only, simulated data). Mounted by src/app/App.tsx on /agent/* and /admin/*,
+  Staff back-office. Screens are bound to the API plan by plan (project-plan/); the others still read
+  the simulated stores. Mounted by src/app/App.tsx on /agent/* and /admin/*,
   outside the citizen film layout, and loaded lazily so citizens never download it.
   Routes are relative to the matched space.
 */
 export default function BackofficeApp() {
   const persona = usePersona()
+  // the API refused the token: the screens that need it show their sign-in state
+  useEffect(() => onSessionExpired(() => toast('Session expirée : reconnectez-vous.', 'alert')), [])
   return (
     <MotionConfig reducedMotion="user">
       <Routes>
