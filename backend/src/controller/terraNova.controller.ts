@@ -2,15 +2,18 @@ import type { Request, Response } from "express";
 import { HttpError, serviceUnavailable } from "../lib/errors";
 
 // D19: agents consult the information published by the official Terra Nova API.
-// Configure TERRA_NOVA_API_URL (and TERRA_NOVA_API_TOKEN if the API needs one) in .env.
+// Needs TERRA_NOVA_API_KEY in .env (sent as X-Webcup-Api-Key); TERRA_NOVA_API_URL overrides the endpoint.
+
+const DEFAULT_URL = "https://24h.webcup.fr/wp-json/webcup/v1/requests/";
 
 const CACHE_TTL_MS = 60_000;
 let cache: { fetchedAt: number; body: unknown } | null = null;
 
 const terraNovaController = {
   feed: async (req: Request, res: Response) => {
-    const url = process.env.TERRA_NOVA_API_URL;
-    if (!url) throw serviceUnavailable("TERRA_NOVA_API_URL is not configured");
+    const url = process.env.TERRA_NOVA_API_URL || DEFAULT_URL;
+    const apiKey = process.env.TERRA_NOVA_API_KEY;
+    if (!apiKey) throw serviceUnavailable("TERRA_NOVA_API_KEY is not configured");
 
     const fresh = cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS;
     if (fresh && req.query.refresh !== "true") {
@@ -18,8 +21,7 @@ const terraNovaController = {
       return;
     }
 
-    const headers: Record<string, string> = { Accept: "application/json" };
-    if (process.env.TERRA_NOVA_API_TOKEN) headers.Authorization = `Bearer ${process.env.TERRA_NOVA_API_TOKEN}`;
+    const headers = { Accept: "application/json", "X-Webcup-Api-Key": apiKey };
 
     let response: globalThis.Response;
     try {

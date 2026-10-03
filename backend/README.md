@@ -48,7 +48,7 @@ Demo accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novate
 | `GET /api/alerts/active` · `GET /api/alerts/:id` | public | D18, F29, F31 |
 | `GET /api/alerts` · `POST /api/alerts` · `PATCH /:id` · `POST /:id/close` | staff | D18, F29, F31 |
 | `GET /api/notifications` · `GET /unread-count` · `PATCH /:id/read` · `POST /read-all` · `DELETE /:id` | logged in | F30 |
-| `GET /api/terra-nova/requests` | staff | D19 (needs `TERRA_NOVA_API_URL`) |
+| `GET /api/terra-nova/requests` | staff | D19 (needs `TERRA_NOVA_API_KEY`, sent as `X-Webcup-Api-Key`) |
 
 ### Request types
 
