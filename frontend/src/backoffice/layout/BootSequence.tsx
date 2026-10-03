@@ -1,32 +1,14 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { matchesQuery, REDUCED_MOTION_QUERY } from '../../hooks/useMediaQuery'
 import { useTypewriter } from '../../ui/useTypewriter'
-import type { Persona, User } from '../mocks/types'
+import type { User } from '../../api/types'
+import type { Persona } from '../mocks/types'
 import { ROLE_LABEL } from '../lib/labels'
+import { markBooted, shouldBoot } from './boot'
 import styles from './BootSequence.module.css'
 
-const KEY = 'bo-boot'
-
-function shouldBoot(persona: Persona): boolean {
-  if (matchesQuery(REDUCED_MOTION_QUERY)) return false
-  try {
-    return sessionStorage.getItem(`${KEY}-${persona}`) !== 'done'
-  } catch {
-    return true
-  }
-}
-
-function markBooted(persona: Persona) {
-  try {
-    sessionStorage.setItem(`${KEY}-${persona}`, 'done')
-  } catch {
-    /* private mode: the boot simply plays again next time */
-  }
-}
-
 /** First visit of the session: grid traces, hex logo assembles, uplink line types out. ≤ 1.3 s, skippable. */
-export function BootSequence({ persona, user }: { persona: Persona; user: User }) {
+export function BootSequence({ persona, user }: { persona: Persona; user: Pick<User, 'name' | 'last_name' | 'role'> }) {
   const [visible, setVisible] = useState(() => shouldBoot(persona))
   const line = `Liaison établie · ${user.name} ${user.last_name}, ${ROLE_LABEL[user.role]}`
   const typed = useTypewriter(visible ? line : '')

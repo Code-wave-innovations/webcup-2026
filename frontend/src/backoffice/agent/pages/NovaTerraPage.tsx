@@ -43,7 +43,7 @@ export default function NovaTerraPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title="API Nova Terra"
         codes={['D19']}
         lead="Les besoins exprimés par les habitants et le Haut Conseil via l’API officielle. Mise en cache 60 s côté serveur."

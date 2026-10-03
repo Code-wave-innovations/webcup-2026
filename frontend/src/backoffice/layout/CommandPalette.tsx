@@ -8,6 +8,7 @@ import { STATUS_LABEL } from '../lib/labels'
 import { useRequestStore } from '../stores/requestStore'
 import { Icon, type IconName } from '../ui/Icon'
 import { Kbd } from '../ui/Feedback'
+import { useActor } from './persona'
 import styles from './CommandPalette.module.css'
 
 interface Command {
@@ -23,6 +24,7 @@ interface Command {
 export function CommandPalette({ persona, open, onClose }: { persona: Persona; open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
   const requests = useRequestStore((s) => s.requests)
+  const role = useActor().role
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -45,16 +47,22 @@ export function CommandPalette({ persona, open, onClose }: { persona: Persona; o
       group: 'Demandes',
       to: `${base}/demandes/${r.id}`,
     }))
-    const other = {
-      id: 'switch',
-      label: persona === 'ADMIN' ? 'Passer à l’espace agent' : 'Passer à l’administration',
-      hint: 'Persona de démonstration',
-      icon: 'swap' as const,
-      group: 'Actions',
-      to: persona === 'ADMIN' ? '/agent' : '/admin',
-    }
-    return [...screens, ...requestItems, other]
-  }, [persona, requests])
+    // admins work in both spaces; agents only have theirs
+    const switchView =
+      role === 'ADMIN'
+        ? [
+            {
+              id: 'switch',
+              label: persona === 'ADMIN' ? 'Passer à la vue agent' : 'Revenir à l’administration',
+              hint: 'Changer de vue',
+              icon: 'swap' as const,
+              group: 'Actions',
+              to: persona === 'ADMIN' ? '/agent' : '/admin',
+            },
+          ]
+        : []
+    return [...screens, ...requestItems, ...switchView]
+  }, [persona, requests, role])
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()

@@ -51,7 +51,7 @@ export default function AgentDashboardPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title={`Bonjour ${actor.name}`}
         codes={['D19', 'F22', 'D17']}
         lead={`${awaiting.length} demande${awaiting.length > 1 ? 's attendent' : ' attend'} une prise en charge, dont ${awaiting.filter((r) => r.priority === 'URGENT').length} urgente(s).`}

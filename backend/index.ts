@@ -37,7 +37,8 @@ const port = process.env.PORT || 9002;
 
 // CORS_ORIGINS: comma-separated list of allowed front-end origins (every origin when unset)
 const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean);
-app.use(cors({ origin: corsOrigins?.length ? corsOrigins : true }))
+// Retry-After (F37 lockouts, rate limits) must be readable by the front, which runs on another origin
+app.use(cors({ origin: corsOrigins?.length ? corsOrigins : true, exposedHeaders: ["Retry-After"] }))
 app.use(express.urlencoded({extended : true}))
 app.use(express.json());
 // @ts-ignore

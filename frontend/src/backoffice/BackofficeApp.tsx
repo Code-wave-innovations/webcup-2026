@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
 import { MotionConfig } from 'motion/react'
 import { Navigate, Route, Routes } from 'react-router'
+import { RequireStaff } from './layout/RequireStaff'
 import { Shell } from './layout/Shell'
+import StaffLoginPage from './layout/StaffLoginPage'
 import { usePersona } from './layout/persona'
+import { noteSessionExpired } from './layout/sessionNotice'
 import { Toaster } from './ui/Toaster'
-import { toast } from './stores/toastStore'
 import { onSessionExpired } from '../api/session'
 import AgentDashboardPage from './agent/pages/AgentDashboardPage'
 import RequestsPage from './agent/pages/RequestsPage'
@@ -30,19 +32,26 @@ import SettingsPage from './admin/pages/SettingsPage'
 import './backoffice.css'
 
 /*
-  Staff back-office. Screens are bound to the API plan by plan (project-plan/); the others still read
-  the simulated stores. Mounted by src/app/App.tsx on /agent/* and /admin/*,
-  outside the citizen film layout, and loaded lazily so citizens never download it.
-  Routes are relative to the matched space.
+  Staff back-office. Screens are bound to the API plan by plan (back-office-only-plan/); the others still
+  read the simulated stores and say so in their header. Mounted by src/app/App.tsx on /agent/* and
+  /admin/*, outside the citizen film layout, and loaded lazily so citizens never download it.
+  Routes are relative to the matched space; everything but the login page sits behind RequireStaff.
 */
 export default function BackofficeApp() {
   const persona = usePersona()
-  // the API refused the token: the screens that need it show their sign-in state
-  useEffect(() => onSessionExpired(() => toast('Session expirée : reconnectez-vous.', 'alert')), [])
+  // the API refused the token: RequireStaff sends to the login page, which says why
+  useEffect(() => onSessionExpired(noteSessionExpired), [])
   return (
     <MotionConfig reducedMotion="user">
       <Routes>
-        <Route element={<Shell />}>
+        <Route path="connexion" element={<StaffLoginPage />} />
+        <Route
+          element={
+            <RequireStaff>
+              <Shell />
+            </RequireStaff>
+          }
+        >
           {persona === 'AGENT' ? (
             <>
               <Route index element={<AgentDashboardPage />} />

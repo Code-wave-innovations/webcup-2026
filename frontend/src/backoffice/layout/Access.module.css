@@ -1,0 +1,107 @@
+/* Screens outside the shell: staff login and access refusals. */
+
+.frame {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: min(460px, 100%);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  font: 600 15px/1 var(--font-display);
+  letter-spacing: 0.12em;
+  color: var(--color-text);
+}
+
+.brand small {
+  display: block;
+  margin-top: 4px;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ice);
+}
+
+.mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  background: var(--color-ice);
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  box-shadow: 0 0 20px var(--color-ice);
+}
+
+.title {
+  font: 600 clamp(22px, 3vw, 28px) / 1.15 var(--font-display);
+  color: var(--color-text);
+  outline: none;
+}
+
+.lead {
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--color-line);
+  border-left: 3px solid var(--color-progress);
+  background: var(--color-hover);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.notice svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--color-progress);
+}
+
+.countdown {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-ice-bright);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.demo {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--color-line-thin);
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.demo .actions {
+  gap: 8px;
+}

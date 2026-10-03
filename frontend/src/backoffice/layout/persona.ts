@@ -1,21 +1,59 @@
 import { useLocation } from 'react-router'
-import { STAFF } from '../mocks/people'
-import type { Persona, User } from '../mocks/types'
+import { useSessionUser } from '../../api/session'
+import type { Role, User } from '../../api/types'
+import type { Persona } from '../mocks/types'
 
-/** Demo identities for each space, until the shell is wired to /api/auth and /api/me. */
-export const PERSONA_USER: Record<Persona, User> = {
-  AGENT: STAFF[1],
-  ADMIN: STAFF[0],
-}
-
-/** The space is decided by the URL: /agent/* or /admin/*. */
+/** The space is decided by the URL (/agent/* or /admin/*); `RequireStaff` checks the role may open it. */
 export function usePersona(): Persona {
   return useLocation().pathname.startsWith('/admin') ? 'ADMIN' : 'AGENT'
 }
 
-/** The signed-in staff member (simulated): author of every simulated action and audit entry. */
+/** Only rendered for a moment while a sign-out redirects to the login page. */
+const SIGNED_OUT: User = {
+  id: 0,
+  created_at: '',
+  updated_at: '',
+  email: '',
+  name: '',
+  last_name: '',
+  phone: null,
+  address: null,
+  district_id: null,
+  role: 'AGENT',
+  locale: 'fr',
+  is_vulnerable: false,
+  is_active: false,
+  onboarding_completed: false,
+  preferences: null,
+  last_login_at: null,
+}
+
+/** The signed-in staff member (the screens live under `RequireStaff`). */
 export function useActor(): User {
-  return PERSONA_USER[usePersona()]
+  return useSessionUser() ?? SIGNED_OUT
 }
 
 export const homePath = (persona: Persona) => (persona === 'ADMIN' ? '/admin' : '/agent')
+
+/** The space a role lands on: admins on the administration, agents on their workspace. */
+export const personaOf = (role: Role): Persona => (role === 'ADMIN' ? 'ADMIN' : 'AGENT')
+
+/** /agent/connexion?retour=…&expiree=1 */
+export function loginPath(persona: Persona, retour?: string, expired = false): string {
+  const params = new URLSearchParams()
+  if (retour) params.set('retour', retour)
+  if (expired) params.set('expiree', '1')
+  const query = params.toString()
+  return `${homePath(persona)}/connexion${query ? `?${query}` : ''}`
+}
+
+/**
+ * Where to go after signing in: the requested page when the role may open it (never another site,
+ * never the login page), otherwise the home of the role's space.
+ */
+export function destinationAfterLogin(role: Role, retour: string | null): string {
+  const home = homePath(personaOf(role))
+  if (!retour || !/^\/(agent|admin)(\/|$|\?)/.test(retour) || /^\/(agent|admin)\/connexion/.test(retour)) return home
+  if (retour.startsWith('/admin') && role !== 'ADMIN') return home
+  return retour
+}

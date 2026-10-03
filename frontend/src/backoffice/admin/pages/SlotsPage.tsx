@@ -69,7 +69,7 @@ export default function SlotsPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader title="Créneaux de rendez-vous" codes={['F39', 'F40']} lead="Publiez des créneaux en série. Chaque créneau indique le lieu, l’agent et ce que le citoyen doit préparer." />
+      <PageHeader simulated title="Créneaux de rendez-vous" codes={['F39', 'F40']} lead="Publiez des créneaux en série. Chaque créneau indique le lieu, l’agent et ce que le citoyen doit préparer." />
 
       <motion.div className={layout.stats} variants={stagger}>
         <StatTile label="Créneaux à venir" value={futureSlots.length} icon="calendar" tone="ice" />

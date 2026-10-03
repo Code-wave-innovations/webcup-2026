@@ -86,3 +86,68 @@ export interface SettingsAdminView {
   /** who changed each key last; keys still on their default are absent */
   updated: Partial<Record<keyof PlatformSettings, SettingChange>>
 }
+
+/* ─── Notifications (F30; also D16, F37, F40, F49 notices) ──────────────── */
+
+export interface AppNotification {
+  id: number
+  created_at: string
+  /** REQUEST_UPDATE, REQUEST_MESSAGE, SECURITY, APPOINTMENT_REMINDER, SERVICE_INTERRUPTION… */
+  type: string
+  title: string
+  body: string | null
+  /** route of the citizen space (/requests/12…), translated by each space */
+  link: string | null
+  data: Record<string, unknown> | null
+  read_at: string | null
+}
+
+/** GET /api/notifications: a page, plus the unread total */
+export interface NotificationPage {
+  data: AppNotification[]
+  meta: PageMeta & { unread: number }
+}
+
+/* ─── Staff dashboard (D17, D19) ─────────────────────────────────────────── */
+
+export interface DashboardStats {
+  requests: {
+    /** D17: submitted, nobody took them yet */
+    awaiting_pickup: number
+    needs_action: number
+    open: number
+    unassigned_open: number
+    assigned_to_me: number
+    oldest_awaiting: { id: number; reference: string; created_at: string } | null
+    by_status: Record<string, number>
+    open_by_type: Record<string, number>
+    open_by_priority: Record<string, number>
+  }
+  /** highest priority first, then oldest (typed by BO-01) */
+  queue: unknown[]
+  platform: {
+    citizens: number
+    active_alerts: number
+    published_announcements: number
+  }
+}
+
+/* ─── Service interruptions (F38) ────────────────────────────────────────── */
+
+export type InterruptionScope = 'current' | 'upcoming' | 'active' | 'all'
+
+export interface ServiceInterruption {
+  id: number
+  created_at: string
+  updated_at: string
+  service_id: number
+  created_by_id: number | null
+  type: 'MAINTENANCE' | 'INCIDENT'
+  impact: 'DEGRADED' | 'UNAVAILABLE'
+  reason: string
+  alternative: string | null
+  starts_at: string
+  ends_at: string | null
+  service: { id: number; slug: string; name: string }
+  created_by: Pick<User, 'id' | 'name' | 'last_name'> | null
+}

@@ -3,7 +3,6 @@ import { motion } from 'motion/react'
 import { isApiError, messageFor } from '../../../api/errors'
 import { useAdminSettings, useUpdateSettings } from '../../../api/settings'
 import type { HomeSection, PlatformSettings, SettingsAdminView } from '../../../api/types'
-import { DevLogin } from '../../../dev/DevLogin'
 import { useActor } from '../../layout/persona'
 import { formatRelative } from '../../lib/format'
 import { useNow } from '../../lib/useNow'
@@ -61,7 +60,6 @@ function SettingsUnavailable({ error, onRetry }: { error: unknown; onRetry: () =
             ? 'Le compte connecté n’a pas accès aux paramètres de la plateforme. Connectez-vous avec un compte administrateur.'
             : 'Les paramètres de la plateforme ne s’affichent qu’aux administrateurs connectés.'}
         </p>
-        {import.meta.env.DEV && <DevLogin />}
       </Panel>
     )
   }

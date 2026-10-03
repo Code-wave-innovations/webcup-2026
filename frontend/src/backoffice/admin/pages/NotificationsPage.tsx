@@ -85,7 +85,7 @@ export default function NotificationsPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title="Notifications globales"
         codes={['F30', 'D18']}
         lead="Prévenez les habitants au bon moment. Les annonces importantes et les alertes envoient aussi des notifications automatiquement."

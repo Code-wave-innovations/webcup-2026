@@ -1,26 +1,23 @@
-import { useNow } from '../lib/useNow'
-import { useAppointmentStore } from '../stores/appointmentStore'
-import { useCatalogStore } from '../stores/catalogStore'
-import { useContentStore } from '../stores/contentStore'
-import { useRequestStore } from '../stores/requestStore'
+import { useDashboardStats } from '../../api/dashboard'
+import { useInterruptions } from '../../api/interruptions'
 import type { NavItem } from '../nav'
 
-/** Live counters shown next to navigation entries. */
-export function useBadges(): Record<NonNullable<NavItem['badge']>, number> {
-  const now = useNow()
-  const requests = useRequestStore((s) => s.requests)
-  const appointments = useAppointmentStore((s) => s.appointments)
-  const slots = useAppointmentStore((s) => s.slots)
-  const alerts = useContentStore((s) => s.alerts)
-  const interruptions = useCatalogStore((s) => s.interruptions)
+export type BadgeKey = NonNullable<NavItem['badge']>
 
-  const today = new Date(now).toDateString()
-  const slotDay = new Map(slots.map((s) => [s.id, new Date(s.starts_at).toDateString()]))
-
+/**
+ * Live counters shown next to navigation entries, read from the API. A counter the API cannot give yet
+ * stays undefined and is not shown: never a simulated number next to real ones.
+ */
+export function useBadges(): Partial<Record<BadgeKey, number>> {
+  const stats = useDashboardStats()
+  const interruptions = useInterruptions('current')
   return {
-    awaiting: requests.filter((r) => r.status === 'SUBMITTED').length,
-    appointmentsToday: appointments.filter((a) => a.status === 'BOOKED' && slotDay.get(a.slot_id) === today).length,
-    activeAlerts: alerts.filter((a) => a.is_active).length,
-    interruptions: interruptions.filter((i) => new Date(i.starts_at).getTime() <= now && (!i.ends_at || new Date(i.ends_at).getTime() > now)).length,
+    // D17
+    awaiting: stats.data?.requests.awaiting_pickup,
+    // D18, F29, F31
+    activeAlerts: stats.data?.platform.active_alerts,
+    // F38
+    interruptions: interruptions.data?.length,
+    // appointmentsToday: BO-08 adds the date filter the count needs
   }
 }

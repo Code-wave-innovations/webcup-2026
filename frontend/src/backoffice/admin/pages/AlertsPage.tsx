@@ -74,7 +74,7 @@ export default function AlertsPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title="Alertes & communications"
         codes={['D18', 'F29', 'F31']}
         lead="Diffusez une alerte à tous, à des quartiers précis ou aux personnes vulnérables, avec des consignes claires et visibles au bon moment."

@@ -16,6 +16,8 @@ interface ApiFormOptions<TValues, TResult> {
   /** checks run before calling the API, as { field: message } */
   validate?: (values: TValues) => Record<string, string>
   onSuccess?: (result: TResult) => void
+  /** a sentence for the top of the form that says more than `messageFor` (attempts left…); null to keep it */
+  describeError?: (error: unknown) => string | null
 }
 
 /**
@@ -24,7 +26,7 @@ interface ApiFormOptions<TValues, TResult> {
  * `ErrorSummary` after a failure. Pair it with a `Field` whose control id is `fieldId(name)`, and an `ErrorSummary` whose id is
  * `summaryId` (citizen `ui/` and back-office `ui/` both have one).
  */
-export function useApiForm<TValues, TResult>({ labels, submit, validate, onSuccess }: ApiFormOptions<TValues, TResult>) {
+export function useApiForm<TValues, TResult>({ labels, submit, validate, onSuccess, describeError }: ApiFormOptions<TValues, TResult>) {
   const formId = useId()
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -60,7 +62,7 @@ export function useApiForm<TValues, TResult>({ labels, submit, validate, onSucce
       onSuccess?.(result)
     } catch (error) {
       const fields = fieldErrors(error)
-      fail(fields, Object.keys(fields).length ? null : messageFor(error))
+      fail(fields, Object.keys(fields).length ? null : (describeError?.(error) ?? messageFor(error)))
     } finally {
       busy.current = false
       setPending(false)

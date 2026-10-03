@@ -67,7 +67,7 @@ export default function TranslationsPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title="Contenus multilingues"
         codes={['D14', 'F27']}
         lead="Le français est la langue source. Traduisez les contenus essentiels : services, démarches, alertes et annonces."

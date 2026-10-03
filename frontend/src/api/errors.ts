@@ -33,7 +33,10 @@ export function toApiError(error: unknown): ApiError {
     const response = error.response
     if (!response) return new ApiError(0, 'NETWORK_ERROR', error.message)
     const body = response.data as { error?: { code?: string; message?: string; details?: unknown } } | undefined
-    const retryAfter = Number(response.headers?.['retry-after'])
+    // the header, or the same delay in the body (F37 lockouts) when a proxy hides the header
+    const retryAfter = Number(
+      response.headers?.['retry-after'] ?? (body?.error?.details as { retry_after_seconds?: number } | undefined)?.retry_after_seconds,
+    )
     return new ApiError(
       response.status,
       body?.error?.code ?? `HTTP_${response.status}`,

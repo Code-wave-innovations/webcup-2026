@@ -42,7 +42,7 @@ export function Sidebar({ persona, collapsed, onToggleCollapsed, open, onNavigat
             <ul>
               {group.items.map((item) => {
                 const active = isActive(pathname, item.path)
-                const count = item.badge ? badges[item.badge] : 0
+                const count = (item.badge && badges[item.badge]) || 0
                 return (
                   <li key={item.path}>
                     <NavLink

@@ -45,7 +45,7 @@ export default function ServicesPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title="Catalogue des services"
         codes={['D05', 'F28']}
         lead="Activez, décrivez et mettez en avant les services municipaux. L’étoile place un service en tête de la page d’accueil."

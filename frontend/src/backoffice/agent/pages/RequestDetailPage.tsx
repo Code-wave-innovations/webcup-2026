@@ -75,7 +75,7 @@ export default function RequestDetailPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title={request.subject}
         codes={['D11', 'F22', request.type === 'INCIDENT' ? 'F25' : 'F26']}
         lead={

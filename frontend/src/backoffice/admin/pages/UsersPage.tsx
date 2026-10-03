@@ -120,7 +120,7 @@ export default function UsersPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title="Utilisateurs"
         codes={['F34', 'D08']}
         lead="Gérez les comptes citoyens et le personnel. Les mots de passe ne sont jamais visibles ; un compte désactivé perd l’accès immédiatement."

@@ -4,7 +4,7 @@
 > **Réfs :** aucune en propre. Ce plan pose la garde de rôle exigée par D08 et D09, dont les critères sont dans le BO-04. Il pose aussi l'espace de travail distinct exigé par D19, dont les critères sont dans le BO-02.
 > **Dépend de :** la branche `plan-00` (commit `bfd78b4`).
 > **Débloque :** tous les autres plans BO.
-> **Effort :** ≈ 3 h.
+> **Effort :** ≈ 3 h. **Statut :** fait (3 octobre 2026).
 
 ## 1. Objectif
 
@@ -149,16 +149,32 @@ update.mutate(
 
 ## 6. Étapes
 
-- [ ] Fusionner `plan-00` dans `main`, régler les conflits de `project-plan/`, puis `migrate deploy` et `seed`
-- [ ] `StaffLoginPage` et ses routes `/agent/connexion`, `/admin/connexion`
-- [ ] Gardes `RequireStaff` et `RequireAdmin`, redirection en cas d'expiration de session
-- [ ] `useActor()` sur la session, menu profil, déconnexion, « Vue agent / Vue admin » réservé aux admins
-- [ ] Cloche branchée sur les notifications
-- [ ] `useBadges` découpé en un hook par compteur, compteurs masqués tant qu'ils ne sont pas branchés
-- [ ] Palette : navigation selon le rôle, suppression de la bascule de persona pour les agents
-- [ ] Prop `simulated` de `PageHeader`, posée sur tous les écrans encore simulés ; puce « Démo » supprimée
-- [ ] `messageFor` : codes `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`
-- [ ] `CLAUDE.md` : décrire le back-office branché (connexion, gardes, conventions)
+- [x] Fusionner `plan-00` dans `main`, régler les conflits (`App.tsx`, `ui/Button.tsx`, `yarn.lock`), puis `migrate deploy` et `seed`
+- [x] `StaffLoginPage` et ses routes `/agent/connexion`, `/admin/connexion`
+- [x] Garde `RequireStaff` (session, rôle, `/admin` réservé aux admins), redirection en cas d'expiration de session
+- [x] `useActor()` sur la session, menu profil, déconnexion, « Vue agent / Vue admin » réservé aux admins
+- [x] Cloche branchée sur les notifications
+- [x] `useBadges` : un compteur par source, masqué tant qu'il n'est pas branché
+- [x] Palette : bascule de vue réservée aux admins
+- [x] Prop `simulated` de `PageHeader`, posée sur tous les écrans encore simulés ; puce « Démo » supprimée
+- [x] `messageFor` : `FORBIDDEN`, `NOT_FOUND` et `CONFLICT` existaient déjà sur `plan-00`, avec une formulation générale valable pour les deux espaces
+- [x] `CLAUDE.md` : décrire le back-office branché (connexion, gardes, conventions)
+
+### Notes de livraison
+
+- **Lockfile :** `main` est passé à Yarn 4 (`yarn.lock` au format `__metadata: version 8`). Les entrées TanStack Query y ont été ajoutées par `corepack yarn@4.9.2 install --mode=update-lockfile`, sans toucher à `.pnp.cjs`. Les postes en Yarn PnP doivent lancer `yarn install` après la récupération.
+- **Badges :** trois compteurs sont branchés dès ce plan, car leurs endpoints existent :
+  - `awaiting` (`/dashboard/stats`) ;
+  - `activeAlerts` (`/dashboard/stats`) ;
+  - `interruptions` (`/service-interruptions?scope=current`).
+
+  `appointmentsToday` reste masqué jusqu'au BO-08, faute de filtre par date. L'indicateur « N perturbations » de la barre du haut lit les mêmes données réelles.
+- **Palette ⌘K :** la recherche de demandes lit encore `requestStore`, comme les écrans de demandes vers lesquels elle mène. Elle bascule avec le BO-01.
+- **Backend :**
+  - CORS expose `Retry-After` (`exposedHeaders`) ;
+  - `toApiError` lit aussi `details.retry_after_seconds`, au cas où un proxy masque l'en-tête ;
+  - sans l'un des deux, le compte à rebours de blocage (F37) n'avait pas de durée.
+- **Expiration de session :** le drapeau de `layout/sessionNotice.ts` est lu par `RequireStaff`. Une navigation déclenchée depuis l'événement `nova:session-expired` arrivait après celle de la garde, car React Router fait ses navigations en transition. C'est pourquoi on passe par ce drapeau.
 
 ## 7. Critères de sortie
 

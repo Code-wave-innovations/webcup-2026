@@ -34,7 +34,7 @@ export default function ActivityPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader title="Activité & historique" codes={['F47', 'F48']} lead="Qui a modifié quoi, et quand. Chaque changement montre la valeur avant et après." />
+      <PageHeader simulated title="Activité & historique" codes={['F47', 'F48']} lead="Qui a modifié quoi, et quand. Chaque changement montre la valeur avant et après." />
 
       <motion.div className={layout.stats} variants={stagger}>
         <StatTile label="Mes actions" value={mine.length} icon="user" tone="ice" />
