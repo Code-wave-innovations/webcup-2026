@@ -84,6 +84,8 @@ export async function preprocessAudio(
   await fs.mkdir(workDir, { recursive: true });
   const pcmPath = path.join(workDir, "output.pcm");
 
+  // Denoise: cut rumble below speech band, then FFT-based noise reduction.
+  // Keeps the STT from transcribing background hum/hiss as phantom words.
   await execFileAsync("ffmpeg", [
     "-y",
     "-i",
@@ -92,10 +94,78 @@ export async function preprocessAudio(
     "1",
     "-ar",
     "16000",
+    "-af",
+    "highpass=f=80,afftdn=nf=-25",
     "-f",
     "s16le",
     pcmPath,
   ]);
 
   return { pcmPath, durationSec };
+}
+
+/**
+ * Measures speech energy over raw s16le PCM. Returns the fraction of 20 ms
+ * frames whose RMS exceeds the threshold, plus the longest continuous
+ * speech run in ms. Used to reject chunks that contain no speech at all
+ * (silence/background noise) before they reach the STT provider, which
+ * would otherwise hallucinate text on them.
+ */
+export function analyzeSpeechEnergy(
+  pcm: Buffer,
+  options: { threshold?: number; frameMs?: number } = {},
+): { speechRatio: number; longestSpeechMs: number } {
+  const threshold = options.threshold ?? 0.015;
+  const frameMs = options.frameMs ?? 20;
+  const frameSamples = Math.max(1, Math.round((16000 * frameMs) / 1000));
+  const frames = Math.floor(pcm.length / 2 / frameSamples);
+  if (frames === 0) return { speechRatio: 0, longestSpeechMs: 0 };
+
+  let speechFrames = 0;
+  let longestRun = 0;
+  let currentRun = 0;
+  for (let f = 0; f < frames; f++) {
+    let sum = 0;
+    const base = f * frameSamples * 2;
+    for (let i = 0; i < frameSamples; i++) {
+      const sample = pcm.readInt16LE(base + i * 2) / 32768;
+      sum += sample * sample;
+    }
+    if (Math.sqrt(sum / frameSamples) >= threshold) {
+      speechFrames++;
+      currentRun++;
+      if (currentRun > longestRun) longestRun = currentRun;
+    } else {
+      currentRun = 0;
+    }
+  }
+
+  return {
+    speechRatio: speechFrames / frames,
+    longestSpeechMs: longestRun * frameMs,
+  };
+}
+
+/**
+ * Decodes any container audio (webm/opus, wav, …) to raw s16le 16 kHz mono
+ * PCM with light denoising, for energy analysis of realtime chunks.
+ */
+export async function decodeToPcm(
+  inputPath: string,
+  pcmPath: string,
+): Promise<void> {
+  await execFileAsync("ffmpeg", [
+    "-y",
+    "-i",
+    inputPath,
+    "-ac",
+    "1",
+    "-ar",
+    "16000",
+    "-af",
+    "highpass=f=80,afftdn=nf=-25",
+    "-f",
+    "s16le",
+    pcmPath,
+  ]);
 }

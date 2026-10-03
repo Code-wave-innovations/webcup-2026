@@ -46,7 +46,6 @@ def health():
             "engine": "insightface" if pipe.ready else "insightface_lazy",
             "engine_loaded": pipe.ready,
             "identities": store.count(),
-            "emotion": pipe.emotion.available,
             "liveness_backend": pipe.liveness.backend,
             "liveness_hint": anti_spoof_model_hint(),
             "thresholds": {
@@ -173,7 +172,6 @@ def identify():
     result = pipe.analyze(
         image,
         check_liveness=REQUIRE_LIVENESS_IDENTIFY,
-        check_emotion=False,
     )
     if "embedding" not in result:
         return jsonify(_public_analyze(result)), 400
@@ -240,28 +238,6 @@ def verify():
     if not matched:
         body["error"] = "mismatch"
         return jsonify(body), 401
-    return jsonify(body)
-
-
-@bp.post("/emotion")
-@require_api_key
-def emotion():
-    data, err = read_image_bytes(request)
-    if err:
-        return jsonify({"ok": False, "error": err}), 400
-    pipe = _pipeline()
-    image = pipe.decode_image(data)
-    if image is None:
-        return jsonify({"ok": False, "error": "Invalid image"}), 400
-
-    result = pipe.analyze(image, check_emotion=True)
-    body = _public_analyze(result)
-    if not result.get("ok") and "embedding" not in result:
-        return jsonify(body), 400
-    if not body.get("emotion"):
-        return jsonify({"ok": False, "error": "No face detected or emotion unavailable"}), 400
-    body["ok"] = True
-    body["label"] = body["emotion"]["label"]
     return jsonify(body)
 
 

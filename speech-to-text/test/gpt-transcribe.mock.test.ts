@@ -98,8 +98,37 @@ test("createGptTranscribeProvider uses gpt-4o-transcribe when timestamps disable
   assert.equal(body.model, GPT_TRANSCRIBE_MODEL);
   assert.equal(body.response_format, "json");
   assert.equal(body.language, "en");
-  assert.equal(body.prompt, "ERP terms");
+  assert.match(String(body.prompt), /Hello/);
+  assert.match(String(body.prompt), /ERP terms/);
   assert.equal(body.timestamp_granularities, undefined);
+});
+
+test("createGptTranscribeProvider omits language for mg and prompts Malagasy", async () => {
+  const calls: unknown[] = [];
+  const provider = createGptTranscribeProvider("sk-test", {
+    createReadStream: () => ({}) as ReturnType<typeof import("node:fs").createReadStream>,
+    client: {
+      audio: {
+        transcriptions: {
+          create: async (body: unknown) => {
+            calls.push(body);
+            return { text: "Manao ahoana" };
+          },
+        },
+      },
+    },
+  });
+
+  await provider.transcribe({
+    audioPath: "/tmp/sample.wav",
+    timestamps: false,
+    languageHints: ["mg"],
+  });
+
+  assert.equal(calls.length, 1);
+  const body = calls[0] as Record<string, unknown>;
+  assert.equal(body.language, undefined);
+  assert.match(String(body.prompt), /Manao ahoana|Misaotra/i);
 });
 
 test("createGptTranscribeProvider uses whisper verbose_json when timestamps enabled", async () => {

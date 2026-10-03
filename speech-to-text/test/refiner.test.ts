@@ -8,12 +8,12 @@ import {
 } from "../src/modules/refiner/claude-refiner.js";
 
 test("REFINER_SYSTEM_PROMPT includes global refiner constraints", () => {
-  assert.match(REFINER_SYSTEM_PROMPT, /Do not translate/i);
-  assert.match(REFINER_SYSTEM_PROMPT, /Do not invent content/i);
+  assert.match(REFINER_SYSTEM_PROMPT, /Do not invent facts/i);
   assert.match(REFINER_SYSTEM_PROMPT, /ASR errors, punctuation, and casing/i);
-  assert.match(REFINER_SYSTEM_PROMPT, /Preserve original languages and code-switching/i);
-  assert.match(REFINER_SYSTEM_PROMPT, /Prefer dictionary spellings when phonetically plausible/i);
+  assert.match(REFINER_SYSTEM_PROMPT, /dictionaryTerms/i);
   assert.match(REFINER_SYSTEM_PROMPT, /text only, never audio/i);
+  assert.match(REFINER_SYSTEM_PROMPT, /languageHints includes "mg"/i);
+  assert.match(REFINER_SYSTEM_PROMPT, /ONLY \["mg"\]/i);
 });
 
 test("parseRefinerResponse parses JSON transcript payload", () => {
