@@ -47,6 +47,26 @@ async function probeDurationSec(inputPath: string): Promise<number> {
   return durationSec;
 }
 
+/** Wraps raw s16le 16kHz mono PCM in a WAV container (needed by container-only STT providers). */
+export async function pcmToWav(
+  pcmPath: string,
+  wavPath: string = pcmPath.replace(/\.pcm$/i, "") + ".wav",
+): Promise<string> {
+  await execFileAsync("ffmpeg", [
+    "-y",
+    "-f",
+    "s16le",
+    "-ar",
+    "16000",
+    "-ac",
+    "1",
+    "-i",
+    pcmPath,
+    wavPath,
+  ]);
+  return wavPath;
+}
+
 export async function preprocessAudio(
   inputPath: string,
   workDir: string,
