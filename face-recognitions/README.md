@@ -57,6 +57,32 @@ docker build -t face-engine .
 docker run --rm -p 9000:9000 -e FACE_API_KEY=secret face-engine
 ```
 
+## Production (VPS + DuckDNS + SSL)
+
+Requirements: Linux VPS, Docker + Compose plugin, ports 80/443 open, free [DuckDNS](https://www.duckdns.org) subdomain.
+
+1. Create a DuckDNS subdomain and copy the token.
+2. On the VPS:
+
+```bash
+cd face-recognitions
+cp .env.prod.example .env.prod
+# Edit DOMAIN, DUCKDNS_SUBDOMAIN, DUCKDNS_TOKEN, LETSENCRYPT_EMAIL, FACE_API_KEY, FACE_CORS_ORIGINS
+./deploy/certbot/init-ssl.sh
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+curl -fsS https://$DOMAIN/health
+```
+
+3. Point the frontend `VITE_FACE_API_URL` to `https://your-subdomain.duckdns.org`.
+
+Renewal is automatic (certbot container every 12h). After renew, recreate/reload nginx if needed:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec nginx nginx -s reload
+```
+
+Local/simple Docker without TLS remains: `docker compose up -d` (see `docker-compose.yml`).
+
 ## Calibrated thresholds (starting points)
 
 Documented defaults for `buffalo_s` on webcam RGB:
