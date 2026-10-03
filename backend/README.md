@@ -31,6 +31,7 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 | `GET/PATCH /api/me` · `PATCH /api/me/password` · `POST /api/me/onboarding/complete` | logged in | D03, D12, D14, F23/F24 (`preferences`) |
 | `DELETE /api/me` body `{ password, confirm: true }` | citizen | F33 |
 | `GET /api/users` · `GET/PATCH/DELETE /api/users/:id` · `POST /api/users/:id/unlock-login` | staff (agents: citizens only, no email/password/role changes) | D08, D09, F34 |
+| `GET /api/users/staff` | staff | F22 (active agents and admins a request can be assigned to) |
 | `POST /api/users` | admin | D08 |
 | `GET /api/security/overview` · `GET /api/security/login-attempts` | admin | F37 |
 | `GET /api/home` | public | D07 (alerts, featured services, categories, news) |
@@ -42,11 +43,15 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 | `GET /api/districts[/:id]` · write: admin | public | F25, F29 |
 | `GET /api/translations/schema` · `GET/PUT /api/translations` · `DELETE /api/translations/:id` | admin | F27 |
 | `POST /api/requests` | public for `CONTACT`, logged in otherwise | D04, D11, D16, F25 |
-| `GET /api/requests?scope=open\|needs_action\|closed&status=&type=&assigned=me\|none&q=&sort=` | citizen: own · staff: all | F22, F26 |
+| `GET /api/requests?scope=open\|needs_action\|closed&status=&type=&priority=&district_id=&assigned=me\|none\|<id>&citizen_id=&q=&sort=` | citizen: own · staff: all (`citizen_id` staff only) | F22, F26 |
 | `GET /api/requests/:id` · `POST /api/requests/:id/comments` | owner or staff | D11 |
-| `PATCH /api/requests/:id` (status, priority, assigned_agent_id, note) | staff | F22 |
+| `PATCH /api/requests/:id` (status, priority, assigned_agent_id, note, internal_note) | staff | F22, F49 (`WAITING_CITIZEN`, `REJECTED`, `RESOLVED` need a public `note`, else 400 on `note`; the response adds `citizen_notified`; an `ASSIGNED` event keeps the assignee's name in `message`) |
+| `POST /api/requests/bulk { ids, assigned_agent_id?, priority? }` | staff | F22, D17 (one event per request) |
 | `DELETE /api/requests/:id` | admin | |
-| `GET /api/dashboard/stats` | staff | D17, D19 |
+| `GET /api/dashboard/stats` | staff | D17, D19, F22, F25 (adds `open_by_agent`, `overdue`/`overdue_count`, `incidents_by_district`, `appointments.today`) |
+| `GET /api/dashboard/trends?days=14` | staff | D19 (per day: created/resolved by type, new citizens, appointments, median pickup; median pickup per service; weekday × 2 h heatmap) |
+| `GET /api/dashboard/activity?limit=10` | staff | F22, D19 (latest staff events on requests, until the audit log) |
+| `GET /api/dashboard/summary?period=today\|7d\|30d` | staff | F50 (indicators vs the previous period, `watch` list with server-written labels; overdue delays in `OVERDUE_HOURS`) |
 | `GET /api/announcements` · `GET /api/announcements/:id` | public | D06 |
 | `POST /api/announcements` · `PATCH /:id` · `POST /:id/publish` · `DELETE /:id` | staff | D06, F30 |
 | `GET /api/alerts/active` · `GET /api/alerts/:id` | public | D18, F29, F31 |

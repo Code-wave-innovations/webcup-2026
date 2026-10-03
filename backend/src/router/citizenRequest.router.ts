@@ -7,6 +7,7 @@ const citizenRequestRouter = express.Router();
 // optionalAuth: visitors can send a CONTACT request (D04)
 citizenRequestRouter.post("/", rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), optionalAuth, citizenRequestController.create);
 citizenRequestRouter.get("/", authenticate, citizenRequestController.getAll);
+citizenRequestRouter.post("/bulk", authenticate, requireStaff, citizenRequestController.bulkUpdate);
 citizenRequestRouter.get("/:id", authenticate, citizenRequestController.getOne);
 citizenRequestRouter.post("/:id/comments", authenticate, citizenRequestController.addComment);
 citizenRequestRouter.patch("/:id", authenticate, requireStaff, citizenRequestController.update);

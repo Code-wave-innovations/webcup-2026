@@ -1,16 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
+import { messageFor } from '../../../api/errors'
+import { useRequests } from '../../../api/requests'
+import { useCitizens } from '../../../api/users'
 import { formatRelative } from '../../lib/format'
-import { districtName } from '../../lib/lookups'
 import { useNow } from '../../lib/useNow'
 import { RequestTable } from '../../shared/RequestTable'
 import { CitizenCard } from '../../shared/CitizenCard'
-import { useAppointmentStore } from '../../stores/appointmentStore'
-import { useRequestStore } from '../../stores/requestStore'
-import { useUserStore } from '../../stores/userStore'
 import { Flag } from '../../ui/Badges'
 import { SearchInput } from '../../ui/Controls'
-import { Avatar, EmptyState } from '../../ui/Feedback'
+import { Avatar, EmptyState, Skeleton } from '../../ui/Feedback'
 import { PageHeader } from '../../ui/PageHeader'
 import { Panel } from '../../ui/Panel'
 import { stagger } from '../../ui/motion'
@@ -20,33 +19,42 @@ import styles from './agent.module.css'
 /** F34: look up a citizen and see only what is needed to process their requests. */
 export default function CitizensPage() {
   const now = useNow()
-  const users = useUserStore((s) => s.users)
-  const requests = useRequestStore((s) => s.requests)
-  const appointments = useAppointmentStore((s) => s.appointments)
   const [query, setQuery] = useState('')
+  const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
-  const q = query.trim().toLowerCase()
-  const citizens = users
-    .filter((u) => u.role === 'CITIZEN')
-    .filter((u) => !q || `${u.name} ${u.last_name} ${u.email} ${u.phone ?? ''}`.toLowerCase().includes(q))
+  // The directory is searched on the server once typing pauses
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  const directory = useCitizens(search)
+  const citizens = directory.data?.data ?? []
   const selected = citizens.find((c) => c.id === selectedId) ?? citizens[0]
-  const theirRequests = selected ? requests.filter((r) => r.citizen_id === selected.id) : []
+  const theirRequests = useRequests({ citizen_id: selected?.id, limit: 20, sort: 'newest' }, selected !== undefined)
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader simulated
+      <PageHeader
         title="Citoyens"
         codes={['F34']}
         lead="Consultation des informations nécessaires au traitement. Les identifiants et mots de passe ne sont jamais accessibles aux agents."
       />
 
       <div className={[layout.grid, layout.split].join(' ')}>
-        <Panel kicker="Annuaire" title={`${citizens.length} citoyen${citizens.length > 1 ? 's' : ''}`} flush>
+        <Panel
+          kicker="Annuaire"
+          title={directory.data ? `${directory.data.meta.total} citoyen${directory.data.meta.total > 1 ? 's' : ''}` : 'Citoyens'}
+          flush
+          aria-busy={directory.isFetching}
+        >
           <div className={layout.toolbar}>
-            <SearchInput label="Nom, e-mail, téléphone… (touche /)" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <SearchInput label="Nom, e-mail… (touche /)" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          {citizens.length === 0 ? (
+          {!directory.data ? (
+            directory.isError ? <EmptyState title={messageFor(directory.error)} icon="alert" /> : <Skeleton lines={6} />
+          ) : citizens.length === 0 ? (
             <EmptyState title="Aucun citoyen trouvé" icon="users" />
           ) : (
             <ul className={styles.citizenList}>
@@ -57,13 +65,10 @@ export default function CitizensPage() {
                     <span>
                       {c.name} {c.last_name}
                       <small>
-                        {districtName(c.district_id)} · {c.last_login_at ? `vu·e ${formatRelative(c.last_login_at, now)}` : 'jamais connecté·e'}
+                        {c.district?.name ?? 'Quartier non renseigné'} · {c.last_login_at ? `vu·e ${formatRelative(c.last_login_at, now)}` : 'jamais connecté·e'}
                       </small>
                     </span>
-                    <span className={layout.row}>
-                      {c.is_vulnerable && <Flag icon="alert" tone="progress">Vulnérable</Flag>}
-                      {c.login_locked && <Flag icon="lock" tone="alert">Verrouillé</Flag>}
-                    </span>
+                    <span className={layout.row}>{c.is_vulnerable && <Flag icon="alert" tone="progress">Vulnérable</Flag>}</span>
                   </button>
                 </li>
               ))}
@@ -73,18 +78,18 @@ export default function CitizensPage() {
 
         {selected && (
           <Panel kicker="Fiche" title={`${selected.name} ${selected.last_name}`} accent="ice">
-            <CitizenCard
-              citizen={selected}
-              requests={theirRequests.length}
-              appointments={appointments.filter((a) => a.citizen_id === selected.id).length}
-            />
+            <CitizenCard citizen={selected} requests={theirRequests.data?.meta.total} />
           </Panel>
         )}
       </div>
 
       {selected && (
         <Panel kicker="F26" title={`Demandes de ${selected.name} ${selected.last_name}`} flush>
-          <RequestTable requests={theirRequests} caption={`Demandes de ${selected.name} ${selected.last_name}`} />
+          {theirRequests.data ? (
+            <RequestTable requests={theirRequests.data.data} caption={`Demandes de ${selected.name} ${selected.last_name}`} />
+          ) : (
+            <Skeleton lines={4} />
+          )}
         </Panel>
       )}
     </motion.div>

@@ -285,3 +285,44 @@
   color: var(--color-text-muted);
   font-size: 12.5px;
 }
+
+/* D19: the feed failed to refresh, the last data stays on screen */
+.feedWarning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-alert);
+  background: color-mix(in srgb, var(--color-alert) 10%, transparent);
+  font-size: 13.5px;
+}
+
+/* F49: the notification the citizen will receive */
+.notifyPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px dashed var(--color-ice);
+  background: var(--color-glass-light);
+  font-size: 13.5px;
+}
+
+/* F25: photo sent with the report */
+.reportPhoto {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border: 1px solid var(--color-line-thin);
+}
+
+/* D04: reply to a visitor without an account */
+.mailLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--color-ice);
+  color: var(--color-ice-bright);
+  font-size: 13.5px;
+}

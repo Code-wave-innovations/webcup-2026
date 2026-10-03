@@ -39,3 +39,20 @@ export function ageTone(iso: string, now: number): 'ok' | 'progress' | 'alert' {
 
 export const initials = (name: string, lastName = '') =>
   `${name.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?'
+
+/** Time left before a deadline: "42:07", or "1 h 05" past an hour. */
+export function formatCountdown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  if (hours > 0) return `${hours} h ${String(minutes).padStart(2, '0')}`
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+/** A duration in hours said in words: "45 min", "6 h", "2 j". */
+export function formatHours(hours: number): string {
+  if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} min`
+  if (hours < 48) return `${Math.round(hours)} h`
+  return `${Math.round(hours / 24)} j`
+}

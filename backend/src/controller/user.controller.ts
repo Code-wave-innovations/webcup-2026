@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import type { Prisma } from "@prisma/client";
 import { Role } from "@prisma/client";
 import { z } from "zod";
+import prisma from "../lib/prisma";
 import userModel from "../model/user.model";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { hashPassword } from "../lib/password";
@@ -65,6 +66,17 @@ const userController = {
     const { skip, take } = toSkipTake(pagination);
     const [data, total] = await userModel.list(where, skip, take);
     res.json({ data, meta: pageMeta(pagination, total) });
+  },
+
+  // Who a request can be assigned to (F22, BO-01): every active agent and admin, for all staff
+  staff: async (_req: Request, res: Response) => {
+    res.json(
+      await prisma.user.findMany({
+        where: { role: { in: ["AGENT", "ADMIN"] }, is_active: true },
+        select: { id: true, name: true, last_name: true, email: true, role: true },
+        orderBy: [{ name: "asc" }, { last_name: "asc" }],
+      })
+    );
   },
 
   getOne: async (req: Request, res: Response) => {

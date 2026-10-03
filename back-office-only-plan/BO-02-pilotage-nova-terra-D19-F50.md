@@ -157,12 +157,21 @@ Objectif : comprendre l'activité en 10 secondes, sans lire un graphique.
 
 ## 7. Étapes
 
-- [ ] Backend : `GET /api/dashboard/trends` et `GET /api/dashboard/summary`
-- [ ] `src/api/terraNova.ts` et `NovaTerraPage` : flux réel, compte à rebours, nouvelle vague, filtres, erreurs
-- [ ] Encart Nova Terra du tableau de bord agent
-- [ ] Composant `SimpleDashboard` et bascule de vue sur les deux tableaux de bord
-- [ ] `AdminOverviewPage` sur données réelles
+- [x] Backend : `GET /api/dashboard/trends` et `GET /api/dashboard/summary`
+- [x] `src/api/terraNova.ts` et `NovaTerraPage` : flux réel, compte à rebours, nouvelle vague, filtres, erreurs
+- [x] Encart Nova Terra du tableau de bord agent
+- [x] Composant `SimpleDashboard` et bascule de vue sur les deux tableaux de bord
+- [x] `AdminOverviewPage` sur données réelles
 - [ ] Facultatif : `FeatureDelivery` et statut de livraison sur les cartes
+
+**Réalisé (3 octobre 2026) :**
+- **Retard :** une demande est en retard quand la ville doit encore agir au-delà d'un délai qui dépend de la priorité (`OVERDUE_HOURS` dans `backend/src/model/dashboard.model.ts` : 4 h urgente, 24 h haute, 72 h normale, 120 h basse).
+- **Prise en charge :** premier événement `ASSIGNED` ou `STATUS_CHANGED` écrit par un agent ou un admin.
+- **« Résolues » :** statut `RESOLVED` ou `CLOSED`, comptées à `resolved_at`.
+- **Carte de chaleur :** en attendant `AuditLog` (BO-03), les actions du personnel sont lues dans `RequestEvent`.
+- **Rendez-vous :** `stats.appointments.today` compte toute la journée (le compteur de menu `appointmentsToday` est branché). La période « Aujourd'hui » du résumé compare la journée entière à celle d'hier.
+- **Panneaux qui dépendaient d'autres plans :** la file et le radar de l'agent lisent `stats` (prise en charge depuis la file, BO-01). Les fils « Activité de l'équipe » et « Activité du personnel » lisent `GET /api/dashboard/activity` (actions du personnel sur les demandes) ; le journal d'audit complet reste au BO-03.
+- **Nettoyage :** `mocks/terraNova.ts` et `mocks/stats.ts` sont supprimés. `mocks/time.ts` reste, car d'autres mocks le lisent. Le graphique par service de `RequestsSupervisionPage` lit `trends(30).pickup_by_service`.
 
 ## 8. Critères d'acceptation
 

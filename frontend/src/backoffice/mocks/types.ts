@@ -264,29 +264,3 @@ export interface PlatformSettings {
   login_lock_minutes: number
   reminder_default_minutes: number
 }
-
-/** D19: payload of the official Terra Nova API (GET /api/terra-nova/requests). */
-export interface TerraNovaRequest {
-  id: number
-  request_code: string
-  requester_name: string
-  requester_type: string
-  message_public: string
-  difficulty: 'Facile' | 'Moyenne' | 'Difficile'
-  xp_total: number
-  group_name: string
-  wave_number: number | null
-  is_ai_request: boolean
-}
-
-export interface TerraNovaFeed {
-  session: {
-    status: string
-    current_wave: number
-    elapsed_minutes: number
-    visible_requests_count: number
-    next_wave_number: number
-    minutes_until_next_wave: number
-  }
-  requests: TerraNovaRequest[]
-}

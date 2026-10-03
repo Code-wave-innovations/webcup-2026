@@ -6,6 +6,7 @@ const userRouter = express.Router();
 // Agents manage citizen accounts only (F34); the controller enforces the scope.
 userRouter.use(authenticate, requireStaff);
 userRouter.get("/", userController.getAll);
+userRouter.get("/staff", userController.staff);
 userRouter.get("/:id", userController.getOne);
 userRouter.post("/", requireAdmin, userController.create);
 userRouter.patch("/:id", userController.update);

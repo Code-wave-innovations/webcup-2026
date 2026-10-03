@@ -82,6 +82,8 @@ export function messageFor(error: unknown): string {
 function frenchFieldMessage(message: string): string {
   let match: RegExpMatchArray | null
   if (/^Required$/i.test(message)) return 'Ce champ est obligatoire.'
+  if (/public note is required/i.test(message))
+    return 'Ce changement doit être expliqué à l’habitant : dites ce qu’il doit faire ou ce qui a été fait.'
   if ((match = message.match(/at least (\d+) character/i))) return `Saisissez au moins ${match[1]} caractères.`
   if ((match = message.match(/at most (\d+) character/i))) return `${match[1]} caractères au maximum.`
   if (/invalid email/i.test(message)) return 'Saisissez une adresse e-mail valide, par exemple nom@exemple.fr.'
