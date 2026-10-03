@@ -141,6 +141,8 @@ export class RealtimeSession {
   private closed = false;
   private consecutiveRefineFailures = 0;
   private refineCircuitOpen = false;
+  private stt: SttProvider | null = null;
+  private pendingRefines = new Set<Promise<void>>();
 
   constructor(
     private readonly deps: RealtimeSessionDeps = {},
@@ -148,6 +150,17 @@ export class RealtimeSession {
 
   async start(options: RealtimeSessionOptions): Promise<void> {
     this.options = options;
+    if (this.deps.sttProvider) {
+      this.stt = this.deps.sttProvider;
+    } else {
+      const realtimeModel =
+        this.deps.config?.OPENROUTER_REALTIME_STT_MODEL ??
+        this.deps.config?.OPENROUTER_STT_MODEL;
+      this.stt = createOpenRouterSttProvider(this.deps.config?.OPENROUTER_API_KEY ?? "", {
+        model: realtimeModel,
+        baseUrl: this.deps.config?.OPENROUTER_BASE_URL,
+      });
+    }
     const makeWorkDir = this.deps.makeWorkDir ?? (() => fs.mkdtemp(path.join(os.tmpdir(), "stt-rt-")));
     this.workDir = await makeWorkDir();
     logMetric("realtime.session_started", {
@@ -191,15 +204,7 @@ export class RealtimeSession {
       return out;
     }
 
-    const realtimeModel =
-      this.deps.config?.OPENROUTER_REALTIME_STT_MODEL ??
-      this.deps.config?.OPENROUTER_STT_MODEL;
-    const stt =
-      this.deps.sttProvider ??
-      createOpenRouterSttProvider(this.deps.config?.OPENROUTER_API_KEY ?? "", {
-        model: realtimeModel,
-        baseUrl: this.deps.config?.OPENROUTER_BASE_URL,
-      });
+    const stt = this.stt!;
     let sttResult: SttResult;
     try {
       sttResult = await stt.transcribe({
@@ -261,55 +266,71 @@ export class RealtimeSession {
       return out;
     }
 
-    const refine =
-      this.deps.refine ??
-      createClaudeRefiner(this.deps.config?.ANTHROPIC_API_KEY ?? "", {
-        model: this.deps.config?.CLAUDE_REFINER_MODEL,
-      }).refineTranscript;
-    try {
-      const dictionaryTerms = dictionaryTermsForHints(this.options.languageHints);
-      const refined = await refine({
-        text,
-        segments: sttResult.segments,
-        languageHints: this.options.languageHints,
-        context: this.options.context,
-        ...(dictionaryTerms ? { dictionaryTerms } : {}),
-      });
-      this.consecutiveRefineFailures = 0;
-      logMetric("realtime.refine_completed", {
-        sessionId: this.id,
-        languageHints: this.options.languageHints,
-      });
-      const refinedText = refined.text.trim();
-      if (refinedText && refinedText !== text) {
-        push({
-          type: "transcript.refined",
-          text: refinedText,
-          utteranceId,
-          ...(sttResult.confidence != null ? { confidence: sttResult.confidence } : {}),
-          segments: refined.segments,
+    // Fire-and-forget: never block the next chunk on Claude. The refined event
+    // is delivered later through `emit` (it is not part of the returned array).
+    const optionsSnapshot = this.options;
+    const confidenceSnapshot = sttResult.confidence;
+    const segmentsSnapshot = sttResult.segments;
+    const refinePromise = (async () => {
+      if (this.closed) return;
+      const refine =
+        this.deps.refine ??
+        createClaudeRefiner(this.deps.config?.ANTHROPIC_API_KEY ?? "", {
+          model: this.deps.config?.CLAUDE_REFINER_MODEL,
+        }).refineTranscript;
+      try {
+        const dictionaryTerms = dictionaryTermsForHints(optionsSnapshot.languageHints);
+        const refined = await refine({
+          text,
+          segments: segmentsSnapshot,
+          languageHints: optionsSnapshot.languageHints,
+          context: optionsSnapshot.context,
+          ...(dictionaryTerms ? { dictionaryTerms } : {}),
         });
-      }
-    } catch (err) {
-      this.consecutiveRefineFailures += 1;
-      if (this.consecutiveRefineFailures >= 3) {
-        this.refineCircuitOpen = true;
-        logMetric("realtime.refine_circuit_open", {
+        if (this.closed) return;
+        this.consecutiveRefineFailures = 0;
+        logMetric("realtime.refine_completed", {
           sessionId: this.id,
-          failures: this.consecutiveRefineFailures,
+          languageHints: optionsSnapshot.languageHints,
+        });
+        const refinedText = refined.text.trim();
+        if (refinedText && refinedText !== text) {
+          const event: RefinedEvent = {
+            type: "transcript.refined",
+            text: refinedText,
+            utteranceId,
+            ...(confidenceSnapshot != null ? { confidence: confidenceSnapshot } : {}),
+            segments: refined.segments,
+          };
+          emit?.(event);
+        }
+      } catch (err) {
+        this.consecutiveRefineFailures += 1;
+        if (this.consecutiveRefineFailures >= 3) {
+          this.refineCircuitOpen = true;
+          logMetric("realtime.refine_circuit_open", {
+            sessionId: this.id,
+            failures: this.consecutiveRefineFailures,
+          });
+        }
+        logMetric("realtime.refine_failed", {
+          sessionId: this.id,
+          error: err instanceof Error ? err.message : String(err),
         });
       }
-      logMetric("realtime.refine_failed", {
-        sessionId: this.id,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
+    })();
+
+    this.pendingRefines.add(refinePromise);
+    void refinePromise.finally(() => this.pendingRefines.delete(refinePromise));
+
     return out;
   }
 
   async end(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
+    await Promise.allSettled([...this.pendingRefines]);
+    this.pendingRefines.clear();
     if (this.workDir) {
       await fs.rm(this.workDir, { recursive: true, force: true }).catch(() => undefined);
       this.workDir = null;

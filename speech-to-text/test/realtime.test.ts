@@ -40,6 +40,8 @@ interface FakeSttResult {
 async function harness(opts: {
   sttResult?: FakeSttResult;
   refineResult?: { text: string; segments: FakeSttResult["segments"] } | { error: Error };
+  /** If set, refine waits on this promise before resolving (for overlap tests). */
+  refineGate?: { promise: Promise<void> };
 } = {}) {
   ensureTestEnv();
   const { buildApp } = await import("../src/app.js");
@@ -63,6 +65,7 @@ async function harness(opts: {
   let refineCalls = 0;
   const fakeRefine = async () => {
     refineCalls++;
+    if (opts.refineGate) await opts.refineGate.promise;
     const r = opts.refineResult;
     if (r && "error" in r) throw r.error;
     return { text: r?.text ?? "Bonjour le monde !", segments: r?.segments ?? [] };
@@ -103,6 +106,7 @@ async function harness(opts: {
 
   function openSocket(token: string): Promise<WebSocket> {
     const ws = new WebSocket(`ws://127.0.0.1:${port}/v1/transcriptions/realtime?token=${token}`);
+    bufferMessages(ws);
     return new Promise((resolve, reject) => {
       ws.once("open", () => resolve(ws));
       ws.once("error", reject);
@@ -110,9 +114,7 @@ async function harness(opts: {
   }
 
   function nextMessage(ws: WebSocket): Promise<Record<string, any>> {
-    return new Promise((resolve) => {
-      ws.once("message", (data) => resolve(JSON.parse(data.toString())));
-    });
+    return h_nextMessage(ws);
   }
 
   function closedOnce(ws: WebSocket): Promise<{ code: number }> {
@@ -264,6 +266,100 @@ test("WS BALANCED mode: refine produces final text, refine failure falls back to
   );
 });
 
+test("WS BALANCED: second chunk STT starts while refine still in flight", async () => {
+  let releaseRefine!: () => void;
+  const refineGate = {
+    promise: new Promise<void>((resolve) => {
+      releaseRefine = resolve;
+    }),
+  };
+
+  await withSocket(
+    {
+      sttResult: {
+        text: "premiere phrase",
+        confidence: 0.4,
+        segments: [{ startMs: 0, endMs: 400, text: "premiere phrase" }],
+      },
+      refineResult: {
+        text: "Première phrase",
+        segments: [{ startMs: 0, endMs: 400, text: "Première phrase" }],
+      },
+      refineGate,
+    },
+    async (h, ws) => {
+      ws.send(JSON.stringify({ type: "session.start", mode: "BALANCED" }));
+      await h.nextMessage(ws);
+
+      ws.send(Buffer.from("chunk-one"));
+      assert.equal((await h.nextMessage(ws)).type, "transcript.partial");
+      assert.equal((await h.nextMessage(ws)).type, "transcript.final");
+      assert.equal(h.refineCalls(), 1);
+      assert.equal(h.sttCalls.length, 1);
+
+      // Must not block: second chunk STT while refine held
+      ws.send(Buffer.from("chunk-two"));
+      const partial2 = await h.nextMessage(ws);
+      assert.equal(partial2.type, "transcript.partial");
+      assert.equal(h.sttCalls.length, 2);
+
+      releaseRefine();
+      let msg = await h.nextMessage(ws);
+      while (msg.type !== "transcript.refined") {
+        msg = await h.nextMessage(ws);
+      }
+      assert.equal(msg.type, "transcript.refined");
+    },
+  );
+});
+
+test("RealtimeSession BALANCED: handleChunk returns before refine resolves; STT provider reused", async () => {
+  ensureTestEnv();
+  const { RealtimeSession } = await import("../src/modules/realtime/session.js");
+
+  let releaseRefine!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    releaseRefine = resolve;
+  });
+  let sttCalls = 0;
+  const events: Record<string, any>[] = [];
+  const session = new RealtimeSession({
+    sttProvider: {
+      name: "fake-stt",
+      transcribe: async () => {
+        sttCalls++;
+        return {
+          text: "premiere phrase",
+          confidence: 0.4,
+          segments: [{ startMs: 0, endMs: 400, text: "premiere phrase" }],
+          latencyMs: 1,
+        };
+      },
+    } as never,
+    refine: (async () => {
+      await gate;
+      return { text: "Première phrase", segments: [] };
+    }) as never,
+    writeFile: (async () => undefined) as never,
+    removeFile: async () => undefined,
+    makeWorkDir: async () => "/tmp/stt-rt-test-nonexistent",
+  });
+  await session.start({ mode: "BALANCED" });
+
+  // If handleChunk awaited refine, this would hang until the gate opens (it never does before the race).
+  const outcome = await Promise.race([
+    session.handleChunk(Buffer.from("a"), (e) => events.push(e)).then(() => "returned"),
+    new Promise<string>((r) => setTimeout(() => r("blocked"), 500)),
+  ]);
+  assert.equal(outcome, "returned");
+  assert.deepEqual(events.map((e) => e.type), ["transcript.partial", "transcript.final"]);
+
+  releaseRefine();
+  await session.end(); // drains pending refines
+  assert.deepEqual(events.map((e) => e.type), ["transcript.partial", "transcript.final"]);
+  assert.equal(sttCalls, 1);
+});
+
 test("WS binary chunk before session.start gets error", async () => {
   await withSocket({}, async (_h, ws) => {
     ws.send(Buffer.from("early-audio"));
@@ -273,11 +369,30 @@ test("WS binary chunk before session.start gets error", async () => {
   });
 });
 
-// helper to avoid re-opening harness in the test above
-async function h_nextMessage(ws: WebSocket): Promise<Record<string, any>> {
-  return new Promise((resolve) => {
-    ws.once("message", (data) => resolve(JSON.parse(data.toString())));
+// Queue-based message reader: events emitted back-to-back (partial, final, refined)
+// must not be dropped between successive `await nextMessage()` calls.
+const messageBuffers = new WeakMap<
+  WebSocket,
+  { queue: Record<string, any>[]; waiters: ((m: Record<string, any>) => void)[] }
+>();
+
+function bufferMessages(ws: WebSocket): void {
+  const buf = { queue: [] as Record<string, any>[], waiters: [] as ((m: Record<string, any>) => void)[] };
+  messageBuffers.set(ws, buf);
+  ws.on("message", (data) => {
+    const msg = JSON.parse(data.toString());
+    const waiter = buf.waiters.shift();
+    if (waiter) waiter(msg);
+    else buf.queue.push(msg);
   });
+}
+
+function h_nextMessage(ws: WebSocket): Promise<Record<string, any>> {
+  const buf = messageBuffers.get(ws);
+  assert(buf, "socket not opened through harness.openSocket");
+  const queued = buf.queue.shift();
+  if (queued) return Promise.resolve(queued);
+  return new Promise((resolve) => buf.waiters.push(resolve));
 }
 
 test("WS session.end closes cleanly with 1000", async () => {
