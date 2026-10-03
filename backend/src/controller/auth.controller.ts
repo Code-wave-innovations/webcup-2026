@@ -10,9 +10,21 @@ import {
   failuresSinceLastLogin,
   recordAttempt,
 } from "../lib/loginGuard";
+import {
+  REGISTER_HARD_EMAIL,
+  REGISTER_SOFT_IP,
+  assertHardLimit,
+  assertHumanForm,
+  formGuardFieldsSchema,
+  isFormSuspect,
+  recordFormSuccess,
+  registerEmailKey,
+  registerIpKey,
+} from "../lib/formGuard";
 import { notifyUser } from "../lib/notify";
 import { clientIp } from "../lib/rateLimit";
 import { getSetting } from "../lib/settings";
+import { assertTurnstileIfNeeded } from "../lib/turnstile";
 import { saveUpload } from "../lib/upload";
 import { zBool, zId, zLocale } from "../lib/validation";
 import { generateToken } from "../services/services";
@@ -86,10 +98,34 @@ const issueSession = async (req: Request, res: Response, account: { id: number; 
 const authController = {
   register: async (req: Request, res: Response) => {
     const { password, ...input } = registerSchema.parse(req.body);
+    const guardFields = formGuardFieldsSchema.parse(req.body);
     // D08: admins can close registrations (PlatformSetting registration_open)
     if (!(await getSetting("registration_open"))) {
       throw new HttpError(403, "REGISTRATION_CLOSED", "Registrations are currently closed");
     }
+
+    // Anti-bot (approach C): honeypot + timing, soft Turnstile, hard per-email limit.
+    // Per-IP hard ceiling stays on the router (10 / hour).
+    assertHumanForm(guardFields);
+    const ip = clientIp(req);
+    assertHardLimit(
+      res,
+      registerEmailKey(input.email),
+      REGISTER_HARD_EMAIL.windowMs,
+      REGISTER_HARD_EMAIL.max,
+      "Trop d'inscriptions avec cette adresse e-mail. Réessayez plus tard."
+    );
+    await assertTurnstileIfNeeded({
+      suspect: isFormSuspect({
+        ip,
+        softKey: ip ? registerIpKey(ip) : undefined,
+        softWindowMs: REGISTER_SOFT_IP.windowMs,
+        softMax: REGISTER_SOFT_IP.max,
+      }),
+      token: guardFields.turnstile_token,
+      ip,
+    });
+
     const profile = await saveUpload(req, "profile", "profile");
     const user = await userModel.create({
       ...input,
@@ -97,6 +133,8 @@ const authController = {
       password_hash: await hashPassword(password),
       role: "CITIZEN",
     });
+    if (ip) recordFormSuccess(registerIpKey(ip), REGISTER_SOFT_IP.windowMs);
+    recordFormSuccess(registerEmailKey(input.email), REGISTER_HARD_EMAIL.windowMs);
     res.status(201).json({ token: generateToken(user.id, user.email, user.role), user });
   },
 

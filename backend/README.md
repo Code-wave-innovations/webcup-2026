@@ -88,6 +88,15 @@ The response contains `reference` (e.g. `NT-261003-4F9A2C`) and a confirmation `
 - The account owner gets a `SECURITY` notification, and the login response includes `security.failed_attempts_since_last_login`.
 - Staff can lift a lock with `POST /api/users/:id/unlock-login`. Register, login and request creation are also rate limited per IP.
 
+### Form anti-bot (anonymous CONTACT + register)
+
+Layered protection (approach C) in `lib/formGuard.ts` and `lib/turnstile.ts`:
+
+- Always: honeypot (`website` / `company` must be empty) and `form_started_at` (epoch ms, form must be ≥ 2 s old). Failures → `400 BOT_REJECTED`.
+- Soft: after 2 successful posts from the same IP (15 min for contact, 1 h for register), or when the client IP is unknown, require Cloudflare Turnstile if `TURNSTILE_SECRET_KEY` is set → `403 TURNSTILE_REQUIRED` / `TURNSTILE_FAILED`.
+- Hard: anonymous contact 5 / 15 min / IP and 3 / h / email; register 3 / h / email (plus the router’s 10 / h / IP) → `429 RATE_LIMITED` with `Retry-After`.
+- Without `TURNSTILE_SECRET_KEY`, only honeypot, timing and hard limits apply (local dev). Pair the secret with the front’s `VITE_TURNSTILE_SITE_KEY`.
+
 ### Appointments (F39, F40)
 
 Booking returns `when` (ISO dates, duration, time zone, readable label), `where`, `with`, `preparation` (notes, documents to bring, contact) and `calendar_url` (.ics with an alarm). Reminders are in-app notifications sent `reminder_offset_minutes` before the slot (default 1440) by a job that runs every minute in the API process.

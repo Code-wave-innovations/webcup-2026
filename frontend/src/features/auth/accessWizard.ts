@@ -35,6 +35,17 @@ export function validateRegisterNames(name: string, lastName: string): 'ok' | 'm
   return 'ok'
 }
 
+/** Names + required district id (positive integer). */
+export function validateRegisterIdentity(
+  name: string,
+  lastName: string,
+  districtId: number | null,
+): 'ok' | 'missing' | 'district' {
+  if (validateRegisterNames(name, lastName) === 'missing') return 'missing'
+  if (districtId == null || !Number.isInteger(districtId) || districtId < 1) return 'district'
+  return 'ok'
+}
+
 export function validateRegisterSecrets(password: string, confirm: string): 'ok' | 'short' | 'mismatch' {
   if (password.length < 8) return 'short'
   if (password !== confirm) return 'mismatch'
@@ -74,7 +85,7 @@ export function stepSubtitle(step: AccessStep, opts?: { face?: boolean }): strin
     case 'login':
       return opts?.face ? 'Regardez la caméra pour entrer.' : 'Le code d’accès confirme que c’est bien vous.'
     case 'register-1':
-      return 'Deux détails, et Terra Nova vous reconnaît.'
+      return 'Identité et quartier — Terra Nova vous situe.'
     case 'register-2':
       return 'Choisissez un code que vous seul·e connaissez.'
     case 'register-3':

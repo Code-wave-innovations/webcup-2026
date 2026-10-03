@@ -9,10 +9,24 @@ import citizenRequestModel, {
   STATUS_LABELS,
 } from "../model/citizenRequest.model";
 import { badRequest, notFound } from "../lib/errors";
+import {
+  CONTACT_HARD_EMAIL,
+  CONTACT_HARD_IP,
+  CONTACT_SOFT_IP,
+  assertHardLimit,
+  assertHumanForm,
+  contactEmailKey,
+  contactIpKey,
+  formGuardFieldsSchema,
+  isFormSuspect,
+  recordFormSuccess,
+} from "../lib/formGuard";
 import { notifyUser } from "../lib/notify";
+import { clientIp } from "../lib/rateLimit";
 import { saveUpload } from "../lib/upload";
 import { assertServiceAvailable } from "../lib/availability";
 import { assertNotInMaintenance } from "../lib/settings";
+import { assertTurnstileIfNeeded } from "../lib/turnstile";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zId, zJson } from "../lib/validation";
 import { isStaff } from "../middleware/auth";
 import { zEmail } from "./auth.controller";
@@ -132,6 +146,7 @@ const loadVisible = async (req: Request, id: number) => {
 const citizenRequestController = {
   create: async (req: Request, res: Response) => {
     const input = createSchema.parse(req.body);
+    const guardFields = formGuardFieldsSchema.parse(req.body);
     const user = req.user;
     await assertNotInMaintenance(user);
 
@@ -141,6 +156,37 @@ const citizenRequestController = {
       if (!input.contact_name || !input.contact_email) {
         throw badRequest("contact_name and contact_email are required when not logged in");
       }
+
+      // Anti-bot (approach C): honeypot + timing, then soft Turnstile, then hard limits.
+      assertHumanForm(guardFields);
+      const ip = clientIp(req);
+      const email = input.contact_email;
+      if (ip) {
+        assertHardLimit(
+          res,
+          contactIpKey(ip),
+          CONTACT_HARD_IP.windowMs,
+          CONTACT_HARD_IP.max,
+          "Trop de messages envoyés depuis cette connexion. Réessayez plus tard."
+        );
+      }
+      assertHardLimit(
+        res,
+        contactEmailKey(email),
+        CONTACT_HARD_EMAIL.windowMs,
+        CONTACT_HARD_EMAIL.max,
+        "Trop de messages envoyés avec cette adresse e-mail. Réessayez plus tard."
+      );
+      await assertTurnstileIfNeeded({
+        suspect: isFormSuspect({
+          ip,
+          softKey: ip ? contactIpKey(ip) : undefined,
+          softWindowMs: CONTACT_SOFT_IP.windowMs,
+          softMax: CONTACT_SOFT_IP.max,
+        }),
+        token: guardFields.turnstile_token,
+        ip,
+      });
     }
 
     // F25: an incident must say where it is.
@@ -185,6 +231,11 @@ const citizenRequestController = {
         link: `/requests/${request.id}`,
         data: { request_id: request.id, reference: request.reference, status: request.status },
       });
+    } else if (input.contact_email) {
+      const ip = clientIp(req);
+      // Soft and hard contact IP limits share the same 15 min window / key.
+      if (ip) recordFormSuccess(contactIpKey(ip), CONTACT_HARD_IP.windowMs);
+      recordFormSuccess(contactEmailKey(input.contact_email), CONTACT_HARD_EMAIL.windowMs);
     }
 
     // D16: immediate, explicit confirmation

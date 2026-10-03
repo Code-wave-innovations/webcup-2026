@@ -62,6 +62,9 @@ const MESSAGES: Record<string, string> = {
   SERVICE_UNAVAILABLE: 'Ce service est momentanément indisponible.',
   REGISTRATION_CLOSED: 'Les inscriptions sont fermées pour le moment.',
   RATE_LIMITED: 'Trop de demandes en peu de temps. Patientez un instant, puis réessayez.',
+  BOT_REJECTED: 'Soumission refusée. Rechargez la page et réessayez.',
+  TURNSTILE_REQUIRED: 'Vérification anti-robot requise. Validez le défi, puis renvoyez le formulaire.',
+  TURNSTILE_FAILED: 'La vérification anti-robot a échoué. Réessayez le défi.',
   SLOT_FULL: 'Ce créneau vient d’être réservé. Choisissez-en un autre.',
   OVERLAPPING_APPOINTMENT: 'Vous avez déjà un rendez-vous à ce moment-là.',
   UPSTREAM_ERROR: 'Le service externe ne répond pas pour le moment.',
@@ -69,7 +72,7 @@ const MESSAGES: Record<string, string> = {
 }
 
 /** Codes whose server message is written for citizens (in French) and shown as is. */
-const SERVER_WORDED = new Set(['MAINTENANCE'])
+const SERVER_WORDED = new Set(['MAINTENANCE', 'BOT_REJECTED', 'TURNSTILE_REQUIRED', 'TURNSTILE_FAILED', 'RATE_LIMITED'])
 
 /** A French sentence for any error, to show in a toast or at the top of a form. */
 export function messageFor(error: unknown): string {

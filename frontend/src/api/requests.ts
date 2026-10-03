@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { http } from './client'
 import { dashboardKeys } from './dashboard'
+import type { FormGuardPayload } from '../features/security/formGuard'
 import { queryClient, REFRESH } from './queryClient'
 import type { Paginated, RequestDetail, RequestListItem, RequestPriority, RequestStatus, RequestType, UpdatedRequest } from './types'
 
@@ -87,5 +88,40 @@ export const useBulkUpdate = () =>
   useMutation({
     mutationFn: (input: { ids: number[]; assigned_agent_id?: number | null; priority?: RequestPriority }) =>
       http.post<{ updated: number }>('/requests/bulk', input).then((r) => r.data),
+    onSuccess: () => refreshAround(),
+  })
+
+/** D04: anonymous contact message (requires honeypot + form_started_at; Turnstile when soft-limited). */
+export type CreateContactInput = FormGuardPayload & {
+  subject: string
+  message: string
+  contact_name: string
+  contact_email: string
+}
+
+export type CreatedContact = {
+  message: string
+  reference: string
+  status: RequestStatus
+  request: RequestListItem
+}
+
+export const createContact = (input: CreateContactInput) =>
+  http
+    .post<CreatedContact>('/requests', {
+      type: 'CONTACT' as const,
+      subject: input.subject,
+      message: input.message,
+      contact_name: input.contact_name,
+      contact_email: input.contact_email,
+      website: input.website,
+      form_started_at: input.form_started_at,
+      turnstile_token: input.turnstile_token,
+    })
+    .then((r) => r.data)
+
+export const useCreateContact = () =>
+  useMutation({
+    mutationFn: createContact,
     onSuccess: () => refreshAround(),
   })

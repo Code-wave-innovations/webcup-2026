@@ -1,4 +1,6 @@
 import axios from 'axios'
+import { messageFor, toApiError } from '../../api/errors'
+import { type FormGuardPayload } from '../security/formGuard'
 import { rootApiUrl } from '../../hooks/useHttps'
 import { DEMO_ACCOUNTS, type Account, type Role } from './demoAccounts'
 
@@ -29,11 +31,12 @@ export interface RegisterInput {
   password: string
   name: string
   last_name: string
+  district_id: number
 }
 
 export type RegisterResult =
   | { ok: true; session: Session }
-  | { ok: false; error: string; conflict?: boolean }
+  | { ok: false; error: string; conflict?: boolean; turnstileRequired?: boolean; retryAfter?: number | null }
 
 interface ApiUser {
   id: number
@@ -136,22 +139,32 @@ export async function sessionByEmail(identifier: string): Promise<SignInResult> 
 }
 
 /** Citizen self-registration (D01). */
-export async function registerCitizen(input: RegisterInput): Promise<RegisterResult> {
+export async function registerCitizen(
+  input: RegisterInput & FormGuardPayload,
+): Promise<RegisterResult> {
   try {
     const { data } = await authHttp.post<AuthResponse>('/auth/register', {
       email: input.email.trim().toLowerCase(),
       password: input.password,
       name: input.name.trim(),
       last_name: input.last_name.trim(),
+      district_id: input.district_id,
+      website: input.website,
+      form_started_at: input.form_started_at,
+      turnstile_token: input.turnstile_token,
     })
     return { ok: true, session: sessionFromApi(data.token, data.user) }
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-      if (status === 409) return { ok: false, error: 'Un compte existe déjà avec cet e-mail.', conflict: true }
-      const message = (error.response?.data as { message?: string } | undefined)?.message
-      return { ok: false, error: message || "Impossible de créer le compte pour l'instant." }
+    const api = toApiError(error)
+    if (api.status === 409 || api.code === 'CONFLICT') {
+      return { ok: false, error: 'Un compte existe déjà avec cet e-mail.', conflict: true }
     }
-    return { ok: false, error: 'Le serveur ne répond pas.' }
+    if (api.code === 'TURNSTILE_REQUIRED') {
+      return { ok: false, error: messageFor(api), turnstileRequired: true }
+    }
+    if (api.code === 'RATE_LIMITED') {
+      return { ok: false, error: messageFor(api), retryAfter: api.retryAfter }
+    }
+    return { ok: false, error: messageFor(api) }
   }
 }

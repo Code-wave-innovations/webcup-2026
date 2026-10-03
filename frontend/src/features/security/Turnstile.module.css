@@ -1,0 +1,22 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-mist, rgba(200, 230, 240, 0.85));
+}
+
+.widget {
+  min-height: 65px;
+}
+
+.missing {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-ember, #f0a070);
+}
