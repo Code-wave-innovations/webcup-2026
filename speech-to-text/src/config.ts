@@ -1,7 +1,7 @@
 import { z } from "zod";
 import "dotenv/config";
 
-const schema = z.object({
+export const configSchema = z.object({
     PORT: z.coerce.number().default(9100),
     DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().default("redis://localhost:6379"),
@@ -37,8 +37,8 @@ const schema = z.object({
         .transform((v) => v === "true"),
 });
 
-export type Config = z.infer<typeof schema>;
+export type Config = z.infer<typeof configSchema>;
 
 export function loadConfig(): Config {
-    return schema.parse(process.env);
+    return configSchema.parse(process.env);
 }

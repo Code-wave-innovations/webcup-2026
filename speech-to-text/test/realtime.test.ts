@@ -12,23 +12,17 @@ function ensureTestEnv(): void {
 }
 
 test("realtime config defaults favor turbo and skip speech gate", async () => {
-  ensureTestEnv();
-  // Isolate defaults: wipe only the vars under test, keep required keys from ensureTestEnv
-  const prevModel = process.env.OPENROUTER_REALTIME_STT_MODEL;
-  const prevGate = process.env.REALTIME_SKIP_SPEECH_GATE;
-  delete process.env.OPENROUTER_REALTIME_STT_MODEL;
-  delete process.env.REALTIME_SKIP_SPEECH_GATE;
-  try {
-    const { loadConfig } = await import("../src/config.js");
-    const config = loadConfig();
-    assert.equal(config.OPENROUTER_REALTIME_STT_MODEL, "openai/whisper-large-v3-turbo");
-    assert.equal(config.REALTIME_SKIP_SPEECH_GATE, true);
-  } finally {
-    if (prevModel !== undefined) process.env.OPENROUTER_REALTIME_STT_MODEL = prevModel;
-    else delete process.env.OPENROUTER_REALTIME_STT_MODEL;
-    if (prevGate !== undefined) process.env.REALTIME_SKIP_SPEECH_GATE = prevGate;
-    else delete process.env.REALTIME_SKIP_SPEECH_GATE;
-  }
+  // Parse the schema directly with only the required keys: independent of
+  // process.env and of dotenv (.env) re-injection or local debug overrides.
+  const { configSchema } = await import("../src/config.js");
+  const config = configSchema.parse({
+    DATABASE_URL: "mysql://u:p@localhost:3306/db",
+    STT_API_KEY: "test-stt-api-key-12345678",
+    OPENROUTER_API_KEY: "sk-or-test",
+    ANTHROPIC_API_KEY: "sk-ant-test",
+  });
+  assert.equal(config.OPENROUTER_REALTIME_STT_MODEL, "openai/whisper-large-v3-turbo");
+  assert.equal(config.REALTIME_SKIP_SPEECH_GATE, true);
 });
 
 interface FakeSttResult {
