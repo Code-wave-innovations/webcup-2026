@@ -1,0 +1,164 @@
+/* F50: simplified dashboard — big figures, one sentence per line, no animation, one column on phones */
+
+.simple {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.periodBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.printPeriod {
+  display: none;
+}
+
+.block {
+  padding: 18px 20px;
+  background: var(--color-glass);
+  border: 1px solid var(--color-line-thin);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+
+.heading {
+  margin-bottom: 12px;
+  font: 600 15px/1.3 var(--font-display);
+  letter-spacing: 0.04em;
+  color: var(--color-ice-bright);
+}
+
+.lines,
+.watchList {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.line {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 14px 0;
+  border-top: 1px solid var(--color-line-thin);
+}
+
+.line:first-child {
+  border-top: 0;
+}
+
+.figure {
+  font: 600 34px/1 var(--font-display);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sentence {
+  font-size: 15.5px;
+  line-height: 1.45;
+}
+
+.sentence strong {
+  font-weight: 600;
+}
+
+.compare {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.normal .state {
+  color: var(--color-ok);
+}
+
+.watch .state {
+  color: var(--color-progress);
+}
+
+.critical .state {
+  color: var(--color-alert);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13.5px;
+  color: var(--color-ice-bright);
+  white-space: nowrap;
+}
+
+.watchList li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-line-thin);
+  font-size: 15px;
+}
+
+.watchList li:first-child {
+  border-top: 0;
+}
+
+.watchList a {
+  color: var(--color-ice-bright);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.calm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-ok);
+}
+
+/* Phones, or 200 % zoom: one column, the figure above its sentence */
+@media (max-width: 720px) {
+  .line {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+@media print {
+  .periodBar > :first-child {
+    display: none;
+  }
+
+  .printPeriod {
+    display: block;
+    font-weight: 600;
+  }
+
+  .block {
+    padding: 12px 0;
+  }
+}

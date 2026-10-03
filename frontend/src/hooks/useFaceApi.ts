@@ -30,6 +30,15 @@ export type FaceJson = {
     message?: string
     liveness?: { ok: boolean; score: number; backend: string }
     bbox?: number[]
+    quality?: {
+        ok?: boolean
+        reason?: string
+        face_width?: number
+        face_height?: number
+        sharpness?: number
+        fill_ratio?: number
+    }
+    det_score?: number
 }
 
 export async function faceHealth() {

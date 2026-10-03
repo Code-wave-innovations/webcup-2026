@@ -8,12 +8,22 @@ const SAMPLE_WIDTH = 320
 /** smallest face accepted, in % of the frame: the visitor sits in front of the camera */
 const MIN_FACE = 16
 
+export interface FacePresenceOptions {
+  /** override the minimum face size (percent of frame width/height) */
+  minFacePercent?: number
+}
+
 /**
  * Is a face in front of the camera? Detected in a worker so the film keeps its frame rate. `null` while
  * the detector loads, or when it cannot run: the scanner then captures on a timer instead.
  */
-export function useFacePresence(videoRef: RefObject<HTMLVideoElement | null>, enabled: boolean): boolean | null {
+export function useFacePresence(
+  videoRef: RefObject<HTMLVideoElement | null>,
+  enabled: boolean,
+  options?: FacePresenceOptions,
+): boolean | null {
   const [present, setPresent] = useState<boolean | null>(null)
+  const minFace = options?.minFacePercent ?? MIN_FACE
 
   useEffect(() => {
     if (!enabled) return
@@ -31,7 +41,9 @@ export function useFacePresence(videoRef: RefObject<HTMLVideoElement | null>, en
         return
       }
       waiting = false
-      if (message.type === 'result' && alive) setPresent(!!message.box && message.box.width >= MIN_FACE && message.box.height >= MIN_FACE)
+      if (message.type === 'result' && alive) {
+        setPresent(!!message.box && message.box.width >= minFace && message.box.height >= minFace)
+      }
     }
 
     const sample = async () => {
@@ -56,7 +68,7 @@ export function useFacePresence(videoRef: RefObject<HTMLVideoElement | null>, en
       window.clearTimeout(timer)
       worker.terminate()
     }
-  }, [enabled, videoRef])
+  }, [enabled, videoRef, minFace])
 
   return enabled ? present : null
 }

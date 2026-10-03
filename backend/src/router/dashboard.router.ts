@@ -5,5 +5,8 @@ const dashboardRouter = express.Router();
 
 dashboardRouter.use(authenticate, requireStaff);
 dashboardRouter.get("/stats", dashboardController.stats);
+dashboardRouter.get("/trends", dashboardController.trends);
+dashboardRouter.get("/summary", dashboardController.summary);
+dashboardRouter.get("/activity", dashboardController.activity);
 
 export default dashboardRouter;

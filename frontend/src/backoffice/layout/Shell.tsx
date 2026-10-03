@@ -6,7 +6,7 @@ import { pageTransition } from '../ui/motion'
 import { BootSequence } from './BootSequence'
 import { CommandPalette } from './CommandPalette'
 import { HudBackground } from './HudBackground'
-import { PERSONA_USER, usePersona } from './persona'
+import { useActor, usePersona } from './persona'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import styles from './Shell.module.css'
@@ -24,6 +24,7 @@ const readCollapsed = () => {
 /** Back-office frame: HUD background, role navigation, top bar, animated page outlet. */
 export function Shell() {
   const persona = usePersona()
+  const actor = useActor()
   const location = useLocation()
   const outlet = useOutlet()
   const tablet = useMediaQuery('(max-width: 1100px)')
@@ -76,7 +77,7 @@ export function Shell() {
         Aller au contenu
       </a>
       <HudBackground />
-      <BootSequence key={persona} persona={persona} user={PERSONA_USER[persona]} />
+      <BootSequence key={persona} persona={persona} user={actor} />
 
       <Sidebar
         persona={persona}

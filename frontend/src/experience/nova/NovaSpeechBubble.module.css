@@ -1,4 +1,4 @@
-/* Nova's speech: a glass bubble above its head and to its left, growing from the corner over the visor */
+/* Nova's speech: a glass bubble beside its head, growing from the corner over the visor */
 .bubble {
   position: fixed;
   left: 0;
@@ -13,7 +13,7 @@
   box-shadow: 0 0 40px var(--color-ice-halo);
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   pointer-events: none;
-  transform-origin: calc(100% - 26px) 100%;
+  transform-origin: 100% 50%;
   will-change: transform, opacity;
   opacity: 0;
   transition: opacity 0.25s ease;

@@ -29,6 +29,11 @@ CORS_ORIGINS = [
     ).split(",")
     if o.strip()
 ]
+# Vite bumps the port when 5173 is taken — allow any localhost Vite origin in addition
+# to the configured list (harmless for remote browsers; CORS is browser-enforced).
+for _local in (r"http://localhost:\d+", r"http://127\.0\.0\.1:\d+"):
+    if _local not in CORS_ORIGINS:
+        CORS_ORIGINS.append(_local)
 
 MAX_UPLOAD_BYTES = int(os.getenv("FACE_MAX_UPLOAD_MB", "8")) * 1024 * 1024
 RATE_LIMIT = os.getenv("FACE_RATE_LIMIT", "60 per minute")
@@ -41,7 +46,7 @@ IDENTIFY_THRESHOLD = float(os.getenv("FACE_IDENTIFY_THRESHOLD", "0.40"))
 MIN_ENROLL_SAMPLES = int(os.getenv("FACE_MIN_ENROLL_SAMPLES", "3"))
 MAX_ENROLL_SAMPLES = int(os.getenv("FACE_MAX_ENROLL_SAMPLES", "5"))
 MIN_FACE_SIZE = int(os.getenv("FACE_MIN_FACE_SIZE", "80"))
-MIN_SHARPNESS = float(os.getenv("FACE_MIN_SHARPNESS", "40.0"))
+MIN_SHARPNESS = float(os.getenv("FACE_MIN_SHARPNESS", "35.0"))
 
 # InsightFace
 INSIGHTFACE_MODEL = os.getenv("FACE_INSIGHTFACE_MODEL", "buffalo_s")

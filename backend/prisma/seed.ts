@@ -1,12 +1,16 @@
-// Demo data for Terra Nova. Idempotent: safe to run several times.
-// Usage: npm run seed   (SEED_PASSWORD overrides the demo accounts' password)
+// Demo data for Terra Nova, laid out around the moment the seed runs (same scenario as the
+// back-office mockups). Idempotent: missing rows are created, existing ones are kept.
+// Usage: npm run seed            (SEED_PASSWORD overrides the demo accounts' password)
+//        SEED_RESET=1 npm run seed   deletes the demo scenario first and recreates it
 require("dotenv").config();
 import { PrismaClient, type Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { buildDepartures } from "../src/lib/transit";
+import { ACCOUNTS, seedDemoScenario } from "./demoScenario";
 
 const prisma = new PrismaClient();
 const PASSWORD = process.env.SEED_PASSWORD || "NovaTerra2026!";
+const RESET = process.env.SEED_RESET === "1";
 
 const districts = [
   { code: "CENTRE", name: "Centre-Ville", description: "Cœur administratif et commercial de Terra Nova." },
@@ -128,6 +132,16 @@ const services: ServiceSeed[] = [
     priority: 8,
   },
   {
+    slug: "urbanisme-permis",
+    category: "urbanisme",
+    name: "Urbanisme & permis",
+    summary: "Permis de construire et autorisations de travaux.",
+    keywords: "permis, construire, travaux, autorisation, urbanisme, extension",
+    icon: "building",
+    priority: 2,
+    is_active: false,
+  },
+  {
     slug: "action-sociale",
     category: "solidarite",
     name: "Action sociale",
@@ -137,6 +151,20 @@ const services: ServiceSeed[] = [
     priority: 5,
   },
 ];
+
+const VIEW_COUNTS: Record<string, number> = {
+  "etat-civil": 1284,
+  "accueil-nouveaux-arrivants": 986,
+  "centre-de-sante": 2140,
+  "prevention-sante": 412,
+  "transports-urbains": 1530,
+  "proprete-dechets": 640,
+  "eclairage-voirie": 702,
+  "eau-energie": 388,
+  "securite-civile": 455,
+  "action-sociale": 301,
+  "urbanisme-permis": 120,
+};
 
 const procedures = [
   {
@@ -173,6 +201,18 @@ const procedures = [
     form_schema: [
       { name: "preferred_date", label: "Date souhaitée", type: "date", required: true },
       { name: "reason", label: "Motif de consultation", type: "textarea", required: false },
+    ],
+  },
+  {
+    slug: "abonnement-transport",
+    service: "transports-urbains",
+    title: "Souscrire un abonnement au réseau urbain",
+    description: "Abonnement mensuel ou annuel, avec tarif réduit pour les seniors, étudiants et demandeurs d'emploi.",
+    estimated_days: 2,
+    required_documents: ["Pièce d'identité", "Justificatif pour le tarif réduit"],
+    form_schema: [
+      { name: "formula", label: "Formule", type: "select", required: true, options: ["Mensuel", "Annuel"] },
+      { name: "reduced_rate", label: "Tarif réduit demandé", type: "select", required: false, options: ["Aucun", "Senior", "Étudiant", "Demandeur d'emploi"] },
     ],
   },
   {
@@ -234,7 +274,12 @@ async function main() {
   const serviceIds: Record<string, number> = {};
   for (const { category, ...service } of services) {
     const data = { ...service, category_id: categoryIds[category] };
-    const row = await prisma.cityService.upsert({ where: { slug: service.slug }, create: data, update: data });
+    const row = await prisma.cityService.upsert({
+      where: { slug: service.slug },
+      // F28: initial usage so "most used" means something on a fresh database
+      create: { ...data, view_count: VIEW_COUNTS[service.slug] ?? 0 },
+      update: data,
+    });
     serviceIds[service.slug] = row.id;
   }
 
@@ -257,155 +302,7 @@ async function main() {
     }
   }
 
-  const accounts = [
-    { email: "admin@novaterra.local", name: "Ada", last_name: "Admin", role: "ADMIN" as const },
-    { email: "agent@novaterra.local", name: "Alex", last_name: "Agent", role: "AGENT" as const },
-    {
-      email: "citoyen@novaterra.local",
-      name: "Lucas",
-      last_name: "Meyer",
-      role: "CITIZEN" as const,
-      district_id: districtIds.SUD,
-      address: "12 rue du Réservoir",
-      phone: "+00 600 000",
-      onboarding_completed: true,
-    },
-    {
-      email: "senior@novaterra.local",
-      name: "Jean",
-      last_name: "Morel",
-      role: "CITIZEN" as const,
-      district_id: districtIds.NORD,
-      is_vulnerable: true,
-    },
-  ];
-  const userIds: Record<string, number> = {};
-  for (const account of accounts) {
-    const row = await prisma.user.upsert({
-      where: { email: account.email },
-      create: { ...account, password_hash: passwordHash },
-      update: { role: account.role },
-    });
-    userIds[account.email] = row.id;
-  }
-
-  if ((await prisma.announcement.count()) === 0) {
-    const author_id = userIds["agent@novaterra.local"];
-    await prisma.announcement.createMany({
-      data: [
-        {
-          title: "La plateforme numérique de Terra Nova est ouverte",
-          summary: "Créez votre compte pour accéder à vos démarches, signaler un problème et suivre vos demandes.",
-          content: "Le Haut Conseil de Terra Nova inaugure la plateforme numérique centrale de la ville...",
-          category: "NEWS",
-          status: "PUBLISHED",
-          is_pinned: true,
-          published_at: new Date(),
-          author_id,
-        },
-        {
-          title: "Nouveaux horaires du centre de santé",
-          summary: "Les consultations sont désormais ouvertes de 7h à 20h.",
-          content: "À partir de cette semaine, le centre de santé élargit ses horaires de consultation...",
-          category: "SERVICE_CHANGE",
-          status: "PUBLISHED",
-          published_at: new Date(),
-          service_id: serviceIds["centre-de-sante"],
-          author_id,
-        },
-        {
-          title: "Collecte des encombrants : mode d'emploi",
-          content: "Faites votre demande en ligne depuis le service Propreté urbaine & déchets...",
-          category: "PRACTICAL_INFO",
-          status: "PUBLISHED",
-          published_at: new Date(),
-          service_id: serviceIds["proprete-dechets"],
-          author_id,
-        },
-      ],
-    });
-  }
-
-  if ((await prisma.alert.count()) === 0) {
-    const created_by_id = userIds["agent@novaterra.local"];
-    // F29
-    await prisma.alert.create({
-      data: {
-        title: "Montée des eaux dans le Quartier Sud",
-        message: "Une montée inhabituelle du niveau de l'eau est observée dans le Quartier Sud.",
-        category: "FLOOD",
-        severity: "CRITICAL",
-        audience: "DISTRICTS",
-        instructions: "Évitez les berges et les sous-sols, montez dans les étages et suivez les consignes des secours.",
-        source: "Centre de surveillance environnementale",
-        created_by_id,
-        districts: { create: [{ district_id: districtIds.SUD }] },
-      },
-    });
-    // F31
-    await prisma.alert.create({
-      data: {
-        title: "Vague de chaleur extrême",
-        message: "Une vague de chaleur extrême touche plusieurs secteurs de la ville.",
-        category: "HEATWAVE",
-        severity: "WARNING",
-        audience: "VULNERABLE",
-        instructions: "Restez au frais, hydratez-vous régulièrement et prenez des nouvelles de vos proches isolés.",
-        recommendations: [
-          { title: "Personnes âgées", text: "Buvez de l'eau toutes les heures, même sans soif." },
-          { title: "Enfants", text: "Évitez les sorties entre 12h et 16h." },
-          { title: "Malades chroniques", text: "Contactez le centre de santé au moindre malaise." },
-        ],
-        source: "Agence sanitaire de Terra Nova",
-        created_by_id,
-      },
-    });
-  }
-
-  const citizenId = userIds["citoyen@novaterra.local"];
-  if ((await prisma.citizenRequest.count({ where: { citizen_id: citizenId } })) === 0) {
-    await prisma.citizenRequest.create({
-      data: {
-        reference: "NT-DEMO-000001",
-        type: "INCIDENT",
-        subject: "Lampadaire cassé",
-        message: "Le lampadaire devant le numéro 12 ne s'allume plus depuis deux jours.",
-        category: "eclairage",
-        citizen_id: citizenId,
-        service_id: serviceIds["eclairage-voirie"],
-        district_id: districtIds.SUD,
-        location_label: "12 rue du Réservoir, Quartier Sud",
-        events: { create: { type: "CREATED", to_status: "SUBMITTED", author_id: citizenId } },
-      },
-    });
-    await prisma.citizenRequest.create({
-      data: {
-        reference: "NT-DEMO-000002",
-        type: "PROCEDURE",
-        subject: "Demande d'acte de naissance",
-        message: "Je souhaite obtenir une copie intégrale de mon acte de naissance.",
-        citizen_id: citizenId,
-        service_id: serviceIds["etat-civil"],
-        procedure_id: procedureIds["demande-acte-de-naissance"],
-        status: "IN_PROGRESS",
-        assigned_agent_id: userIds["agent@novaterra.local"],
-        data: { full_name: "Lucas Meyer", birth_date: "1998-04-12", copy_type: "Copie intégrale" },
-        events: {
-          create: [
-            { type: "CREATED", to_status: "SUBMITTED", author_id: citizenId },
-            {
-              type: "STATUS_CHANGED",
-              from_status: "SUBMITTED",
-              to_status: "IN_PROGRESS",
-              message: "Votre demande est en cours de traitement.",
-              author_id: userIds["agent@novaterra.local"],
-            },
-          ],
-        },
-      },
-    });
-  }
-
+  // Transport first: the scenario below only references services and districts
   // F36: transport network
   const stops = [
     { code: "HDV", name: "Hôtel de Ville", district: "CENTRE", address: "Place du Conseil" },
@@ -461,69 +358,13 @@ async function main() {
     }
   }
 
-  // F38: one ongoing degraded incident and one planned maintenance
-  if ((await prisma.serviceInterruption.count()) === 0) {
-    const nextSaturday = new Date();
-    nextSaturday.setDate(nextSaturday.getDate() + ((6 - nextSaturday.getDay() + 7) % 7 || 7));
-    nextSaturday.setHours(8, 0, 0, 0);
-    await prisma.serviceInterruption.createMany({
-      data: [
-        {
-          service_id: serviceIds["eau-energie"],
-          type: "INCIDENT",
-          impact: "DEGRADED",
-          reason: "Incident sur le réseau de suivi des consommations : les demandes sont traitées avec retard.",
-          alternative: "Pour une coupure d'eau urgente, appelez le +00 100 300.",
-          starts_at: new Date(Date.now() - 60 * 60 * 1000),
-          ends_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          created_by_id: userIds["agent@novaterra.local"],
-        },
-        {
-          service_id: serviceIds["etat-civil"],
-          type: "MAINTENANCE",
-          impact: "UNAVAILABLE",
-          reason: "Maintenance du registre numérique d'état civil.",
-          alternative: "Le guichet de l'Hôtel de ville reste ouvert le lundi suivant dès 8h.",
-          starts_at: nextSaturday,
-          ends_at: new Date(nextSaturday.getTime() + 10 * 60 * 60 * 1000),
-          created_by_id: userIds["agent@novaterra.local"],
-        },
-      ],
-    });
-  }
+  // Staff, citizens, requests, appointments, information, interruptions, security, notifications
+  await seedDemoScenario(prisma, { passwordHash, districtIds, serviceIds, procedureIds, reset: RESET });
 
-  // F39: appointment slots for the next 10 days (weekdays, 9:00–12:00, every 30 min)
-  if ((await prisma.appointmentSlot.count({ where: { starts_at: { gte: new Date() } } })) === 0) {
-    const slotServices = [
-      { slug: "accueil-nouveaux-arrivants", location: "Hôtel de ville — guichet 2", notes: "Apportez une pièce d'identité et un justificatif de logement." },
-      { slug: "etat-civil", location: "Hôtel de ville — bureau 4", notes: "Munissez-vous de votre livret de famille si vous en avez un." },
-      { slug: "centre-de-sante", location: "Centre de santé — accueil", notes: "Présentez-vous 10 minutes avant avec vos ordonnances en cours." },
-    ];
-    const data: Prisma.AppointmentSlotCreateManyInput[] = [];
-    for (let d = 1; d <= 10; d++) {
-      const day = new Date();
-      day.setDate(day.getDate() + d);
-      if (day.getDay() === 0 || day.getDay() === 6) continue;
-      for (let minutes = 9 * 60; minutes < 12 * 60; minutes += 30) {
-        const startsAt = new Date(day);
-        startsAt.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-        for (const service of slotServices) {
-          data.push({
-            service_id: serviceIds[service.slug],
-            agent_id: userIds["agent@novaterra.local"],
-            starts_at: startsAt,
-            ends_at: new Date(startsAt.getTime() + 30 * 60 * 1000),
-            location: service.location,
-            preparation_notes: service.notes,
-          });
-        }
-      }
-    }
-    await prisma.appointmentSlot.createMany({ data });
+  console.log("✅ Seed done%s. Demo accounts (password: %s):", RESET ? " (scenario reset)" : "", PASSWORD);
+  for (const account of ACCOUNTS.filter((a) => a.email.endsWith("@novaterra.local"))) {
+    console.log(`   ${account.role.padEnd(8)} ${account.email}`);
   }
-
-  console.log("✅ Seed done. Demo accounts (password: %s):", PASSWORD);
-  for (const account of accounts) console.log(`   ${account.role.padEnd(8)} ${account.email}`);
 }
 
 main()

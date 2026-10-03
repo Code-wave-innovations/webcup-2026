@@ -7,11 +7,12 @@ docker compose up -d
 cp .env.examle .env      # set DATABASE_URL, JWT_SECRET
 npm install
 npx prisma migrate dev
-npm run seed             # demo data + accounts (password NovaTerra2026! unless SEED_PASSWORD is set)
+npm run seed             # demo scenario (password NovaTerra2026! unless SEED_PASSWORD is set)
+SEED_RESET=1 npm run seed   # deletes the demo scenario (NT-DEMO-*, RDV-DEMO-*, seeded contents) and recreates it
 npm run dev
 ```
 
-Demo accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novaterra.local`, `senior@novaterra.local` (vulnerable citizen).
+Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; agents `agent@novaterra.local` (Alex), `hanta.agent@` and `tiana.agent@novaterra.local`; citizens `citoyen@novaterra.local` (Lucas, Quartier Sud) and `senior@novaterra.local` (Jean, vulnerable), plus eight `@mail.nt` citizens, among them `miora.haja@mail.nt`, locked for 15 minutes after each seed run (F37), and `fara.tsiry@mail.nt`, deactivated. The scenario (18 requests with their timeline, slots, 12 appointments, announcements, alerts, interruptions, login attempts) is laid out around the moment the seed runs.
 
 ### Conventions
 
@@ -26,10 +27,11 @@ Demo accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novate
 
 | Method & path | Access | Feature |
 |---|---|---|
-| `POST /api/auth/register` · `POST /api/auth/login` | public | D01, D03 |
+| `POST /api/auth/register` (JSON or multipart; optional file `profile`) · `POST /api/auth/login` · `GET /api/auth/exists?email=` (`{ exists }`, no session) · `GET /api/auth/by-email?email=` (passwordless session, same payload as login) | public | D01, D03 |
 | `GET/PATCH /api/me` · `PATCH /api/me/password` · `POST /api/me/onboarding/complete` | logged in | D03, D12, D14, F23/F24 (`preferences`) |
 | `DELETE /api/me` body `{ password, confirm: true }` | citizen | F33 |
 | `GET /api/users` · `GET/PATCH/DELETE /api/users/:id` · `POST /api/users/:id/unlock-login` | staff (agents: citizens only, no email/password/role changes) | D08, D09, F34 |
+| `GET /api/users/staff` | staff | F22 (active agents and admins a request can be assigned to) |
 | `POST /api/users` | admin | D08 |
 | `GET /api/security/overview` · `GET /api/security/login-attempts` | admin | F37 |
 | `GET /api/home` | public | D07 (alerts, featured services, categories, news) |
@@ -41,11 +43,15 @@ Demo accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novate
 | `GET /api/districts[/:id]` · write: admin | public | F25, F29 |
 | `GET /api/translations/schema` · `GET/PUT /api/translations` · `DELETE /api/translations/:id` | admin | F27 |
 | `POST /api/requests` | public for `CONTACT`, logged in otherwise | D04, D11, D16, F25 |
-| `GET /api/requests?scope=open\|needs_action\|closed&status=&type=&assigned=me\|none&q=&sort=` | citizen: own · staff: all | F22, F26 |
+| `GET /api/requests?scope=open\|needs_action\|closed&status=&type=&priority=&district_id=&assigned=me\|none\|<id>&citizen_id=&q=&sort=` | citizen: own · staff: all (`citizen_id` staff only) | F22, F26 |
 | `GET /api/requests/:id` · `POST /api/requests/:id/comments` | owner or staff | D11 |
-| `PATCH /api/requests/:id` (status, priority, assigned_agent_id, note) | staff | F22 |
+| `PATCH /api/requests/:id` (status, priority, assigned_agent_id, note, internal_note) | staff | F22, F49 (`WAITING_CITIZEN`, `REJECTED`, `RESOLVED` need a public `note`, else 400 on `note`; the response adds `citizen_notified`; an `ASSIGNED` event keeps the assignee's name in `message`) |
+| `POST /api/requests/bulk { ids, assigned_agent_id?, priority? }` | staff | F22, D17 (one event per request) |
 | `DELETE /api/requests/:id` | admin | |
-| `GET /api/dashboard/stats` | staff | D17, D19 |
+| `GET /api/dashboard/stats` | staff | D17, D19, F22, F25 (adds `open_by_agent`, `overdue`/`overdue_count`, `incidents_by_district`, `appointments.today`) |
+| `GET /api/dashboard/trends?days=14` | staff | D19 (per day: created/resolved by type, new citizens, appointments, median pickup; median pickup per service; weekday × 2 h heatmap) |
+| `GET /api/dashboard/activity?limit=10` | staff | F22, D19 (latest staff events on requests, until the audit log) |
+| `GET /api/dashboard/summary?period=today\|7d\|30d` | staff | F50 (indicators vs the previous period, `watch` list with server-written labels; overdue delays in `OVERDUE_HOURS`) |
 | `GET /api/announcements` · `GET /api/announcements/:id` | public | D06 |
 | `POST /api/announcements` · `PATCH /:id` · `POST /:id/publish` · `DELETE /:id` | staff | D06, F30 |
 | `GET /api/alerts/active` · `GET /api/alerts/:id` | public | D18, F29, F31 |
@@ -60,6 +66,12 @@ Demo accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novate
 | `POST /api/appointments` · `GET /api/appointments` · `GET /:id` · `GET /:id/ics` · `POST /:id/cancel` · `PATCH /:id/reminder` | logged in (own) / staff | F39, F40 |
 | `PATCH /api/appointments/:id` (status, agent_notes) · `POST /api/appointments/reminders/run` | staff · admin | F39, F40 |
 | `GET /api/terra-nova/requests` | staff | D19 (needs `TERRA_NOVA_API_KEY`, sent as `X-Webcup-Api-Key`) |
+| `GET /api/settings/public` | public | D07, D08 (home blocks, registrations, maintenance, contacts, emergency numbers, default reminder) |
+| `GET /api/settings` · `PATCH /api/settings` (any subset of keys) | admin | D07, D08, F37 (`security` thresholds read-only, `updated` = who changed each key) |
+
+### Platform settings
+
+Keys, validation and defaults are defined in `src/lib/settings.ts`. When an admin turns on `maintenance_mode`, citizens get `503 MAINTENANCE` (with `maintenance_message`) when they create a request or book an appointment; staff are not affected. When `registration_open` is off, registration returns `403 REGISTRATION_CLOSED`. A booking without `reminder_offset_minutes` uses `reminder_default_minutes`. Set `CORS_ORIGINS` (comma-separated) to restrict the allowed front-end origins.
 
 ### Request types
 

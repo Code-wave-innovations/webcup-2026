@@ -1,8 +1,11 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useState } from 'react'
 import { director } from '../director/director'
+import { useDirectorStore } from '../director/directorStore'
 import { FRAME_PRIORITY } from '../framePriority'
 import { AdaptiveResolution, computePixelRatio, GpuFrameTimer, type QualityProfile } from './quality'
+
+const MAX_SAMPLED_FRAME = 0.25
 
 /** Keeps the canvas pixel ratio within the pixel budget, and lowers it if the city runs below 27 fps because of the GPU. */
 export function ResolutionGovernor({ profile }: { profile: QualityProfile }) {
@@ -26,6 +29,8 @@ export function ResolutionGovernor({ profile }: { profile: QualityProfile }) {
 
   useFrame((_, delta) => {
     if (!watching()) return
+    // paused under a console page: the next frame's delta measures the pause, not the GPU
+    if (delta > MAX_SAMPLED_FRAME || useDirectorStore.getState().console) return
     if (adaptive.sample(delta, timer.seconds)) setScale(adaptive.scale)
   })
 

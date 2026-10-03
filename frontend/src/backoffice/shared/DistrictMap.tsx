@@ -10,6 +10,8 @@ const POSITION: Record<string, string> = {
 }
 
 interface DistrictMapProps {
+  /** The districts to draw (GET /api/districts); the simulated list until every screen is bound. */
+  districts?: { id: number; code: string; name: string }[]
   /** Number shown in each tile (e.g. open incidents). */
   counts?: Record<number, number>
   countLabel?: string
@@ -22,14 +24,14 @@ interface DistrictMapProps {
 }
 
 /** Stylised HUD map of Terra Nova's five districts. */
-export function DistrictMap({ counts, countLabel = 'signalements', critical = [], selected, onToggle, label }: DistrictMapProps) {
+export function DistrictMap({ districts = DISTRICTS, counts, countLabel = 'signalements', critical = [], selected, onToggle, label }: DistrictMapProps) {
   const max = Math.max(1, ...Object.values(counts ?? {}))
   return (
     <div className={styles.map} role={onToggle ? 'group' : 'img'} aria-label={label}>
       <span className={styles.compass} aria-hidden="true">
         N ▲
       </span>
-      {DISTRICTS.map((district) => {
+      {districts.map((district) => {
         const count = counts?.[district.id] ?? 0
         const heat = `${Math.round(8 + (count / max) * 30)}%`
         const className = [

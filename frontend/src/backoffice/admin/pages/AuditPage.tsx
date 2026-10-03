@@ -58,7 +58,7 @@ export default function AuditPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader
+      <PageHeader simulated
         title="Journal d’audit"
         codes={['F47', 'F48']}
         lead="Chaque modification est horodatée et attribuée : qui, quoi, quand, depuis quelle adresse, et la valeur avant/après."

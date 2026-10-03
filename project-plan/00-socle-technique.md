@@ -2,7 +2,7 @@
 
 > **Réfs :** aucune en propre ; ce plan est un prérequis de tous les autres.
 > **Dépend de :** rien. **Débloque :** les plans 01 à 10.
-> **Effort :** ≈ 4 h (backend 1,5 h, front 2,5 h). **Statut :** à faire.
+> **Effort :** ≈ 4 h (backend 1,5 h, front 2,5 h). **Statut :** fait le 3 octobre 2026 (voir le § 10).
 
 ## 1. Objectif
 
@@ -55,11 +55,12 @@ model PlatformSetting {
 
 | Clé | Valeur par défaut | Lue par |
 |---|---|---|
-| `registration_open` | `true` | PLAN-01 : `POST /api/auth/register` répond `403 REGISTRATION_CLOSED` quand elle vaut `false` |
-| `maintenance_banner` | `{ "enabled": false, "message": "" }` | PLAN-02 : bandeau global |
-| `home_blocks` | `["alerts","shortcuts","featured_services","disruptions","announcements"]` | PLAN-02 : ordre et visibilité des blocs de l'accueil |
-| `support_contact` | `{ "phone": "…", "email": "…", "hours": "…" }` | PLAN-03 (contact) et PLAN-07 (urgences) |
-| `emergency_numbers` | `[{ "label": "SAMU", "number": "15" }, …]` | PLAN-07 (F46) |
+| `registration_open` | `true` | Inscription : `403 REGISTRATION_CLOSED` quand elle vaut `false` (fait) |
+| `maintenance_mode`, `maintenance_message` | `false`, message en français | Création de demande et réservation : `503 MAINTENANCE` pour les citoyens (fait) ; bandeau de l'accueil (PLAN-02) |
+| `home_sections` | `[{ key, label, enabled }]` × 6 | PLAN-02 : ordre et visibilité des blocs de l'accueil |
+| `support_contact` | `{ phone, email, hours, address }` | PLAN-03 (contact) et PLAN-07 (urgences) |
+| `emergency_numbers` | `[{ label, number }]` : 15, 17, 18, 112, mairie | PLAN-07 (F46) |
+| `reminder_default_minutes` | `1440` | Réservation sans rappel précisé (fait) ; PLAN-05 |
 
 **Implémentation :**
 - `src/lib/settings.ts` :
@@ -236,16 +237,16 @@ Elles sont la base de F42, détaillée dans le PLAN-08, et sont posées dès mai
 
 ## 6. Étapes
 
-- [ ] B1 : `PlatformSetting`, migration, `lib/settings.ts`, endpoints
-- [ ] B2 : `CORS_ORIGINS`
-- [ ] B3 : seed de démonstration (scénario des maquettes)
-- [ ] F1 : dépendance TanStack Query
-- [ ] F2 : `src/api/` (client, session, errors, queryClient, types, paginate, settings)
-- [ ] F3 : providers dans `main.tsx`
-- [ ] F4 : `ConsoleLayout`, gardes `RequireSession` et `RequireRole`, routes `/ville/*`, page 404
-- [ ] F5 : `SettingsPage` branchée
-- [ ] F6 : `Field`, `ErrorSummary` et `useApiForm` (citoyen et back-office)
-- [ ] `CLAUDE.md` : décrire la couche `src/api` et ses conventions
+- [x] B1 : `PlatformSetting`, migration, `lib/settings.ts`, endpoints
+- [x] B2 : `CORS_ORIGINS`
+- [x] B3 : seed de démonstration (scénario des maquettes)
+- [x] F1 : dépendance TanStack Query
+- [x] F2 : `src/api/` (client, session, errors, queryClient, types, paginate, settings)
+- [x] F3 : providers dans `main.tsx`
+- [x] F4 : `ConsoleLayout`, gardes `RequireSession` et `RequireRole`, routes `/ville/*`, page 404
+- [x] F5 : `SettingsPage` branchée
+- [x] F6 : `Field`, `ErrorSummary` et `useApiForm` (citoyen et back-office)
+- [x] `CLAUDE.md` : décrire la couche `src/api` et ses conventions
 
 ## 7. Critères de sortie
 
@@ -268,3 +269,38 @@ B1 et F5 peuvent attendre le PLAN-02. Sans B1, les inscriptions restent toujours
 - **Fichier de verrouillage des dépendances :** voir F1. À régler avant que d'autres ajoutent des dépendances.
 - **JWT dans `localStorage` :** il serait exposé en cas de faille XSS. C'est acceptable pour le hackathon. Ne jamais insérer de HTML saisi par un utilisateur, et passer plus tard à un cookie `httpOnly`.
 - **Performance :** la scène 3D continue de tourner derrière la console. À mesurer sur un portable moyen ; si besoin, figer la scène en ne rendant une image qu'à la demande.
+
+## 10. Réalisé et écarts au plan
+
+**Vérifié :**
+- Frontend : `tsc -b`, lint (seules restent les 2 erreurs déjà présentes dans `useRealtimeTranscription.ts`), `npm test` (30/30) et `npm run build` passent. Le code de développement (`/ville/test`, `DevLogin`, devtools) est absent du build.
+- Backend : `npm run typecheck` passe, la migration est appliquée, `SEED_RESET=1 npm run seed` puis `npm run seed` donnent les mêmes comptages.
+- Parcours testés dans Chrome (1440 et 375 px) :
+  - connexion de développement et page Paramètres réelle ;
+  - modification enregistrée puis relue par l'API ;
+  - token invalide : toast et panneau de connexion ;
+  - compte citoyen refusé ;
+  - focus sur le `h1` à l'arrivée ;
+  - résumé d'erreurs focalisé ;
+  - ville 3D visible et figée derrière la console ;
+  - sas et survol inchangés.
+
+**Écarts :**
+
+| Prévu | Fait | Pourquoi |
+|---|---|---|
+| Clés `home_blocks` et `maintenance_banner` | `home_sections` (`[{ key, label, enabled }]`), `maintenance_mode` et `maintenance_message`, `support_contact` (avec `address`), `emergency_numbers`, `reminder_default_minutes` | Reprendre la forme de la page Paramètres déjà dessinée. Les seuils F37 sont renvoyés en lecture seule (`security`). |
+| Application des paramètres réservée aux plans 01, 02 et 05 | Déjà en place : `registration_open` (inscription → `403 REGISTRATION_CLOSED`), `maintenance_mode` (création de demande et réservation → `503 MAINTENANCE`, le personnel n'est pas concerné), `reminder_default_minutes` (réservation sans rappel précisé) | Sans cela, les bascules de la page Paramètres branchée n'auraient eu aucun effet. |
+| Fil d'Ariane par `handle.crumb` et `useMatches()` | Prop `crumbs` de `ConsolePage` | `App.tsx` utilise `<BrowserRouter>`, et `useMatches()` exige un routeur de données. |
+| `paginate.ts` | `Paginated<T>` dans `api/types.ts` | Un seul fichier de contrats. |
+| `useApiForm` dans `src/api/` | `src/hooks/useApiForm.ts`, commun aux deux espaces | `ErrorSummary` reçoit un `id` (`summaryId`) plutôt qu'un ref, car la règle React Compiler interdit qu'un hook renvoie un ref dans son objet. |
+| `queryClient.clear()` à la connexion et à la déconnexion | `resetQueries` (requêtes actives) et `removeQueries` (requêtes inactives) | `clear()` laissait la page en « Chargement » indéfiniment. |
+| Seed | `prisma/demoScenario.ts` : références `NT-DEMO-000001…18` et `RDV-DEMO-0001…12`, créneaux de J-2 à J+10 (fermé le dimanche), démarche `abonnement-transport`, service inactif `urbanisme-permis` | La demande n° 11 des maquettes devient un `CONTACT`, faute de démarche « urbanisme ». |
+| Installation | `yarn.lock` mis à jour par `yarn add`, `package-lock.json` régénéré : `npm ci --legacy-peer-deps` fonctionne de nouveau | `npm install --package-lock-only` réécrit aussi `yarn.lock` : restaurer celui-ci et relancer `yarn add` (voir `CLAUDE.md`). |
+
+**À reprendre dans les plans suivants :**
+- **PLAN-01 :**
+  - la page de connexion du back-office n'existe pas encore : une session expirée affiche un toast et un panneau « Connexion administrateur requise » (avec `DevLogin` en développement) ;
+  - le sas utilise toujours la session de démonstration de `features/auth`.
+- **PLAN-02 :** la console n'a pour l'instant que « Accueil de la ville » dans sa barre ; les rubriques sont à ajouter.
+- **Multilingue (hors périmètre) :** le panneau Langues de la page Paramètres reste simulé et l'indique.

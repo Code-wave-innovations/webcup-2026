@@ -12,6 +12,7 @@ import { badRequest, notFound } from "../lib/errors";
 import { notifyUser } from "../lib/notify";
 import { saveUpload } from "../lib/upload";
 import { assertServiceAvailable } from "../lib/availability";
+import { assertNotInMaintenance } from "../lib/settings";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zId, zJson } from "../lib/validation";
 import { isStaff } from "../middleware/auth";
 import { zEmail } from "./auth.controller";
@@ -51,6 +52,8 @@ const listQuerySchema = paginationSchema.extend({
   district_id: zId.optional(),
   // Staff only: "me", "none" or an agent id
   assigned: z.union([z.enum(["me", "none"]), zId]).optional(),
+  // Staff only: the requests of one citizen (request detail, citizen record)
+  citizen_id: zId.optional(),
   q: z.string().trim().min(1).max(100).optional(),
   sort: z.enum(["newest", "oldest", "priority", "updated"]).default("newest"),
 });
@@ -62,7 +65,10 @@ const ORDER: Record<string, Prisma.CitizenRequestOrderByWithRelationInput[]> = {
   updated: [{ updated_at: "desc" }],
 };
 
-const updateSchema = z.object({
+// F49: moving to these states without a word leaves the citizen not knowing what to do or what was done
+export const EXPLAINED_STATUSES: RequestStatus[] = ["WAITING_CITIZEN", "REJECTED", "RESOLVED"];
+
+const updateFields = z.object({
   status: z.nativeEnum(RequestStatus).optional(),
   priority: z.nativeEnum(RequestPriority).optional(),
   assigned_agent_id: zId.nullable().optional(),
@@ -73,6 +79,30 @@ const updateSchema = z.object({
   note: z.string().trim().min(1).max(5000).optional(),
   internal_note: zBool.default(false),
 });
+
+const updateSchema = updateFields.superRefine((input, ctx) => {
+  if (input.status && EXPLAINED_STATUSES.includes(input.status) && (!input.note || input.internal_note)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["note"], message: "A public note is required for this status" });
+  }
+});
+
+// Staff bulk processing (supervision): the same change on several requests
+const bulkSchema = z
+  .object({
+    ids: z.array(zId).min(1).max(100),
+    assigned_agent_id: zId.nullable().optional(),
+    priority: z.nativeEnum(RequestPriority).optional(),
+  })
+  .refine((input) => input.assigned_agent_id !== undefined || input.priority !== undefined, {
+    message: "Nothing to change",
+    path: ["assigned_agent_id"],
+  });
+
+const activeStaff = (id: number) =>
+  prisma.user.findFirst({
+    where: { id, is_active: true, role: { in: ["AGENT", "ADMIN"] } },
+    select: { id: true, name: true, last_name: true },
+  });
 
 const commentSchema = z.object({
   message: z.string().trim().min(1).max(5000),
@@ -103,6 +133,7 @@ const citizenRequestController = {
   create: async (req: Request, res: Response) => {
     const input = createSchema.parse(req.body);
     const user = req.user;
+    await assertNotInMaintenance(user);
 
     // D04: visitors without an account can only contact the city, and must leave a way to reply.
     if (!user) {
@@ -167,13 +198,13 @@ const citizenRequestController = {
 
   // Citizens get their own history (F26); staff get the processing queue (F22).
   getAll: async (req: Request, res: Response) => {
-    const { status, scope, type, priority, service_id, district_id, assigned, q, sort, ...pagination } =
+    const { status, scope, type, priority, service_id, district_id, assigned, citizen_id, q, sort, ...pagination } =
       listQuerySchema.parse(req.query);
     const user = req.user!;
     const staff = isStaff(user);
 
     const where: Prisma.CitizenRequestWhereInput = { type, priority, service_id, district_id };
-    if (!staff) where.citizen_id = user.id;
+    where.citizen_id = staff ? citizen_id : user.id;
     if (status) where.status = { in: status };
     else if (scope === "open") where.status = { in: OPEN_STATUSES };
     else if (scope === "needs_action") where.status = { in: ACTION_NEEDED_STATUSES };
@@ -209,11 +240,11 @@ const citizenRequestController = {
     const current = await citizenRequestModel.getById(id);
     if (!current) throw notFound("Request not found");
 
+    let agentName: string | null = null;
     if (changes.assigned_agent_id) {
-      const agent = await prisma.user.findFirst({
-        where: { id: changes.assigned_agent_id, is_active: true, role: { in: ["AGENT", "ADMIN"] } },
-      });
+      const agent = await activeStaff(changes.assigned_agent_id);
       if (!agent) throw badRequest("assigned_agent_id must be an active agent or admin");
+      agentName = `${agent.name} ${agent.last_name}`;
       // Assigning a new request means it has been picked up.
       if (!changes.status && current.status === "SUBMITTED") changes.status = "IN_REVIEW";
     }
@@ -235,7 +266,8 @@ const citizenRequestController = {
       events.push({ type: "COMMENT", author_id: authorId, message: note, is_internal: internal_note });
     }
     if (changes.assigned_agent_id !== undefined && changes.assigned_agent_id !== current.assigned_agent_id) {
-      events.push({ type: "ASSIGNED", author_id: authorId, is_internal: true });
+      // The assignee's name is kept so the timeline stays right after a later reassignment
+      events.push({ type: "ASSIGNED", author_id: authorId, message: agentName, is_internal: true });
     }
     if (changes.priority !== undefined && changes.priority !== current.priority) {
       events.push({ type: "PRIORITY_CHANGED", author_id: authorId, message: changes.priority, is_internal: true });
@@ -248,8 +280,10 @@ const citizenRequestController = {
 
     const request = await citizenRequestModel.update(id, data, events);
 
-    if (current.citizen_id && (statusChanged || (note && !internal_note))) {
-      await notifyUser(current.citizen_id, {
+    // F49: a citizen with an account is told about every public change
+    const citizenNotified = Boolean(current.citizen_id && (statusChanged || (note && !internal_note)));
+    if (citizenNotified) {
+      await notifyUser(current.citizen_id!, {
         type: "REQUEST_UPDATE",
         title: `Demande ${request.reference} : ${STATUS_LABELS[request.status]}`,
         body: internal_note ? null : note,
@@ -258,7 +292,35 @@ const citizenRequestController = {
       });
     }
 
-    res.json(request);
+    res.json({ ...request, citizen_notified: citizenNotified });
+  },
+
+  // Supervision: reassign or reprioritise several requests at once, one event per request
+  bulkUpdate: async (req: Request, res: Response) => {
+    const { ids, assigned_agent_id, priority } = bulkSchema.parse(req.body);
+    let agentName: string | null = null;
+    if (assigned_agent_id) {
+      const agent = await activeStaff(assigned_agent_id);
+      if (!agent) throw badRequest("assigned_agent_id must be an active agent or admin");
+      agentName = `${agent.name} ${agent.last_name}`;
+    }
+    const authorId = req.user!.id;
+    const requests = await prisma.citizenRequest.findMany({ where: { id: { in: ids } } });
+
+    for (const current of requests) {
+      const events: Omit<Prisma.RequestEventCreateManyInput, "request_id">[] = [];
+      const data: Prisma.CitizenRequestUncheckedUpdateInput = {};
+      if (assigned_agent_id !== undefined && assigned_agent_id !== current.assigned_agent_id) {
+        data.assigned_agent_id = assigned_agent_id;
+        events.push({ type: "ASSIGNED", author_id: authorId, message: agentName, is_internal: true });
+      }
+      if (priority !== undefined && priority !== current.priority) {
+        data.priority = priority;
+        events.push({ type: "PRIORITY_CHANGED", author_id: authorId, message: priority, is_internal: true });
+      }
+      if (events.length) await citizenRequestModel.update(current.id, data, events);
+    }
+    res.json({ updated: requests.length });
   },
 
   // Owner or staff can add a message to the timeline. Only staff can write internal notes.

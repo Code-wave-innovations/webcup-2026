@@ -1,29 +1,38 @@
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import type { CitizenRequest } from '../mocks/types'
+import type { RequestListItem } from '../../api/types'
 import { PRIORITY_RANK, TYPE_LABEL } from '../lib/labels'
-import { ageTone, formatRelative } from '../lib/format'
-import { fullName, useServiceName, useUsersById } from '../lib/lookups'
+import { formatRelative } from '../lib/format'
+import { fullName } from '../lib/lookups'
+import { requesterLabel } from '../lib/requests'
+import { isOverdue } from '../lib/thresholds'
 import { useNow } from '../lib/useNow'
 import { usePersona } from '../layout/persona'
 import { DataTable, type Column } from '../ui/DataTable'
 import { PriorityTag, Ref, StatusPill } from '../ui/Badges'
 import { Avatar } from '../ui/Feedback'
+import { Icon } from '../ui/Icon'
 import styles from './shared.module.css'
 
-const AGE_COLOR = { ok: 'var(--color-ok)', progress: 'var(--color-progress)', alert: 'var(--color-alert)' }
+interface RequestTableProps {
+  requests: RequestListItem[]
+  caption: string
+  compact?: boolean
+  /** Extra column at the end (e.g. a selection checkbox in the supervision) */
+  lead?: { header: string; cell: (r: RequestListItem) => ReactNode }
+}
 
-/** F22: request queue, shared by the agent list, the dashboard and the admin supervision. */
-export function RequestTable({ requests, caption, compact }: { requests: CitizenRequest[]; caption: string; compact?: boolean }) {
+/** F22: request queue, shared by the agent list, the citizen record and the admin supervision. */
+export function RequestTable({ requests, caption, compact, lead }: RequestTableProps) {
   const navigate = useNavigate()
   const persona = usePersona()
   const now = useNow()
-  const users = useUsersById()
-  const serviceName = useServiceName()
   const base = persona === 'ADMIN' ? '/admin' : '/agent'
 
-  const columns: Column<CitizenRequest>[] = [
+  const columns: Column<RequestListItem>[] = [
+    ...(lead ? [{ key: 'lead', header: lead.header, cell: lead.cell, width: '44px' }] : []),
     // compact (side panels): the reference moves under the subject to save width
-    ...(compact ? [] : [{ key: 'ref', header: 'Référence', cell: (r: CitizenRequest) => <Ref>{r.reference}</Ref>, sortValue: (r: CitizenRequest) => r.reference, width: '150px' }]),
+    ...(compact ? [] : [{ key: 'ref', header: 'Référence', cell: (r: RequestListItem) => <Ref>{r.reference}</Ref>, sortValue: (r: RequestListItem) => r.reference, width: '150px' }]),
     {
       key: 'subject',
       header: 'Demande',
@@ -33,7 +42,7 @@ export function RequestTable({ requests, caption, compact }: { requests: Citizen
           <strong>{r.subject}</strong>
           <small>
             {compact && `${r.reference} · `}
-            {TYPE_LABEL[r.type]} · {r.citizen_id ? fullName(users.get(r.citizen_id)) : (r.contact_name ?? 'Visiteur')}
+            {TYPE_LABEL[r.type]} · {requesterLabel(r)}
           </small>
         </span>
       ),
@@ -44,11 +53,14 @@ export function RequestTable({ requests, caption, compact }: { requests: Citizen
       key: 'age',
       header: 'Reçue',
       sortValue: (r) => -new Date(r.created_at).getTime(),
-      cell: (r) => (
-        <span className={styles.age} style={{ color: r.resolved_at ? 'var(--color-text-muted)' : AGE_COLOR[ageTone(r.created_at, now)] }}>
-          {formatRelative(r.created_at, now)}
-        </span>
-      ),
+      cell: (r) => {
+        const late = isOverdue(r, now)
+        return (
+          <span className={styles.age} style={{ color: r.resolved_at ? 'var(--color-text-muted)' : late ? 'var(--color-progress)' : undefined }}>
+            {late && <Icon name="clock" size={13} label="En retard" />} {formatRelative(r.created_at, now)}
+          </span>
+        )
+      },
     },
     ...(compact
       ? []
@@ -57,20 +69,18 @@ export function RequestTable({ requests, caption, compact }: { requests: Citizen
             key: 'agent',
             header: 'Assignée à',
             hideOnPhone: true,
-            sortValue: (r: CitizenRequest) => fullName(users.get(r.assigned_agent_id ?? -1)),
-            cell: (r: CitizenRequest) => {
-              const agent = r.assigned_agent_id ? users.get(r.assigned_agent_id) : undefined
-              return agent ? (
+            sortValue: (r: RequestListItem) => fullName(r.assigned_agent ?? undefined),
+            cell: (r: RequestListItem) =>
+              r.assigned_agent ? (
                 <span className={styles.person}>
-                  <Avatar name={agent.name} lastName={agent.last_name} size={24} />
-                  {agent.name}
+                  <Avatar name={r.assigned_agent.name} lastName={r.assigned_agent.last_name} size={24} />
+                  {r.assigned_agent.name}
                 </span>
               ) : (
                 <span className={styles.unassigned}>Non assignée</span>
-              )
-            },
+              ),
           },
-          { key: 'service', header: 'Service', hideOnPhone: true, cell: (r: CitizenRequest) => <span className={styles.muted}>{serviceName(r.service_id)}</span> },
+          { key: 'service', header: 'Service', hideOnPhone: true, cell: (r: RequestListItem) => <span className={styles.muted}>{r.service?.name ?? '—'}</span> },
         ]),
   ]
 

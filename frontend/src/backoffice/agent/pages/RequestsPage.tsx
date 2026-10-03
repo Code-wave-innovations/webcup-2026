@@ -1,68 +1,132 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { motion } from 'motion/react'
-import { useActor, usePersona } from '../../layout/persona'
-import { FINAL_STATUSES, NEEDS_ACTION, STATUS_LABEL, TYPE_LABEL } from '../../lib/labels'
-import type { RequestPriority, RequestStatus, RequestType } from '../../mocks/types'
+import { useDashboardStats } from '../../../api/dashboard'
+import { messageFor } from '../../../api/errors'
+import { useRequests, type RequestFilters } from '../../../api/requests'
+import type { RequestPriority, RequestType } from '../../../api/types'
+import { usePersona } from '../../layout/persona'
+import { PRIORITY_LABEL, TYPE_LABEL } from '../../lib/labels'
 import { RequestTable } from '../../shared/RequestTable'
-import { useRequestStore } from '../../stores/requestStore'
-import { FilterChips, SearchInput, Select, Toggle } from '../../ui/Controls'
+import { Button } from '../../ui/Button'
+import { FilterChips, SearchInput, Select } from '../../ui/Controls'
+import { EmptyState, Skeleton } from '../../ui/Feedback'
 import { PageHeader } from '../../ui/PageHeader'
 import { Panel } from '../../ui/Panel'
 import { stagger } from '../../ui/motion'
 import layout from '../../ui/layout.module.css'
 
-type Scope = 'action' | 'all' | 'closed' | RequestStatus
+const PAGE_SIZE = 20
 
-/** F22: every citizen request, filterable by state, with "needs action" one click away. */
+type Chip = 'action' | 'attente' | 'moi' | 'non-assignees' | 'cloturees' | 'toutes'
+
+/** Each chip as API filters (F22, D17). */
+const CHIP_FILTERS: Record<Chip, RequestFilters> = {
+  action: { scope: 'needs_action' },
+  attente: { status: ['SUBMITTED'] },
+  moi: { scope: 'needs_action', assigned: 'me' },
+  'non-assignees': { scope: 'open', assigned: 'none' },
+  cloturees: { scope: 'closed' },
+  toutes: {},
+}
+const CHIPS = Object.keys(CHIP_FILTERS) as Chip[]
+const SORTS = ['newest', 'oldest', 'priority', 'updated'] as const
+const PRIORITIES: RequestPriority[] = ['URGENT', 'HIGH', 'NORMAL', 'LOW']
+
+const sum = (values: Record<string, number> | undefined, keys: string[]) => keys.reduce((total, key) => total + (values?.[key] ?? 0), 0)
+
+/** F22: every citizen request, filterable by state, with "needs action" one click away. Filters live in the URL. */
 export default function RequestsPage() {
-  const actor = useActor()
   const persona = usePersona()
-  const requests = useRequestStore((s) => s.requests)
-  const [scope, setScope] = useState<Scope>('action')
-  const [query, setQuery] = useState('')
-  const [type, setType] = useState<RequestType | ''>('')
-  const [priority, setPriority] = useState<RequestPriority | ''>('')
-  const [mine, setMine] = useState(false)
+  const [params, setParams] = useSearchParams()
+  const chip = CHIPS.includes(params.get('etat') as Chip) ? (params.get('etat') as Chip) : 'action'
+  const type = (params.get('type') ?? '') as RequestType | ''
+  const priority = (params.get('priorite') ?? '') as RequestPriority | ''
+  const sort = SORTS.find((s) => s === params.get('tri')) ?? 'newest'
+  const q = params.get('q') ?? ''
+  const page = Math.max(1, Number(params.get('page')) || 1)
 
-  const count = (predicate: (s: RequestStatus) => boolean) => requests.filter((r) => predicate(r.status)).length
-  const chips: { value: Scope; label: string; count: number }[] = [
-    { value: 'action', label: 'Nécessitent une action', count: count((s) => NEEDS_ACTION.includes(s)) },
-    { value: 'SUBMITTED', label: STATUS_LABEL.SUBMITTED, count: count((s) => s === 'SUBMITTED') },
-    { value: 'IN_REVIEW', label: STATUS_LABEL.IN_REVIEW, count: count((s) => s === 'IN_REVIEW') },
-    { value: 'IN_PROGRESS', label: STATUS_LABEL.IN_PROGRESS, count: count((s) => s === 'IN_PROGRESS') },
-    { value: 'WAITING_CITIZEN', label: STATUS_LABEL.WAITING_CITIZEN, count: count((s) => s === 'WAITING_CITIZEN') },
-    { value: 'closed', label: 'Terminées', count: count((s) => FINAL_STATUSES.includes(s)) },
-    { value: 'all', label: 'Toutes', count: requests.length },
-  ]
+  const update = (changes: Record<string, string | null>, keepPage = false) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const [key, value] of Object.entries(changes)) {
+          if (value) next.set(key, value)
+          else next.delete(key)
+        }
+        if (!keepPage) next.delete('page')
+        return next
+      },
+      { replace: true },
+    )
 
-  const q = query.trim().toLowerCase()
-  const filtered = requests
-    .filter((r) => {
-      if (scope === 'action') return NEEDS_ACTION.includes(r.status)
-      if (scope === 'closed') return FINAL_STATUSES.includes(r.status)
-      if (scope === 'all') return true
-      return r.status === scope
-    })
-    .filter((r) => !type || r.type === type)
-    .filter((r) => !priority || r.priority === priority)
-    .filter((r) => !mine || r.assigned_agent_id === actor.id)
-    .filter((r) => !q || `${r.reference} ${r.subject} ${r.message} ${r.contact_name ?? ''}`.toLowerCase().includes(q))
-    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+  // The search reaches the URL (and the server) once typing pauses
+  const [search, setSearch] = useState(q)
+  useEffect(() => {
+    if (search.trim() === q) return
+    const timer = setTimeout(() => update({ q: search.trim() || null }), 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only the typed text restarts the timer
+  }, [search])
+
+  const filters: RequestFilters = {
+    ...CHIP_FILTERS[chip],
+    type: type || undefined,
+    priority: priority || undefined,
+    q: q || undefined,
+    sort,
+    page,
+    limit: PAGE_SIZE,
+  }
+  const list = useRequests(filters)
+  const stats = useDashboardStats().data?.requests
+  const byStatus = stats?.by_status
+  const counts: Record<Chip, number | undefined> = {
+    action: stats?.needs_action,
+    attente: stats?.awaiting_pickup,
+    moi: stats?.assigned_to_me,
+    'non-assignees': stats?.unassigned_open,
+    cloturees: stats && sum(byStatus, ['RESOLVED', 'REJECTED', 'CLOSED']),
+    toutes: stats && sum(byStatus, Object.keys(byStatus ?? {})),
+  }
+  const labels: Record<Chip, string> = {
+    action: 'Nécessitent une action',
+    attente: 'En attente de prise en charge',
+    moi: 'À moi',
+    'non-assignees': 'Non assignées',
+    cloturees: 'Clôturées',
+    toutes: 'Toutes',
+  }
+  const meta = list.data?.meta
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title={persona === 'ADMIN' ? 'Toutes les demandes' : 'Demandes citoyennes'}
-        codes={['F22', 'D17']}
-        lead="Les demandes urgentes sont marquées en rouge, celles qui attendent une prise en charge en ambre."
+        codes={['F22', 'D17', 'D04']}
+        lead={
+          stats
+            ? `${stats.awaiting_pickup} demande${stats.awaiting_pickup > 1 ? 's attendent' : ' attend'} une prise en charge. Les urgentes sont marquées en rouge, les nouvelles en ambre, les retards d’une horloge.`
+            : 'Les demandes urgentes sont marquées en rouge, celles qui attendent une prise en charge en ambre.'
+        }
       />
 
-      <FilterChips label="Filtrer par état" options={chips} value={scope} onChange={setScope} />
+      <FilterChips<Chip>
+        label="Filtrer par état"
+        value={chip}
+        onChange={(value) => update({ etat: value === 'action' ? null : value })}
+        options={CHIPS.map((value) => ({ value, label: labels[value], count: counts[value] }))}
+      />
 
-      <Panel flush title={`${filtered.length} demande${filtered.length > 1 ? 's' : ''}`} kicker="File de traitement">
+      <Panel
+        flush
+        title={meta ? `${meta.total} demande${meta.total > 1 ? 's' : ''}` : 'Demandes'}
+        kicker="File de traitement"
+        aria-busy={list.isFetching}
+      >
         <div className={layout.toolbar}>
-          <SearchInput label="Rechercher une référence, un sujet… (touche /)" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <Select aria-label="Type de demande" value={type} onChange={(e) => setType(e.target.value as RequestType | '')}>
+          <SearchInput label="Rechercher une référence, un sujet, un e-mail… (touche /)" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Select aria-label="Type de demande" value={type} onChange={(e) => update({ type: e.target.value || null })}>
             <option value="">Tous les types</option>
             {(Object.keys(TYPE_LABEL) as RequestType[]).map((t) => (
               <option key={t} value={t}>
@@ -70,16 +134,41 @@ export default function RequestsPage() {
               </option>
             ))}
           </Select>
-          <Select aria-label="Priorité" value={priority} onChange={(e) => setPriority(e.target.value as RequestPriority | '')}>
+          <Select aria-label="Priorité" value={priority} onChange={(e) => update({ priorite: e.target.value || null })}>
             <option value="">Toutes priorités</option>
-            <option value="URGENT">Urgente</option>
-            <option value="HIGH">Haute</option>
-            <option value="NORMAL">Normale</option>
-            <option value="LOW">Basse</option>
+            {PRIORITIES.map((p) => (
+              <option key={p} value={p}>
+                {PRIORITY_LABEL[p]}
+              </option>
+            ))}
           </Select>
-          <Toggle checked={mine} onChange={setMine} label="Assignées à moi" />
+          <Select aria-label="Trier" value={sort} onChange={(e) => update({ tri: e.target.value === 'newest' ? null : e.target.value })}>
+            <option value="newest">Plus récentes d’abord</option>
+            <option value="oldest">Plus anciennes d’abord</option>
+            <option value="priority">Priorité, puis ancienneté</option>
+            <option value="updated">Dernière mise à jour</option>
+          </Select>
         </div>
-        <RequestTable requests={filtered} caption="Demandes citoyennes filtrées" />
+        {list.data ? (
+          <RequestTable requests={list.data.data} caption="Demandes citoyennes filtrées" />
+        ) : list.isError ? (
+          <EmptyState title={messageFor(list.error)} icon="alert" />
+        ) : (
+          <Skeleton lines={8} />
+        )}
+        {meta && meta.pages > 1 && (
+          <nav className={layout.toolbar} aria-label="Pages">
+            <Button size="sm" icon="chevronLeft" disabled={page <= 1} onClick={() => update({ page: String(page - 1) }, true)}>
+              Précédente
+            </Button>
+            <span aria-current="page">
+              Page {meta.page} sur {meta.pages}
+            </span>
+            <Button size="sm" disabled={page >= meta.pages} onClick={() => update({ page: String(page + 1) }, true)}>
+              Suivante
+            </Button>
+          </nav>
+        )}
       </Panel>
     </motion.div>
   )

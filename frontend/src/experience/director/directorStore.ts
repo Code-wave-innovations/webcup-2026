@@ -34,12 +34,15 @@ interface DirectorState {
   alert: boolean
   signalStatus: SignalStatus
   explore: ExploreStatus
+  /** a console page (/ville/*) covers the city: no loading screen, the scene stops redrawing */
+  console: boolean
   setStatus: (status: EngineStatus) => void
   setPhase: (phase: FilmPhase) => void
   setCinematic: (cinematic: boolean) => void
   setAlert: (alert: boolean) => void
   setSignalStatus: (signalStatus: SignalStatus) => void
   setExplore: (explore: ExploreStatus) => void
+  setConsole: (console: boolean) => void
 }
 
 /** Low-frequency film state shared by the DOM and the 3D (per-frame values live in `frameState`). */
@@ -50,10 +53,12 @@ export const useDirectorStore = create<DirectorState>()((set) => ({
   alert: false,
   signalStatus: -1,
   explore: { site: null, destination: null, flight: null, leaving: false },
+  console: false,
   setStatus: (status) => set({ status }),
   setPhase: (phase) => set({ phase }),
   setCinematic: (cinematic) => set({ cinematic }),
   setAlert: (alert) => set({ alert }),
   setSignalStatus: (signalStatus) => set({ signalStatus }),
   setExplore: (explore) => set({ explore }),
+  setConsole: (console) => set({ console }),
 }))

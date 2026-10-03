@@ -2,12 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
+import { useRequests } from '../../api/requests'
 import { flatNav } from '../nav'
 import type { Persona } from '../mocks/types'
 import { STATUS_LABEL } from '../lib/labels'
-import { useRequestStore } from '../stores/requestStore'
 import { Icon, type IconName } from '../ui/Icon'
 import { Kbd } from '../ui/Feedback'
+import { useActor } from './persona'
 import styles from './CommandPalette.module.css'
 
 interface Command {
@@ -22,10 +23,20 @@ interface Command {
 /** ⌘K / Ctrl+K: jump to any screen or request by typing. */
 export function CommandPalette({ persona, open, onClose }: { persona: Persona; open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
-  const requests = useRequestStore((s) => s.requests)
+  const role = useActor().role
   const [query, setQuery] = useState('')
+  const [search, setSearch] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // F32 for the staff: a reference or a subject is searched on the server once typing pauses;
+  // with nothing typed, the most pressing requests are offered
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 250)
+    return () => clearTimeout(timer)
+  }, [query])
+  const found = useRequests(search ? { q: search, limit: 5 } : { scope: 'needs_action', sort: 'priority', limit: 4 }, open)
+  const requests = useMemo(() => found.data?.data ?? [], [found.data])
 
   const commands = useMemo<Command[]>(() => {
     const base = persona === 'ADMIN' ? '/admin' : '/agent'
@@ -45,20 +56,29 @@ export function CommandPalette({ persona, open, onClose }: { persona: Persona; o
       group: 'Demandes',
       to: `${base}/demandes/${r.id}`,
     }))
-    const other = {
-      id: 'switch',
-      label: persona === 'ADMIN' ? 'Passer à l’espace agent' : 'Passer à l’administration',
-      hint: 'Persona de démonstration',
-      icon: 'swap' as const,
-      group: 'Actions',
-      to: persona === 'ADMIN' ? '/agent' : '/admin',
-    }
-    return [...screens, ...requestItems, other]
-  }, [persona, requests])
+    // admins work in both spaces; agents only have theirs
+    const switchView =
+      role === 'ADMIN'
+        ? [
+            {
+              id: 'switch',
+              label: persona === 'ADMIN' ? 'Passer à la vue agent' : 'Revenir à l’administration',
+              hint: 'Changer de vue',
+              icon: 'swap' as const,
+              group: 'Actions',
+              to: persona === 'ADMIN' ? '/agent' : '/admin',
+            },
+          ]
+        : []
+    return [...screens, ...requestItems, ...switchView]
+  }, [persona, requests, role])
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const list = q ? commands.filter((c) => `${c.label} ${c.hint}`.toLowerCase().includes(q)) : commands.filter((c) => c.group !== 'Demandes').concat(commands.filter((c) => c.group === 'Demandes').slice(0, 4))
+    // requests are already filtered by the server
+    const list = q
+      ? commands.filter((c) => c.group === 'Demandes' || `${c.label} ${c.hint}`.toLowerCase().includes(q))
+      : commands.filter((c) => c.group !== 'Demandes').concat(commands.filter((c) => c.group === 'Demandes'))
     return list.slice(0, 12)
   }, [commands, query])
 

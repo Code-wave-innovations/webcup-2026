@@ -12,10 +12,25 @@
 }
 
 .codes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
   font: 600 11.5px/1.2 var(--font-body);
   letter-spacing: 0.18em;
   color: var(--color-ice);
   margin-bottom: 8px;
+}
+
+.simulated {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px dashed var(--color-ember);
+  color: var(--color-ember);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .title {

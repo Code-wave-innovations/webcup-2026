@@ -122,7 +122,7 @@ Ces règles sont détaillées dans le PLAN-00 et s'appliquent à tous les plans 
 
 | Plan | Statut | Notes |
 |---|---|---|
-| 00 | À faire | |
+| 00 | Fait (3 oct.) | Paramètres, seed du scénario, CORS, `src/api`, console `/ville/*`, formulaires accessibles, page Paramètres branchée. Écarts : § 10 du plan |
 | 01 | À faire | |
 | 02 | À faire | |
 | 03 | À faire | |
