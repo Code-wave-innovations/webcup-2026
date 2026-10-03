@@ -13,6 +13,10 @@ dist-ssr
 *.local
 .env
 
+# Python TTS (MMS) virtualenv
+.venv
+scripts/tts/.venv
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

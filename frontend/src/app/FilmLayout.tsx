@@ -19,6 +19,7 @@ export function FilmLayout() {
   const cinematic = useDirectorStore((s) => s.cinematic)
   const session = useAuthStore((s) => s.session)
   const debugSignIn = useRef(false)
+  
 
   // the letterbox bars retract once the city is reached (or after a return to the cockpit)
   useEffect(() => {
