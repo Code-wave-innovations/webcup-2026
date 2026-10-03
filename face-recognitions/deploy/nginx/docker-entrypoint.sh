@@ -6,7 +6,11 @@ TEMPLATE_DIR=/etc/nginx/templates
 OUT=/etc/nginx/conf.d/face.conf
 CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
 
-if [ -f "$CERT" ]; then
+# FORCE_HTTP=1: TLS is terminated on the host reverse-proxy; stay on the HTTP
+# template forever so host→docker:HTTP_PORT never hits a HTTPS redirect loop.
+if [ "${FORCE_HTTP:-0}" = "1" ] || [ "${FORCE_HTTP:-}" = "true" ]; then
+  envsubst '${DOMAIN}' < "$TEMPLATE_DIR/face.http.conf.template" > "$OUT"
+elif [ -f "$CERT" ]; then
   envsubst '${DOMAIN}' < "$TEMPLATE_DIR/face.conf.template" > "$OUT"
 else
   envsubst '${DOMAIN}' < "$TEMPLATE_DIR/face.http.conf.template" > "$OUT"

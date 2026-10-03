@@ -59,27 +59,42 @@ docker run --rm -p 9000:9000 -e FACE_API_KEY=secret face-engine
 
 ## Production (VPS + DuckDNS + SSL)
 
-Requirements: Linux VPS, Docker + Compose plugin, ports 80/443 open, free [DuckDNS](https://www.duckdns.org) subdomain.
+Requirements: Linux VPS, Docker + Compose plugin, free [DuckDNS](https://www.duckdns.org) subdomain.
 
-1. Create a DuckDNS subdomain and copy the token.
-2. On the VPS:
+### Option 2 (recommended if :80/:443 already used) — host nginx reverse-proxy
+
+Public **80/443** stay on system nginx; Docker listens on **84** (HTTP only). Let's Encrypt still validates on public :80 via the host proxy.
 
 ```bash
 cd face-recognitions
 cp .env.prod.example .env.prod
-# Edit DOMAIN, DUCKDNS_SUBDOMAIN, DUCKDNS_TOKEN, LETSENCRYPT_EMAIL, FACE_API_KEY, FACE_CORS_ORIGINS
-./deploy/certbot/init-ssl.sh
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
-curl -fsS https://your-subdomain.duckdns.org/health   # use the DOMAIN value from .env.prod
+# Set DOMAIN, DUCKDNS_*, LETSENCRYPT_EMAIL (real email), FACE_API_KEY, FACE_CORS_ORIGINS
+# Keep: HTTP_PORT=84  HTTPS_PORT=447  FORCE_HTTP=1
+
+sudo apt-get install -y nginx   # if not already installed
+chmod +x deploy/host-nginx/install-host-nginx.sh deploy/certbot/init-ssl.sh
+
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+sudo ./deploy/host-nginx/install-host-nginx.sh http
+# Check: curl -sS http://127.0.0.1:84/health  and  curl -sS http://webcup.duckdns.org/health
+
+sudo ./deploy/certbot/init-ssl.sh
+# Switches host nginx to TLS automatically when FORCE_HTTP=1
+
+curl -fsS https://webcup.duckdns.org/health
 ```
 
-3. Point the frontend `VITE_FACE_API_URL` to `https://your-subdomain.duckdns.org`.
-
-Renewal is automatic: the certbot container runs `certbot renew` every 12h, and nginx reloads itself every 12h to pick up renewed certificates. To force a reload manually:
+After renewals, reload **host** nginx so it re-reads certs under `data/letsencrypt/`:
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod exec nginx nginx -s reload
+sudo nginx -s reload
 ```
+
+### Option 1 — Docker binds :80/:443 directly
+
+Set `HTTP_PORT=80`, `HTTPS_PORT=443`, `FORCE_HTTP=0`, free those ports, then `./deploy/certbot/init-ssl.sh`.
+
+3. Point the frontend `VITE_FACE_API_URL` to `https://your-subdomain.duckdns.org`.
 
 **Known limitation:** behind nginx, the app's rate limiter sees the nginx container IP (no `ProxyFix` yet), so `FACE_RATE_LIMIT` is effectively shared across all clients. Follow-up: wrap the Flask app with werkzeug `ProxyFix`.
 
