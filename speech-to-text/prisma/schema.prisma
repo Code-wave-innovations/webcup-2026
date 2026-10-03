@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TranscriptionJobStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
+enum TranscriptionMode {
+  FAST
+  BALANCED
+  ACCURATE
+}
+
+model TranscriptionJob {
+  id           String                   @id @default(uuid()) @db.Uuid
+  status       TranscriptionJobStatus
+  mode         TranscriptionMode
+  languageHints Json                    @map("language_hints")
+  context      Json
+  options      Json
+  audioPath    String?                  @map("audio_path")
+  text         String?
+  languages    Json
+  confidence   Float?
+  speakers     Json?
+  errorCode    String?                  @map("error_code")
+  errorMessage String?                  @map("error_message")
+  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  completedAt  DateTime?                @map("completed_at") @db.Timestamptz(3)
+
+  segments     TranscriptSegment[]
+  providerCalls ProviderCall[]
+  accessLogs   AccessLog[]
+
+  @@map("transcription_jobs")
+}
+
+model TranscriptSegment {
+  id         String   @id @default(uuid()) @db.Uuid
+  jobId      String   @map("job_id") @db.Uuid
+  startMs    Int      @map("start_ms")
+  endMs      Int      @map("end_ms")
+  text       String
+  confidence Float?
+  speakerId  String?  @map("speaker_id")
+  language   String?
+  ord        Int
+
+  job TranscriptionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("transcript_segments")
+}
+
+model ProviderCall {
+  id               String   @id @default(uuid()) @db.Uuid
+  jobId            String   @map("job_id") @db.Uuid
+  provider         String
+  operation        String
+  latencyMs        Int      @map("latency_ms")
+  costUsdEstimate  Float?   @map("cost_usd_estimate")
+  success          Boolean
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  job TranscriptionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("provider_calls")
+}
+
+model AccessLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  jobId       String?  @map("job_id") @db.Uuid
+  apiKeyHash  String   @map("api_key_hash")
+  route       String
+  statusCode  Int      @map("status_code")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  job TranscriptionJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([jobId])
+  @@map("access_logs")
+}

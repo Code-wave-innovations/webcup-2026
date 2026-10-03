@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import logo from '../../assets/logo/code-wave-logo.png'
 import logo2 from '../../assets/logo/code-wave-high-resolution-logo-transparent.png'
 import useHttps from '../../hooks/useHttps'
@@ -55,9 +56,20 @@ function Home() {
           alt="CodeWave Innovations"
           className="h-12 w-auto object-contain sm:h-14"
         />
-        <p className="hidden text-[11px] font-medium uppercase tracking-[0.42em] text-[#0A2342] sm:block">
-          Innovations
-        </p>
+        <div className="flex items-center gap-6">
+          <Link
+            to="/transcription"
+            className="text-[11px] font-medium uppercase tracking-[0.42em] text-[#4A90FF] transition hover:text-[#0A2342]"
+          >
+            Transcription
+          </Link>
+          <Link
+            to="/face"
+            className="text-[11px] font-medium uppercase tracking-[0.42em] text-[#4A90FF] transition hover:text-[#0A2342]"
+          >
+            Face Unlock
+          </Link>
+        </div>
       </header>
 
       <section className="flex flex-1 flex-col items-center justify-center px-6 pb-12 text-center">
