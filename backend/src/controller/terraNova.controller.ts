@@ -2,7 +2,8 @@ import type { Request, Response } from "express";
 import { HttpError, serviceUnavailable } from "../lib/errors";
 
 // D19: agents consult the information published by the official Terra Nova API.
-// Needs TERRA_NOVA_API_KEY in .env (sent as X-Webcup-Api-Key); TERRA_NOVA_API_URL overrides the endpoint.
+// Needs TERRA_NOVA_API_KEY in .env (TERRA_NOVA_API_TOKEN is the name in .env.examle),
+// sent as X-Webcup-Api-Key. TERRA_NOVA_API_URL overrides the endpoint.
 
 const DEFAULT_URL = "https://24h.webcup.fr/wp-json/webcup/v1/requests/";
 
@@ -12,7 +13,7 @@ let cache: { fetchedAt: number; body: unknown } | null = null;
 const terraNovaController = {
   feed: async (req: Request, res: Response) => {
     const url = process.env.TERRA_NOVA_API_URL || DEFAULT_URL;
-    const apiKey = process.env.TERRA_NOVA_API_KEY;
+    const apiKey = process.env.TERRA_NOVA_API_KEY || process.env.TERRA_NOVA_API_TOKEN;
     if (!apiKey) throw serviceUnavailable("TERRA_NOVA_API_KEY is not configured");
 
     const fresh = cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS;

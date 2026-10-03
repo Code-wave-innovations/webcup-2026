@@ -87,7 +87,7 @@ export default function AgentDashboardPage() {
             <StatTile label="Assignées à moi" value={requests?.assigned_to_me ?? null} icon="user" tone="ice" />
             <StatTile
               label="Rendez-vous aujourd’hui"
-              value={stats?.appointments.today ?? null}
+              value={stats?.appointments?.today ?? null}
               icon="calendar"
               tone="taken"
               trend={appointmentsSeries && appointmentsSeries.length > 1 ? appointmentsSeries : undefined}

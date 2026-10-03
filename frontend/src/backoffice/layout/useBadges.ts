@@ -13,12 +13,12 @@ export function useBadges(): Partial<Record<BadgeKey, number>> {
   const interruptions = useInterruptions('current')
   return {
     // D17
-    awaiting: stats.data?.requests.awaiting_pickup,
+    awaiting: stats.data?.requests?.awaiting_pickup,
     // D18, F29, F31
-    activeAlerts: stats.data?.platform.active_alerts,
+    activeAlerts: stats.data?.platform?.active_alerts,
     // F38
     interruptions: interruptions.data?.length,
     // F39
-    appointmentsToday: stats.data?.appointments.today,
+    appointmentsToday: stats.data?.appointments?.today,
   }
 }
