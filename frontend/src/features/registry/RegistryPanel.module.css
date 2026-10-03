@@ -1,0 +1,11 @@
+.counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 26px;
+  align-items: baseline;
+}
+
+.counters b {
+  font: 500 36px/1 var(--font-display);
+  margin-right: 7px;
+}

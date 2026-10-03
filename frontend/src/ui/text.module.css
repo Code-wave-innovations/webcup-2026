@@ -1,0 +1,10 @@
+.note {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.error {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-alert);
+}

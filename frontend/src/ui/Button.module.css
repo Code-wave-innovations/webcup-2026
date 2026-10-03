@@ -1,0 +1,53 @@
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 22px;
+  border: 1px solid transparent;
+  font: 600 16px/1 var(--font-body);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.2s, color 0.2s;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+
+.solid {
+  background: var(--color-ice);
+  color: var(--color-ink);
+}
+
+.solid:hover {
+  background: var(--color-ice-bright);
+  transform: translateY(-1px);
+}
+
+.ghost {
+  background: var(--color-glass);
+  border-color: var(--color-line);
+  color: var(--color-ice-bright);
+}
+
+.ghost:hover {
+  background: var(--color-glass-light);
+}
+
+/* on a red alert banner */
+.inverse {
+  background: var(--color-text);
+  color: var(--color-alert-bg);
+}
+
+.small {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 15px;
+}
+
+.button[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

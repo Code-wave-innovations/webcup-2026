@@ -1,0 +1,63 @@
+/*
+  NOVA design tokens. The world is warm (sunset, rock), the interface is cold (ice light on dark glass):
+  the contrast of cinema. `static` keeps every variable in the output, since CSS modules read them directly.
+*/
+@theme static {
+  --color-void: #04060c;
+  --color-ink: #04121c;
+  --color-glass: rgba(7, 14, 26, 0.68);
+  --color-glass-dense: rgba(6, 11, 21, 0.88);
+  --color-glass-light: rgba(143, 233, 255, 0.07);
+  --color-line: rgba(143, 233, 255, 0.34);
+  --color-line-thin: rgba(143, 233, 255, 0.15);
+  --color-sheen: rgba(200, 246, 255, 0.28);
+  --color-ice: #8fe9ff;
+  --color-ice-bright: #c8f6ff;
+  --color-ice-halo: rgba(41, 196, 232, 0.3);
+  --color-text: #eaf6ff;
+  --color-text-muted: #a9c6d8;
+  --color-ember: #ffb15c;
+  --color-ember-halo: rgba(255, 177, 92, 0.28);
+  --color-alert: #ff8478;
+  --color-alert-bg: #b3261e;
+  --color-alert-veil: rgba(179, 38, 30, 0.22);
+  --color-ok: #7cffb2;
+  --color-progress: #ffc56b;
+  --color-taken: #9db8ff;
+  --color-veil: rgba(4, 6, 12, 0.46);
+  --color-veil-strong: rgba(4, 6, 12, 0.74);
+  --color-sky-1: #1b2a5c;
+  --color-sky-2: #7a4a6a;
+  --color-sky-3: #e08a4a;
+  --color-ground-1: #3a1a12;
+  --color-shade: rgba(2, 4, 10, 0.7);
+  --color-holo-1: rgba(143, 233, 255, 0.1);
+  --color-holo-2: rgba(10, 26, 42, 0.5);
+  --color-holo-3: rgba(6, 16, 28, 0.46);
+  --color-holo-glow: rgba(41, 196, 232, 0.12);
+  --color-scanline: rgba(143, 233, 255, 0.05);
+  --color-field: rgba(4, 10, 18, 0.62);
+  --color-hover: rgba(143, 233, 255, 0.12);
+  --color-top-fade: rgba(4, 6, 12, 0.72);
+  --color-bottom-fade: rgba(4, 6, 12, 0.8);
+  --color-beam-1: rgba(143, 233, 255, 0.03);
+  --color-beam-2: rgba(143, 233, 255, 0.34);
+
+  /* CodeWave team brand (team page) */
+  --color-navy: #0a2342;
+  --color-wave: #4a90ff;
+
+  --font-display: 'Unbounded Variable', 'Arial Black', system-ui, sans-serif;
+  --font-body: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
+
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out-sharp: cubic-bezier(0.6, 0, 0.2, 1);
+}
+
+:root {
+  color-scheme: dark;
+  --gutter: clamp(16px, 3.4vw, 56px);
+  /* real viewport height, kept in sync by the city scroll (mobile browsers resize the visual viewport) */
+  --screen-h: 800px;
+  --corner: 16px;
+}

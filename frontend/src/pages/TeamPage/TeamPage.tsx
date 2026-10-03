@@ -11,7 +11,7 @@ type User = {
   last_name: string
 }
 
-function Home() {
+function TeamPage() {
   const { http } = useHttps()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -112,4 +112,4 @@ function Home() {
   )
 }
 
-export default Home
+export default TeamPage

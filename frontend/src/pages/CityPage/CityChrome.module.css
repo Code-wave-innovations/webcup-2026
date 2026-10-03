@@ -1,0 +1,232 @@
+.bar {
+  position: fixed;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px 22px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) var(--gutter) 14px;
+  background: linear-gradient(180deg, var(--color-top-fade), transparent);
+}
+
+.bar[data-alert='true'] {
+  background: linear-gradient(180deg, var(--color-alert-veil), transparent);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 700 19px/1 var(--font-display);
+  letter-spacing: 0.12em;
+}
+
+.brand svg {
+  color: var(--color-ice);
+}
+
+.links {
+  display: flex;
+  gap: 2px;
+  margin-inline: auto;
+}
+
+.links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 13px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.links a:hover,
+.links a[aria-current='true'] {
+  color: var(--color-text);
+}
+
+.links a[aria-current='true'] {
+  box-shadow: inset 0 -2px 0 var(--color-ice);
+}
+
+.end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.links + .end {
+  margin-left: 0;
+}
+
+.clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.clock b {
+  font: 500 19px/1.1 var(--font-body);
+}
+
+.clock span {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-line);
+  background: var(--color-glass);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge small {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.round {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-line);
+  background: var(--color-glass);
+  color: var(--color-ice-bright);
+}
+
+.round:hover {
+  background: var(--color-glass-light);
+}
+
+/* side rail: one tick per stop of the flyover */
+.rail {
+  position: fixed;
+  z-index: 5;
+  right: calc(var(--gutter) - 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rail a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 28px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.rail a span {
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 0.25s, transform 0.25s;
+  white-space: nowrap;
+  padding: 3px 8px;
+  background: var(--color-glass-dense);
+}
+
+.rail a i {
+  display: block;
+  width: 16px;
+  height: 2px;
+  background: var(--color-line);
+  transition: width 0.3s, background 0.3s;
+}
+
+.rail a:hover span,
+.rail a:focus-visible span {
+  opacity: 1;
+  transform: none;
+}
+
+.rail a[aria-current='true'] {
+  color: var(--color-text);
+}
+
+.rail a[aria-current='true'] i {
+  width: 32px;
+  background: var(--color-ice);
+}
+
+/* luminous line from a panel to its district in the 3D city */
+.line {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+  opacity: 0;
+}
+
+.line path {
+  fill: none;
+  stroke: var(--color-ice);
+  stroke-width: 1.2;
+  opacity: 0.85;
+}
+
+.line circle {
+  fill: none;
+  stroke: var(--color-ice);
+  stroke-width: 1.5;
+}
+
+.line .pulse {
+  animation: wave 2.4s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes wave {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 1100px) {
+  .links {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .rail,
+  .line {
+    display: none;
+  }
+
+  .badge small,
+  .clock span {
+    display: none;
+  }
+}

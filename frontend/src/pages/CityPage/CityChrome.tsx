@@ -1,0 +1,133 @@
+import { useEffect, useRef, type RefObject } from 'react'
+import { frameBus, frameState } from '../../experience/director/frameState'
+import type { Session } from '../../features/auth/authService'
+import { formatLocalTime } from '../../lib/format'
+import { Icon, NovaMark } from '../../ui/Icon'
+import { CITY_SECTIONS } from './citySections'
+import type { LiveScroll } from './useCityScroll'
+import styles from './CityChrome.module.css'
+
+const current = (active: boolean) => (active ? 'true' : undefined)
+
+/** Local time follows the sunset of the flyover. */
+function Clock() {
+  const timeRef = useRef<HTMLElement>(null)
+  useEffect(
+    () =>
+      frameBus.subscribe(() => {
+        const time = formatLocalTime(frameState.dusk)
+        const element = timeRef.current
+        if (element && element.textContent !== time) element.textContent = time
+      }),
+    [],
+  )
+  return (
+    <div className={styles.clock} aria-label="Heure locale">
+      <b ref={timeRef}>18:42</b>
+      <span>Heure locale, sol 214</span>
+    </div>
+  )
+}
+
+interface TopBarProps {
+  session: Session
+  active: number
+  alert: boolean
+  onQuit: () => void
+}
+
+export function TopBar({ session, active, alert, onQuit }: TopBarProps) {
+  return (
+    <header className={styles.bar} data-alert={alert}>
+      <div className={styles.brand}>
+        <NovaMark />
+        <span>NOVA</span>
+      </div>
+      <nav className={styles.links} aria-label="Rubriques">
+        {CITY_SECTIONS.map((section, i) =>
+          section.nav ? (
+            <a key={section.id} href={`#${section.id}`} aria-current={current(i === active)}>
+              {section.nav}
+            </a>
+          ) : null,
+        )}
+      </nav>
+      <div className={styles.end}>
+        <Clock />
+        <div className={styles.badge}>
+          <span>{session.name}</span>
+          <small>{session.roleLabel}</small>
+        </div>
+        <button type="button" className={styles.round} aria-label="Quitter la ville et revenir au contrôle d'accès" onClick={onQuit}>
+          <Icon name="logout" />
+        </button>
+      </div>
+    </header>
+  )
+}
+
+export function RouteRail({ active }: { active: number }) {
+  return (
+    <nav className={styles.rail} aria-label="Étapes du survol">
+      {CITY_SECTIONS.map((section, i) => (
+        <a key={section.id} href={`#${section.id}`} aria-current={current(i === active)}>
+          <span>{section.rail}</span>
+          <i />
+        </a>
+      ))}
+    </nav>
+  )
+}
+
+const LEAD = 34
+const CLEARANCE = 40
+
+/**
+ * The line of light from the active panel to its district in the 3D city, redrawn every frame.
+ * Hidden when the district is off-screen or tucked behind the panel.
+ */
+export function LinkLine({ live, phone }: { live: RefObject<LiveScroll>; phone: boolean }) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const pathRef = useRef<SVGPathElement>(null)
+  const dotRef = useRef<SVGCircleElement>(null)
+  const pulseRef = useRef<SVGCircleElement>(null)
+
+  useEffect(
+    () =>
+      frameBus.subscribe(() => {
+        const svg = svgRef.current
+        if (!svg || !pathRef.current || !dotRef.current || !pulseRef.current) return
+        const section = live.current.sections[live.current.active]
+        const anchorId = CITY_SECTIONS[live.current.active]?.anchor
+        const anchor = anchorId ? frameState.anchors[anchorId] : null
+        if (phone || !section?.panel || !anchor?.visible || section.reveal <= 0.25) {
+          svg.style.opacity = '0'
+          return
+        }
+        const panel = section.panel.getBoundingClientRect()
+        const towardsLeft = anchor.x < panel.left
+        if ((towardsLeft && anchor.x > panel.left - CLEARANCE) || (!towardsLeft && anchor.x < panel.right + CLEARANCE)) {
+          svg.style.opacity = '0'
+          return
+        }
+        const x0 = towardsLeft ? panel.left : panel.right
+        const y0 = panel.top + 26
+        const x1 = x0 + (towardsLeft ? -LEAD : LEAD)
+        pathRef.current.setAttribute('d', `M${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y0.toFixed(1)} L${anchor.x.toFixed(1)} ${anchor.y.toFixed(1)}`)
+        for (const circle of [dotRef.current, pulseRef.current]) {
+          circle.setAttribute('cx', anchor.x.toFixed(1))
+          circle.setAttribute('cy', anchor.y.toFixed(1))
+        }
+        svg.style.opacity = section.reveal.toFixed(2)
+      }),
+    [live, phone],
+  )
+
+  return (
+    <svg ref={svgRef} className={styles.line} aria-hidden="true">
+      <path ref={pathRef} d="M0 0" />
+      <circle ref={dotRef} r="7" cx="-99" cy="-99" />
+      <circle ref={pulseRef} className={styles.pulse} r="7" cx="-99" cy="-99" />
+    </svg>
+  )
+}

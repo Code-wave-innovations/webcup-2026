@@ -1,0 +1,210 @@
+/* Act I: inside the cockpit, the visitor identifies before entering the atmosphere */
+.airlock {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+}
+
+.airlock::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 120px;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--color-top-fade), transparent);
+}
+
+.radio,
+.telemetry,
+.note,
+.reticle {
+  transition: opacity 0.6s ease;
+}
+
+.departing .telemetry,
+.departing .note,
+.departing .reticle {
+  opacity: 0;
+}
+
+.radio {
+  position: absolute;
+  left: var(--gutter);
+  top: calc(22px + env(safe-area-inset-top, 0px));
+  max-width: min(430px, 60%);
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.radio b {
+  display: block;
+  font: 600 14px/1.2 var(--font-body);
+  color: var(--color-ice);
+  margin-bottom: 4px;
+}
+
+.telemetry {
+  position: absolute;
+  right: var(--gutter);
+  top: calc(22px + env(safe-area-inset-top, 0px));
+  display: flex;
+  gap: 26px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: right;
+}
+
+.telemetry span {
+  display: block;
+  font: 500 13px/1.2 var(--font-body);
+  color: var(--color-text-muted);
+}
+
+.telemetry b {
+  font: 500 20px/1.3 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+/* reticle locked on the city lights */
+.reticle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate3d(-999px, -999px, 0);
+  will-change: transform;
+  pointer-events: none;
+}
+
+.reticle[data-hidden='true'] {
+  opacity: 0;
+}
+
+.reticle i {
+  position: absolute;
+  left: -34px;
+  top: -34px;
+  width: 68px;
+  height: 68px;
+  border: 1px solid var(--color-ice);
+  border-radius: 50%;
+  opacity: 0.85;
+}
+
+.reticle i::before,
+.reticle i::after {
+  content: '';
+  position: absolute;
+  background: var(--color-ice);
+}
+
+.reticle i::before {
+  left: 50%;
+  top: -12px;
+  bottom: -12px;
+  width: 1px;
+  -webkit-mask: linear-gradient(#000 0 14px, transparent 14px calc(100% - 14px), #000 calc(100% - 14px));
+  mask: linear-gradient(#000 0 14px, transparent 14px calc(100% - 14px), #000 calc(100% - 14px));
+}
+
+.reticle i::after {
+  top: 50%;
+  left: -12px;
+  right: -12px;
+  height: 1px;
+  -webkit-mask: linear-gradient(90deg, #000 0 14px, transparent 14px calc(100% - 14px), #000 calc(100% - 14px));
+  mask: linear-gradient(90deg, #000 0 14px, transparent 14px calc(100% - 14px), #000 calc(100% - 14px));
+}
+
+.reticle span {
+  position: absolute;
+  left: 48px;
+  top: -22px;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.reticle span b {
+  display: block;
+  font: 500 17px/1.2 var(--font-display);
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+}
+
+.reticle em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+/* light cone from the dashboard emitter up to the hologram */
+.beam {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  background: linear-gradient(180deg, var(--color-beam-1), var(--color-beam-2));
+  animation: flicker 3.2s steps(1) infinite;
+}
+
+.note {
+  position: absolute;
+  left: var(--gutter);
+  bottom: calc(27% + env(safe-area-inset-bottom, 0px));
+  max-width: 300px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+@keyframes flicker {
+  0%,
+  47%,
+  100% {
+    opacity: 0.9;
+  }
+  48% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  82% {
+    opacity: 0.7;
+  }
+  83% {
+    opacity: 0.9;
+  }
+}
+
+@media (max-width: 860px) {
+  .telemetry {
+    gap: 14px;
+  }
+
+  .telemetry li:nth-child(n + 2) {
+    display: none;
+  }
+
+  .radio {
+    max-width: 62%;
+  }
+
+  .note,
+  .reticle span {
+    display: none;
+  }
+}
+
+@media (max-height: 700px) and (min-width: 861px) {
+  .note,
+  .telemetry {
+    display: none;
+  }
+}
