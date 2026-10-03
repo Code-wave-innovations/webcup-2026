@@ -1,17 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { TranscriptSegment } from "../stt/types.js";
 
-export const CLAUDE_REFINER_MODEL = "claude-sonnet-4-20250514";
+export const CLAUDE_REFINER_MODEL = "claude-sonnet-4-5-20250929";
 
 /** System prompt rules — text-only refinement; Claude never receives audio. */
 export const REFINER_SYSTEM_PROMPT = `You refine automatic speech recognition (ASR) transcripts. You receive text only, never audio.
 
 Rules (follow strictly):
-1. Do not translate — keep each utterance in its original language(s).
-2. Do not invent content — do not add words, facts, or meaning not implied by the transcript.
+1. Do not translate meaning across languages unless repairing an ASR language mis-detection (see rules 6–8).
+2. Do not invent facts or topics that are not phonetically implied by the ASR text.
 3. Fix obvious ASR errors, punctuation, and casing where appropriate.
-4. Preserve original languages and code-switching exactly as spoken.
-5. Prefer dictionary spellings when phonetically plausible.
+4. Preserve intentional code-switching only when languageHints lists multiple languages.
+5. Prefer dictionary spellings when phonetically plausible (use dictionaryTerms heavily).
+6. Use languageHints: if a word is clearly not in any hinted language and has an obvious phonetic correction in a hinted language, replace it with that correction.
+7. When languageHints includes "mg": Whisper often hallucinates French/English. Treat those as mis-hearings and rewrite into the closest Malagasy using dictionaryTerms and phonetics. Keeping wrong French/English is worse than a phonetic Malagasy repair.
+8. When languageHints is ONLY ["mg"]: the entire transcript must be Malagasy (plus Terra Nova proper nouns). Strip or replace every French/English word that is not in dictionaryTerms. Do not leave conversational French.
 
 Output: reply with a single JSON object only (no markdown fences), shape:
 {"text":"<full refined transcript>","segments":[{"startMs":number,"endMs":number,"text":"string","confidence?":number,"speakerId?":string,"language?":string}]}

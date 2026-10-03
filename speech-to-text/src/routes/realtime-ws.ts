@@ -46,8 +46,14 @@ export const realtimeWsRoutes =
     const sessionDeps: RealtimeSessionDeps = {
       ...deps,
       config: deps.config ?? {
-        OPENAI_API_KEY: config.OPENAI_API_KEY,
+        OPENROUTER_API_KEY: config.OPENROUTER_API_KEY,
+        OPENROUTER_STT_MODEL: config.OPENROUTER_STT_MODEL,
+        OPENROUTER_REALTIME_STT_MODEL: config.OPENROUTER_REALTIME_STT_MODEL,
+        OPENROUTER_BASE_URL: config.OPENROUTER_BASE_URL,
         ANTHROPIC_API_KEY: config.ANTHROPIC_API_KEY,
+        CLAUDE_REFINER_MODEL: config.CLAUDE_REFINER_MODEL,
+        CONFIDENCE_FALLBACK_THRESHOLD: config.CONFIDENCE_FALLBACK_THRESHOLD,
+        REALTIME_SKIP_SPEECH_GATE: config.REALTIME_SKIP_SPEECH_GATE,
       },
     };
 
@@ -82,8 +88,11 @@ export const realtimeWsRoutes =
               });
               return;
             }
-            const events = await session.handleChunk(data);
-            for (const event of events) sendEvent(socket, event);
+            const events = await session.handleChunk(data, (event) => {
+              sendEvent(socket, event);
+            });
+            // Events already streamed via emit; keep return for metrics/tests only.
+            void events;
             return;
           }
 

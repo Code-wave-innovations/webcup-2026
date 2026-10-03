@@ -1,6 +1,6 @@
 # Face recognition engine
 
-Flask API powered by **InsightFace (SCRFD + ArcFace)**, with multi-sample enrollment, 1:1 verify, 1:N identify, emotion estimation, and passive liveness (heuristic + optional ONNX anti-spoof).
+Flask API powered by **InsightFace (SCRFD + ArcFace)**, with multi-sample enrollment, 1:1 verify, 1:N identify, and passive liveness (heuristic + optional ONNX anti-spoof).
 
 > Software RGB only — not equivalent to iPhone TrueDepth / Secure Enclave.
 
@@ -13,8 +13,6 @@ cd face-recognitions
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-# optional emotion (TensorFlow / Keras):
-# pip install -r requirements-emotion.txt
 cp .env.example .env
 python scripts/download_models.py   # buffalo_s ~120MB → ~/.insightface
 python api_pro.py
@@ -33,7 +31,6 @@ Frontend demo: open `http://localhost:5173/face` (set `VITE_FACE_API_URL` in `fr
 | POST | `/enroll` | Multipart `name` + `img` (or `img0..`) — needs ≥3 samples |
 | POST | `/identify` | 1:N match |
 | POST | `/verify` | 1:1 — form `name` + `img` (+ liveness) |
-| POST | `/emotion` | Emotion label on largest face |
 | DELETE | `/identities/<name>` | Remove identity |
 
 Legacy aliases: `POST /create-dataset`, `POST /recognize`, `DELETE /delete-dataset`.
@@ -59,6 +56,34 @@ Default: RGB heuristics (demo-grade). For stronger passive spoof detection, plac
 docker build -t face-engine .
 docker run --rm -p 9000:9000 -e FACE_API_KEY=secret face-engine
 ```
+
+## Production (VPS + DuckDNS + SSL)
+
+Requirements: Linux VPS, Docker + Compose plugin, ports 80/443 open, free [DuckDNS](https://www.duckdns.org) subdomain.
+
+1. Create a DuckDNS subdomain and copy the token.
+2. On the VPS:
+
+```bash
+cd face-recognitions
+cp .env.prod.example .env.prod
+# Edit DOMAIN, DUCKDNS_SUBDOMAIN, DUCKDNS_TOKEN, LETSENCRYPT_EMAIL, FACE_API_KEY, FACE_CORS_ORIGINS
+./deploy/certbot/init-ssl.sh
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+curl -fsS https://your-subdomain.duckdns.org/health   # use the DOMAIN value from .env.prod
+```
+
+3. Point the frontend `VITE_FACE_API_URL` to `https://your-subdomain.duckdns.org`.
+
+Renewal is automatic: the certbot container runs `certbot renew` every 12h, and nginx reloads itself every 12h to pick up renewed certificates. To force a reload manually:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec nginx nginx -s reload
+```
+
+**Known limitation:** behind nginx, the app's rate limiter sees the nginx container IP (no `ProxyFix` yet), so `FACE_RATE_LIMIT` is effectively shared across all clients. Follow-up: wrap the Flask app with werkzeug `ProxyFix`.
+
+Local/simple Docker without TLS remains: `docker compose up -d` (see `docker-compose.yml`).
 
 ## Calibrated thresholds (starting points)
 

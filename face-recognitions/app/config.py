@@ -13,7 +13,6 @@ EMBEDDINGS_DIR = DATA_DIR / "embeddings"
 MODELS_DIR = BASE_DIR / "models"
 ANTI_SPOOF_DIR = MODELS_DIR / "anti_spoof"
 
-EMOTION_MODEL_PATH = MODELS_DIR / "_mini_XCEPTION.106-0.65.hdf5"
 HAAR_PATH = MODELS_DIR / "haarcascade_frontalface_default.xml"
 
 HOST = os.getenv("FACE_HOST", "0.0.0.0")
@@ -61,8 +60,6 @@ REQUIRE_LIVENESS_VERIFY = os.getenv("FACE_REQUIRE_LIVENESS_VERIFY", "true").lowe
 REQUIRE_LIVENESS_IDENTIFY = os.getenv(
     "FACE_REQUIRE_LIVENESS_IDENTIFY", "false"
 ).lower() in ("1", "true", "yes")
-
-EMOTIONS = ["angry", "disgust", "scared", "happy", "sad", "surprised", "neutral"]
 
 
 def ensure_dirs() -> None:

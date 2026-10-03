@@ -207,6 +207,17 @@ Ensure **ffmpeg** and **ffprobe** are on your `PATH` before uploading audio.
 
 `MAX_AUDIO_DURATION_SEC` defaults to 720 (12 min): 16 kHz mono PCM-as-WAV is ~32 KB/s, so 12 min stays under OpenAI's ~25 MB upload limit; raising it requires chunking.
 
+### Realtime latency (env)
+
+WebSocket realtime STT uses separate defaults from batch upload (`OPENROUTER_STT_MODEL` unchanged):
+
+| Variable | Default | Notes |
+|----------|---------|--------|
+| `OPENROUTER_REALTIME_STT_MODEL` | `openai/whisper-large-v3-turbo` | Faster model for WebSocket realtime |
+| `REALTIME_SKIP_SPEECH_GATE` | `true` | Skip FFmpeg silence gate (client VAD already filters) |
+
+See `.env.example` for the full list.
+
 ## Ops smoke (manual)
 
 Set `STT_API_KEY` in `.env` (same value as `Authorization: Bearer …` below).
@@ -251,4 +262,4 @@ cd speech-to-text && npm test
 cd speech-to-text && export PATH="$PWD/bin:$PATH" && npm test
 ```
 
-Expect **35 passed** when local ffmpeg works (use `bin/` wrappers if Homebrew x265 is broken).
+Expect **69 passed**, **0 failed** when ffmpeg/ffprobe are on `PATH` (use `bin/` wrappers if Homebrew x265 is broken). Without ffmpeg, **2** preprocess tests are skipped and the rest should still pass.
