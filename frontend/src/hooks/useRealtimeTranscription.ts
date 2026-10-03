@@ -69,14 +69,9 @@ export function useRealtimeTranscription(options?: {
     const stopRecorder = useCallback(() => {
         const recorder = recorderRef.current
         if (recorder && recorder.state !== 'inactive') {
+            // stop() émet un dernier ondataavailable : c'est ce chunk (WebM complet
+            // avec en-têtes EBML/Tracks) qui contient l'utterance envoyée au serveur.
             recorder.stop()
-        }
-    }, [])
-
-    const flushUtterance = useCallback(() => {
-        const recorder = recorderRef.current
-        if (recorder && recorder.state === 'recording') {
-            recorder.requestData()
         }
     }, [])
 
@@ -137,7 +132,8 @@ export function useRealtimeTranscription(options?: {
                     } else if (silentFor >= requiredEndSilenceMs(spokeFor)) {
                         state.speaking = false
                         state.silenceStart = 0
-                        flushUtterance()
+                        stopRecorder()
+                        startRecorder(stream)
                     }
                 }
 
@@ -146,11 +142,12 @@ export function useRealtimeTranscription(options?: {
                     state.speaking = false
                     state.silenceStart = 0
                     state.speechStart = now
-                    flushUtterance()
+                    stopRecorder()
+                    startRecorder(stream)
                 }
             }, ENERGY_CHECK_INTERVAL_MS)
         },
-        [flushUtterance],
+        [startRecorder, stopRecorder],
     )
 
     const stopVad = useCallback(() => {
