@@ -42,7 +42,7 @@ const COCKPIT = {
   /** on the glare shield, left of the hologram emitter (x is scaled with the cockpit's width) */
   x: -0.025,
   /** top of the glare shield at that depth (it tilts slightly towards the canopy) */
-  y: -0.226,
+  y: -0.28,
   z: -0.95,
   scale: 0.25,
   /** three-quarter view, turned towards the hologram */
