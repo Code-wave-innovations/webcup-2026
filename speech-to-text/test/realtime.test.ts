@@ -360,6 +360,77 @@ test("RealtimeSession BALANCED: handleChunk returns before refine resolves; STT 
   assert.equal(sttCalls, 1);
 });
 
+function makeSession(
+  RealtimeSession: typeof import("../src/modules/realtime/session.js").RealtimeSession,
+  refine: () => Promise<unknown>,
+) {
+  return new RealtimeSession({
+    sttProvider: {
+      name: "fake-stt",
+      transcribe: async () => ({
+        text: "premiere phrase",
+        confidence: 0.4,
+        segments: [{ startMs: 0, endMs: 400, text: "premiere phrase" }],
+        latencyMs: 1,
+      }),
+    } as never,
+    refine: refine as never,
+    writeFile: (async () => undefined) as never,
+    removeFile: async () => undefined,
+    makeWorkDir: async () => "/tmp/stt-rt-test-nonexistent",
+  });
+}
+
+test("RealtimeSession: synchronously throwing refine causes no unhandled rejection", async () => {
+  ensureTestEnv();
+  const { RealtimeSession } = await import("../src/modules/realtime/session.js");
+  const unhandled: unknown[] = [];
+  const onUnhandled = (e: unknown) => unhandled.push(e);
+  process.on("unhandledRejection", onUnhandled);
+  try {
+    const session = makeSession(RealtimeSession, () => {
+      throw new Error("refiner factory/sync failure");
+    });
+    await session.start({ mode: "BALANCED" });
+    await session.handleChunk(Buffer.from("a"), () => undefined);
+    await new Promise((r) => setTimeout(r, 50));
+    await session.end();
+    await new Promise((r) => setImmediate(r));
+    assert.equal(unhandled.length, 0);
+  } finally {
+    process.off("unhandledRejection", onUnhandled);
+  }
+});
+
+test("RealtimeSession: emit errors on refined event do not open the refine circuit", async () => {
+  ensureTestEnv();
+  const { RealtimeSession } = await import("../src/modules/realtime/session.js");
+  const unhandled: unknown[] = [];
+  const onUnhandled = (e: unknown) => unhandled.push(e);
+  process.on("unhandledRejection", onUnhandled);
+  let refineCalls = 0;
+  try {
+    const session = makeSession(RealtimeSession, async () => {
+      refineCalls++;
+      return { text: "Première phrase", segments: [] };
+    });
+    await session.start({ mode: "BALANCED" });
+    const throwingEmit = (e: { type: string }) => {
+      if (e.type === "transcript.refined") throw new Error("socket closed");
+    };
+    for (let i = 0; i < 5; i++) {
+      await session.handleChunk(Buffer.from("a"), throwingEmit as never);
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    assert.equal(refineCalls, 5); // circuit (opens at 3 failures) must stay closed
+    await session.end();
+    await new Promise((r) => setImmediate(r));
+    assert.equal(unhandled.length, 0);
+  } finally {
+    process.off("unhandledRejection", onUnhandled);
+  }
+});
+
 test("WS binary chunk before session.start gets error", async () => {
   await withSocket({}, async (_h, ws) => {
     ws.send(Buffer.from("early-audio"));

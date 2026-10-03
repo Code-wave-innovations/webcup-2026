@@ -273,37 +273,23 @@ export class RealtimeSession {
     const segmentsSnapshot = sttResult.segments;
     const refinePromise = (async () => {
       if (this.closed) return;
-      const refine =
-        this.deps.refine ??
-        createClaudeRefiner(this.deps.config?.ANTHROPIC_API_KEY ?? "", {
-          model: this.deps.config?.CLAUDE_REFINER_MODEL,
-        }).refineTranscript;
+      let refined: RefineResult;
       try {
+        // Factory lookup lives inside the try so a throwing factory counts as a
+        // refine failure instead of an unhandled rejection.
+        const refine =
+          this.deps.refine ??
+          createClaudeRefiner(this.deps.config?.ANTHROPIC_API_KEY ?? "", {
+            model: this.deps.config?.CLAUDE_REFINER_MODEL,
+          }).refineTranscript;
         const dictionaryTerms = dictionaryTermsForHints(optionsSnapshot.languageHints);
-        const refined = await refine({
+        refined = await refine({
           text,
           segments: segmentsSnapshot,
           languageHints: optionsSnapshot.languageHints,
           context: optionsSnapshot.context,
           ...(dictionaryTerms ? { dictionaryTerms } : {}),
         });
-        if (this.closed) return;
-        this.consecutiveRefineFailures = 0;
-        logMetric("realtime.refine_completed", {
-          sessionId: this.id,
-          languageHints: optionsSnapshot.languageHints,
-        });
-        const refinedText = refined.text.trim();
-        if (refinedText && refinedText !== text) {
-          const event: RefinedEvent = {
-            type: "transcript.refined",
-            text: refinedText,
-            utteranceId,
-            ...(confidenceSnapshot != null ? { confidence: confidenceSnapshot } : {}),
-            segments: refined.segments,
-          };
-          emit?.(event);
-        }
       } catch (err) {
         this.consecutiveRefineFailures += 1;
         if (this.consecutiveRefineFailures >= 3) {
@@ -317,8 +303,41 @@ export class RealtimeSession {
           sessionId: this.id,
           error: err instanceof Error ? err.message : String(err),
         });
+        return;
       }
-    })();
+
+      if (this.closed) return;
+      this.consecutiveRefineFailures = 0;
+      logMetric("realtime.refine_completed", {
+        sessionId: this.id,
+        languageHints: optionsSnapshot.languageHints,
+      });
+      const refinedText = refined.text.trim();
+      if (refinedText && refinedText !== text) {
+        const event: RefinedEvent = {
+          type: "transcript.refined",
+          text: refinedText,
+          utteranceId,
+          ...(confidenceSnapshot != null ? { confidence: confidenceSnapshot } : {}),
+          segments: refined.segments,
+        };
+        // Emit errors (e.g. socket closed) must not trip the refine circuit breaker.
+        try {
+          emit?.(event);
+        } catch (err) {
+          logMetric("realtime.refine_emit_failed", {
+            sessionId: this.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    })().catch((err) => {
+      // Last-resort guard: a fire-and-forget promise must never reject.
+      logMetric("realtime.refine_failed", {
+        sessionId: this.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
 
     this.pendingRefines.add(refinePromise);
     void refinePromise.finally(() => this.pendingRefines.delete(refinePromise));
