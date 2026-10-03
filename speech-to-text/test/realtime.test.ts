@@ -6,6 +6,7 @@ import WebSocket from "ws";
 function ensureTestEnv(): void {
   process.env.DATABASE_URL ??= "postgresql://postgres:postgres@localhost:5432/stt";
   process.env.STT_API_KEY ??= "test-stt-api-key-12345678";
+  process.env.OPENROUTER_API_KEY ??= "sk-or-test-openrouter-key";
   process.env.OPENAI_API_KEY ??= "sk-test-openai-key";
   process.env.ANTHROPIC_API_KEY ??= "sk-ant-test-anthropic-key";
 }
@@ -199,21 +200,38 @@ test("WS FAST mode: chunk emits transcript.partial then transcript.final", async
 
 test("WS BALANCED mode: refine produces final text, refine failure falls back to raw", async () => {
   await withSocket(
-    { refineResult: { text: "Bonjour le monde !", segments: [{ startMs: 0, endMs: 500, text: "Bonjour le monde !" }] } },
+    {
+      sttResult: {
+        text: "bonjour le monde",
+        confidence: 0.4,
+        segments: [{ startMs: 0, endMs: 500, text: "bonjour le monde" }],
+      },
+      refineResult: { text: "Bonjour le monde !", segments: [{ startMs: 0, endMs: 500, text: "Bonjour le monde !" }] },
+    },
     async (h, ws) => {
       ws.send(JSON.stringify({ type: "session.start", mode: "BALANCED" }));
       await h.nextMessage(ws); // session.ready
       ws.send(Buffer.from("fake-webm-audio"));
-      await h.nextMessage(ws); // partial
+      await h.nextMessage(ws); // partial (STT, immediate)
       const final = await h.nextMessage(ws);
       assert.equal(final.type, "transcript.final");
-      assert.equal(final.text, "Bonjour le monde !");
+      assert.equal(final.text, "bonjour le monde"); // raw STT first (low latency)
+      const refined = await h.nextMessage(ws);
+      assert.equal(refined.type, "transcript.refined");
+      assert.equal(refined.text, "Bonjour le monde !");
       assert.equal(h.refineCalls(), 1);
     },
   );
 
   await withSocket(
-    { refineResult: { error: new Error("claude down") } },
+    {
+      sttResult: {
+        text: "bonjour le monde",
+        confidence: 0.4,
+        segments: [{ startMs: 0, endMs: 500, text: "bonjour le monde" }],
+      },
+      refineResult: { error: new Error("claude down") },
+    },
     async (h, ws) => {
       ws.send(JSON.stringify({ type: "session.start", mode: "BALANCED" }));
       await h.nextMessage(ws);
@@ -221,7 +239,7 @@ test("WS BALANCED mode: refine produces final text, refine failure falls back to
       await h.nextMessage(ws); // partial
       const final = await h.nextMessage(ws);
       assert.equal(final.type, "transcript.final");
-      assert.equal(final.text, "bonjour le monde"); // raw fallback
+      assert.equal(final.text, "bonjour le monde"); // raw kept; no refined event on failure
     },
   );
 });

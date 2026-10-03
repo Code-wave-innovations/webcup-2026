@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 
 from app.config import DET_SIZE, INSIGHTFACE_MODEL
-from app.emotion import EmotionEstimator
 from app.liveness import LivenessChecker
 from app.quality import assess_face_quality
 
@@ -27,7 +26,6 @@ class FacePipeline:
         self._init_error: str | None = None
         self._init_attempted = False
         self.liveness = LivenessChecker()
-        self.emotion = EmotionEstimator()
 
     def _init_insightface(self) -> None:
         if self._app is not None or self._init_attempted:
@@ -94,7 +92,6 @@ class FacePipeline:
         *,
         check_quality: bool = False,
         check_liveness: bool = False,
-        check_emotion: bool = False,
     ) -> dict:
         if not self.ensure():
             return {
@@ -126,17 +123,5 @@ class FacePipeline:
             if not live["ok"]:
                 result["ok"] = False
                 result["error"] = result.get("error") or "liveness_failed"
-
-        if check_emotion:
-            emo = self.emotion.predict_from_image(image_bgr, detected.bbox)
-            if emo is None:
-                result["emotion"] = None
-                if check_emotion and "error" not in result:
-                    pass
-            else:
-                result["emotion"] = {
-                    "label": emo["label"],
-                    "score": round(emo["score"], 4),
-                }
 
         return result

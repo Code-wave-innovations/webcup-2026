@@ -1,6 +1,6 @@
 # Face recognition engine
 
-Flask API powered by **InsightFace (SCRFD + ArcFace)**, with multi-sample enrollment, 1:1 verify, 1:N identify, emotion estimation, and passive liveness (heuristic + optional ONNX anti-spoof).
+Flask API powered by **InsightFace (SCRFD + ArcFace)**, with multi-sample enrollment, 1:1 verify, 1:N identify, and passive liveness (heuristic + optional ONNX anti-spoof).
 
 > Software RGB only — not equivalent to iPhone TrueDepth / Secure Enclave.
 
@@ -13,8 +13,6 @@ cd face-recognitions
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-# optional emotion (TensorFlow / Keras):
-# pip install -r requirements-emotion.txt
 cp .env.example .env
 python scripts/download_models.py   # buffalo_s ~120MB → ~/.insightface
 python api_pro.py
@@ -33,7 +31,6 @@ Frontend demo: open `http://localhost:5173/face` (set `VITE_FACE_API_URL` in `fr
 | POST | `/enroll` | Multipart `name` + `img` (or `img0..`) — needs ≥3 samples |
 | POST | `/identify` | 1:N match |
 | POST | `/verify` | 1:1 — form `name` + `img` (+ liveness) |
-| POST | `/emotion` | Emotion label on largest face |
 | DELETE | `/identities/<name>` | Remove identity |
 
 Legacy aliases: `POST /create-dataset`, `POST /recognize`, `DELETE /delete-dataset`.
