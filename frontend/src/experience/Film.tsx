@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { clamp } from '../lib/math'
 import { bakePlanet } from './bake/bakePlanet'
 import { CityStage } from './city/CityStage'
@@ -9,6 +9,7 @@ import { debugParams } from './director/debugParams'
 import { director } from './director/director'
 import { useDirectorStore } from './director/directorStore'
 import { FRAME_PRIORITY } from './framePriority'
+import { NovaActor } from './nova/stage/NovaActor'
 import { PostProcessing } from './post/PostProcessing'
 import { detectQuality } from './quality/quality'
 import { ResolutionGovernor } from './quality/ResolutionGovernor'
@@ -39,9 +40,13 @@ export function Film() {
       <ResolutionGovernor profile={profile} />
       <DirectorClock />
       <SpaceStage textures={textures} light={profile.light} />
-      {cityData && <CityStage data={cityData} textures={textures} hdr={profile.hdr} />}
+      {cityData && <CityStage data={cityData} textures={textures} hdr={profile.hdr} light={profile.light} />}
       <PostProcessing profile={profile} camera={activeCamera} controls={director.film} frameTime={filmTime} />
-      {cityData && <StartWhenCompiled />}
+      {/* the film starts once Nova's model is there too (and its shaders compiled with the rest) */}
+      <Suspense fallback={null}>
+        <NovaActor light={profile.light} />
+        {cityData && <StartWhenCompiled />}
+      </Suspense>
     </>
   )
 }

@@ -11,7 +11,7 @@
   letter-spacing: 0.02em;
   white-space: nowrap;
   text-decoration: none;
-  transition: background 0.2s, box-shadow 0.2s, transform 0.2s, color 0.2s;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.2s, color 0.2s, translate 0.3s var(--ease-out-soft);
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
 }
 

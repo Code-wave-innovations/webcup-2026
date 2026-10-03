@@ -44,6 +44,7 @@ const SceneCanvas = memo(function SceneCanvas() {
     <Canvas
       flat
       linear
+      shadows="percentage"
       gl={{ antialias: false, alpha: false, powerPreference: 'high-performance', stencil: false }}
       onCreated={({ gl }) => {
         gl.setClearColor(0x000000, 1)

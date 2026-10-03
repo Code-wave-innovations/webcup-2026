@@ -1,4 +1,6 @@
 import { Environment, Lightformer } from '@react-three/drei'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { Object3D, type DirectionalLight } from 'three'
 
 export type NovaLightPreset = 'airlock' | 'dusk' | 'night'
 
@@ -49,8 +51,36 @@ const PRESETS: Record<NovaLightPreset, Preset> = {
   },
 }
 
-export function NovaLighting({ preset, shadows = true }: { preset: NovaLightPreset; shadows?: boolean }) {
+interface NovaLightingProps {
+  preset: NovaLightPreset
+  shadows?: boolean
+  /**
+   * Nova's world scale when the lighting is placed inside Nova's own group (the film): the key light
+   * follows Nova, and its shadow frustum, in world units, is fitted to that size.
+   */
+  scale?: number
+}
+
+export function NovaLighting({ preset, shadows = true, scale = 1 }: NovaLightingProps) {
   const { key, formers } = PRESETS[preset]
+  const [target] = useState(() => new Object3D())
+  const lightRef = useRef<DirectionalLight>(null)
+
+  // the shadow frustum hugs Nova (R3F sets the bounds but never recomputes the shadow camera's projection)
+  useLayoutEffect(() => {
+    const light = lightRef.current
+    if (!light) return
+    const camera = light.shadow.camera
+    camera.left = -0.9 * scale
+    camera.right = 0.9 * scale
+    camera.top = 1.4 * scale
+    camera.bottom = -0.4 * scale
+    camera.near = 0.1 * scale
+    camera.far = 10 * scale
+    camera.updateProjectionMatrix()
+    light.shadow.normalBias = 0.015 * scale
+  }, [scale])
+
   return (
     <>
       <Environment key={preset} resolution={256} frames={1}>
@@ -58,20 +88,16 @@ export function NovaLighting({ preset, shadows = true }: { preset: NovaLightPres
           <Lightformer key={i} form={f.form ?? 'rect'} color={f.color} intensity={f.intensity} position={f.position} scale={f.scale} target={[0, 0.5, 0]} />
         ))}
       </Environment>
+      <primitive object={target} />
       <directionalLight
+        ref={lightRef}
+        target={target}
         position={key.position}
         color={key.color}
         intensity={key.intensity}
         castShadow={shadows}
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0005}
-        shadow-normalBias={0.015}
-        shadow-camera-left={-0.9}
-        shadow-camera-right={0.9}
-        shadow-camera-top={1.4}
-        shadow-camera-bottom={-0.4}
-        shadow-camera-near={0.1}
-        shadow-camera-far={10}
         shadow-radius={4}
       />
     </>

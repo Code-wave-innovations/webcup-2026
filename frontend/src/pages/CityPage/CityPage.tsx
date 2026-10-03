@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
+import { debugJump, debugParams } from '../../experience/director/debugParams'
 import { director } from '../../experience/director/director'
+import { useSmoothScroll } from '../../app/smoothScroll'
 import { useDirectorStore } from '../../experience/director/directorStore'
+import { novaScenes } from '../../experience/nova/behavior/scenes'
 import { AlertBanner } from '../../features/announcements/AlertBanner'
 import { AnnouncementList } from '../../features/announcements/AnnouncementList'
 import type { Session } from '../../features/auth/authService'
@@ -14,21 +17,26 @@ import { ServiceList } from '../../features/services/ServiceList'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { PHONE_QUERY, useMediaQuery, useReducedMotion } from '../../hooks/useMediaQuery'
 import { ButtonLink } from '../../ui/Button'
+import { NovaInvite } from './NovaInvite'
 import { LinkLine, RouteRail, TopBar } from './CityChrome'
 import { CitySection } from './CitySection'
 import { CITY_SECTIONS } from './citySections'
 import { useCityScroll } from './useCityScroll'
+import { useHeroReveal } from './useHeroReveal'
+import { useNovaCityReactions } from './useNovaCityReactions'
 import styles from './CityPage.module.css'
 
-const LEAVE_MS = 700
-const [ARRIVAL, SERVICES, REPORT, STATUS, COUNCIL, REGISTRY] = CITY_SECTIONS
+/** Nova's wave goodbye, before the fade to black */
+const LEAVE_MS = 1300
+const [ARRIVAL, SERVICES, REPORT, STATUS, COUNCIL, OBSERVATORY, REGISTRY] = CITY_SECTIONS
 const sectionIndex = (id: string) => CITY_SECTIONS.findIndex((s) => s.id === id)
 
 /** Acts III and IV: the city. Requires a session; without one, back to the airlock. */
 export function CityPage() {
   const session = useAuthStore((s) => s.session)
   const { search } = useLocation()
-  if (!session) return <Navigate to={{ pathname: '/', search }} replace />
+  // a debug jump signs in by itself once the film has landed
+  if (!session) return debugJump ? null : <Navigate to={{ pathname: '/', search }} replace />
   return <CityView session={session} />
 }
 
@@ -46,6 +54,14 @@ function CityView({ session }: { session: Session }) {
   const leaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const { active, scrollTo, live } = useCityScroll(rootRef, arrived && !leaving)
   useBodyClass('is-locked', !arrived || leaving)
+  useHeroReveal(rootRef, arrived, reduced)
+  useSmoothScroll(arrived && !leaving && !reduced)
+  useNovaCityReactions()
+
+  // Nova walks into the frame and welcomes the resident
+  useEffect(() => {
+    if (arrived) return novaScenes.welcomeToCity(session.name, reduced)
+  }, [arrived, session.name, reduced])
 
   // reload or deep link while the film still waits in the cockpit: land straight in the city
   useEffect(() => {
@@ -54,18 +70,23 @@ function CityView({ session }: { session: Session }) {
     else if (status === 'unsupported' && store.phase !== 'city') store.setPhase('city')
   }, [status])
 
-  // arrival: top of the page, focus on the title for keyboard and screen reader users
+  // arrival: top of the page (or the section in the URL hash, or the `?vue` one), focus on the title
+  const { hash } = useLocation()
   useEffect(() => {
     if (!arrived) return
-    window.scrollTo(0, 0)
+    const id = hash.slice(1) || (debugParams.view ? CITY_SECTIONS[Math.round(debugParams.view)]?.id : '')
+    const view = id ? document.getElementById(id) : null
+    window.scrollTo(0, view ? view.getBoundingClientRect().top + window.scrollY : 0)
     const frame = requestAnimationFrame(() => headingRef.current?.focus({ preventScroll: true }))
     return () => cancelAnimationFrame(frame)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only on arrival, not when the hash changes while reading
   }, [arrived])
 
   useEffect(() => () => clearTimeout(leaveTimer.current), [])
 
   const quit = () => {
     setLeaving(true)
+    if (!reduced) novaScenes.farewell(session.name)
     const store = useDirectorStore.getState()
     store.setAlert(false)
     leaveTimer.current = setTimeout(
@@ -97,17 +118,21 @@ function CityView({ session }: { session: Session }) {
         <section className={`${styles.section} ${styles.arrival}`} id={ARRIVAL.id} data-city-section aria-labelledby="arrival-title">
           <div className={styles.frame}>
             <div className={styles.column} data-column>
-              <p className={styles.greeting}>Bienvenue, {session.name}.</p>
-              <h1 ref={headingRef} className={styles.headline} id="arrival-title" tabIndex={-1}>
+              <p className={styles.greeting} data-reveal="rest">
+                Bienvenue, {session.name}.
+              </p>
+              <h1 ref={headingRef} className={styles.headline} id="arrival-title" tabIndex={-1} data-reveal="headline">
                 Le cœur numérique de&nbsp;Terra&nbsp;Nova
               </h1>
-              <p className={styles.lead}>
+              <p className={styles.lead} data-reveal="rest">
                 Signalez un problème, suivez sa résolution, accédez aux services de la ville. Faites défiler&nbsp;: vous survolez Terra Nova pendant
                 que le soleil se couche.
               </p>
-              <div className={styles.actions}>
-                <ButtonLink href={`#${REPORT.id}`}>Signaler un problème</ButtonLink>
-                <ButtonLink variant="ghost" href={`#${SERVICES.id}`}>
+              <div className={styles.actions} data-reveal="rest">
+                <ButtonLink href={`#${REPORT.id}`} magnetic data-nova-look>
+                  Signaler un problème
+                </ButtonLink>
+                <ButtonLink variant="ghost" href={`#${SERVICES.id}`} magnetic data-nova-look>
                   Survoler la ville
                 </ButtonLink>
               </div>
@@ -153,6 +178,15 @@ function CityView({ session }: { session: Session }) {
           lead={'Annonces, consignes, alertes\u00a0: un seul canal, visible sur tous les écrans.'}
         >
           <AnnouncementList />
+        </CitySection>
+
+        <CitySection
+          info={OBSERVATORY}
+          side="right"
+          title="Parlez à Nova, sous les étoiles"
+          lead="Une question sur la ville, une démarche, votre demande en cours : Nova vous répond, de jour comme de nuit."
+        >
+          <NovaInvite />
         </CitySection>
 
         <CitySection

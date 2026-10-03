@@ -52,3 +52,6 @@ function parse(search: string): DebugParams {
 }
 
 export const debugParams: DebugParams = parse(typeof window === 'undefined' ? '' : window.location.search)
+
+/** `?vue` / `?arrivee` land in the city without a login (signed in with the resident demo account). */
+export const debugJump = debugParams.view !== undefined || debugParams.arrival !== undefined

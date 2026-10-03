@@ -68,4 +68,19 @@ describe('novaBrain', () => {
   it('walks with its feet on the ground', () => {
     expect(resolvePose(run([[0, { type: 'walk', on: true }]]), 1)).toMatchObject({ clip: 'walk', floating: false })
   })
+
+  it('lowers the presenting arm to walk, and raises it again when it stops', () => {
+    const presenting = run([[0, { type: 'hold', hold: 'present', on: true }]])
+    expect(resolvePose(presenting, 1).clip).toBe('present')
+    const walking = reduceBrain(presenting, { type: 'walk', on: true }, 1)
+    expect(resolvePose(walking, 1).clip).toBe('walk')
+    expect(resolvePose(reduceBrain(walking, { type: 'walk', on: false }, 2), 2).clip).toBe('present')
+  })
+
+  it('talks without a bubble while a chat reply streams in', () => {
+    const talking = reduceBrain(INITIAL_BRAIN, { type: 'talk', on: true }, 0)
+    expect(resolvePose(talking, 1)).toMatchObject({ clip: 'talk', talking: true })
+    expect(talking.speech).toBeNull()
+    expect(resolvePose(reduceBrain(talking, { type: 'talk', on: false }, 1), 2).clip).toBe('idle')
+  })
 })

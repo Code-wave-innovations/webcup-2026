@@ -1,0 +1,9 @@
+# Meta MMS-TTS Malagasy (facebook/mms-tts-mlg).
+# Requires Python 3.10–3.12 (PyTorch has no wheels for 3.13/3.14 yet).
+# Prefer: python3.11 -m venv .venv
+# macOS Intel (x86_64): PyPI tops out around torch 2.2.x — keep transformers <5.
+torch>=2.1,<2.5
+transformers>=4.33,<5
+accelerate>=0.20,<1.0
+scipy>=1.11
+numpy>=1.26,<2

@@ -12,7 +12,7 @@ export interface ScrollState {
   u: number
   /** how much each section's text column is revealed (0 → 1) */
   reveals: number[]
-  /** the most revealed section */
+  /** the section being read: the most revealed one (on phones, the last one revealed) */
   active: number
 }
 
@@ -47,7 +47,8 @@ export function computeScrollState(y: number, screen: number, sections: readonly
       : (i ? smoothstep(section.top - 0.55 * screen, section.top - 0.05 * screen, y) : 1) *
         (next ? 1 - smoothstep(section.top + section.height - 1.45 * screen, section.top + section.height - screen, y) : 1)
     if (reduced) reveal = reveal > 0.5 || phone ? 1 : 0
-    if (reveal > best) {
+    // on phones the columns stay revealed once read: the active one is the last that came into view
+    if (reveal > best || (phone && reveal >= 0.5)) {
       best = reveal
       active = i
     }

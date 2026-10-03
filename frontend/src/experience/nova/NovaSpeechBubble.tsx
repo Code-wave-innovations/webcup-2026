@@ -32,7 +32,9 @@ export function NovaSpeechBubble() {
         if (!visible || !current) return
         const shown = current.text.slice(0, progress.shown)
         if (text.textContent !== shown) text.textContent = shown
-        const x = Math.min(Math.max(MARGIN, head.x - TAIL_X), window.innerWidth - bubble.offsetWidth - MARGIN)
+        // the bubble opens to the left of the head: Nova stands beside the interface, on its left in the
+        // cockpit (the hologram) and in the right corner of the city
+        const x = Math.min(Math.max(MARGIN, head.x + TAIL_X - bubble.offsetWidth), window.innerWidth - bubble.offsetWidth - MARGIN)
         const y = Math.max(MARGIN, head.y - bubble.offsetHeight - GAP)
         bubble.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`
       }),

@@ -4,7 +4,10 @@ import { AirlockPage } from '../pages/AirlockPage/AirlockPage'
 import { CityPage } from '../pages/CityPage/CityPage'
 import { FilmLayout } from './FilmLayout'
 
+const ChatPage = lazy(() => import('../pages/ChatPage/ChatPage'))
 const TeamPage = lazy(() => import('../pages/TeamPage/TeamPage'))
+const FaceUnlock = lazy(() => import('../components/Face/FaceUnlock'))
+const RealtimeTranscription = lazy(() => import('../components/Realtime/RealtimeTranscription'))
 /** Staff back-office (agents and admins), kept out of the citizen bundle. */
 const BackofficeApp = lazy(() => import('../backoffice/BackofficeApp'))
 /** Nova's test bench, compiled out of production builds. */
@@ -17,12 +20,36 @@ function App() {
         <Route element={<FilmLayout />}>
           <Route index element={<AirlockPage />} />
           <Route path="ville" element={<CityPage />} />
+          <Route
+            path="nova"
+            element={
+              <Suspense fallback={null}>
+                <ChatPage />
+              </Suspense>
+            }
+          />
         </Route>
         <Route
           path="equipe"
           element={
             <Suspense fallback={null}>
               <TeamPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="face"
+          element={
+            <Suspense fallback={null}>
+              <FaceUnlock />
+            </Suspense>
+          }
+        />
+        <Route
+          path="transcription"
+          element={
+            <Suspense fallback={null}>
+              <RealtimeTranscription />
             </Suspense>
           }
         />

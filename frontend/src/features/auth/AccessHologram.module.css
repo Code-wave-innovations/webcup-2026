@@ -1,23 +1,28 @@
 /* the login form, projected as a hologram above the dashboard emitter */
 .holo {
+  --materialized: 1.05s;
   position: absolute;
   left: 70%;
   top: 39%;
-  width: min(430px, calc(100% - 32px));
+  width: min(440px, calc(100% - 32px));
   transform: translate(-50%, -50%);
   padding: 20px 24px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
   background: linear-gradient(180deg, var(--color-holo-1), var(--color-holo-2) 22%), var(--color-holo-3);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   border: 1px solid var(--color-ice);
   box-shadow: 0 0 70px var(--color-ice-halo), inset 0 0 44px var(--color-holo-glow);
-  animation: power-on 0.9s var(--ease-out-soft) 0.5s backwards;
-  transition: transform 0.5s cubic-bezier(0.6, 0, 0.4, 1), opacity 0.4s;
+  animation:
+    power-on 0.9s var(--ease-out-soft) 0.5s backwards,
+    flicker 0.5s steps(1) 0.95s backwards;
+  transition: transform 0.5s cubic-bezier(0.6, 0, 0.4, 1), opacity 0.4s, border-color 0.3s, box-shadow 0.3s;
 }
 
+/* scan lines over the whole projection */
 .holo::before {
   content: '';
   position: absolute;
@@ -26,13 +31,59 @@
   background: repeating-linear-gradient(0deg, var(--color-scanline) 0 1px, transparent 1px 3px);
 }
 
+/* the content arrives line after line once the projection has unfolded */
 .holo > * {
   position: relative;
+  animation: materialize 0.5s var(--ease-out-soft) calc(var(--materialized) + var(--i, 0) * 40ms) backwards;
+}
+
+.holo[data-status='refused'],
+.holo[data-status='locked'] {
+  border-color: var(--color-alert);
+  box-shadow: 0 0 60px var(--color-alert-veil), inset 0 0 44px var(--color-alert-veil);
+}
+
+.holo[data-status='granted'] {
+  border-color: var(--color-ok);
 }
 
 .collapsed {
   transform: translate(-50%, -50%) scaleY(0.012);
   opacity: 0;
+}
+
+/* corner brackets of the projection frame */
+.holo > .corners {
+  position: absolute;
+  inset: 6px;
+  pointer-events: none;
+  --c: var(--color-ice-bright);
+  background:
+    linear-gradient(var(--c), var(--c)) top 0 left 8px / 14px 1px,
+    linear-gradient(var(--c), var(--c)) top 8px left 0 / 1px 14px,
+    linear-gradient(var(--c), var(--c)) bottom 0 right 8px / 14px 1px,
+    linear-gradient(var(--c), var(--c)) bottom 8px right 0 / 1px 14px;
+  background-repeat: no-repeat;
+  opacity: 0.8;
+  animation: none;
+}
+
+/* the line sweeping the hologram while the code is checked */
+.holo > .scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 46px;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(143, 233, 255, 0.22) 70%, var(--color-ice-bright) 98%, transparent);
+  opacity: 0;
+  animation: none;
+}
+
+.holo[data-status='checking'] > .scan {
+  opacity: 1;
+  animation: scan 0.7s var(--ease-in-out-sharp) infinite;
 }
 
 .header {
@@ -47,6 +98,27 @@
   margin-top: 2px;
 }
 
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ice);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-ok);
+  box-shadow: 0 0 8px var(--color-ok);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+
 .title {
   font: 600 21px/1.2 var(--font-display);
   letter-spacing: 0.01em;
@@ -56,6 +128,207 @@
   margin-top: 6px;
   font-size: 15px;
   color: var(--color-text-muted);
+}
+
+/* the field and its sighting brackets: they close in on the focused field */
+.sight {
+  position: relative;
+  display: block;
+}
+
+.sight::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  pointer-events: none;
+  --c: var(--color-ice-bright);
+  --l: 11px;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / var(--l) 2px,
+    linear-gradient(var(--c), var(--c)) top left / 2px var(--l),
+    linear-gradient(var(--c), var(--c)) top right / var(--l) 2px,
+    linear-gradient(var(--c), var(--c)) top right / 2px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom left / var(--l) 2px,
+    linear-gradient(var(--c), var(--c)) bottom left / 2px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom right / var(--l) 2px,
+    linear-gradient(var(--c), var(--c)) bottom right / 2px var(--l);
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.08, 1.35);
+  transition: opacity 0.18s, transform 0.4s var(--ease-out-soft);
+}
+
+.sight:focus-within::after {
+  opacity: 1;
+  transform: none;
+}
+
+.sight[data-valid='true']::after {
+  --c: var(--color-ok);
+}
+
+.sight input {
+  padding-right: 48px;
+  font-family: var(--font-body);
+  letter-spacing: 0.02em;
+}
+
+.validMark {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--color-ok);
+  opacity: 0;
+  transform: translateY(-50%) scale(0.4);
+  transition: opacity 0.2s, transform 0.35s var(--ease-out-soft);
+}
+
+.sight[data-valid='true'] .validMark {
+  opacity: 1;
+  transform: translateY(-50%);
+}
+
+.reveal {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.reveal:hover,
+.reveal[aria-pressed='true'] {
+  color: var(--color-ice-bright);
+}
+
+.caps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-progress);
+  animation: materialize 0.3s var(--ease-out-soft);
+}
+
+/* attempts: five hexagons that light up red one by one */
+.status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.pips {
+  display: flex;
+  gap: 5px;
+}
+
+.pips i {
+  width: 11px;
+  height: 12.5px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: var(--color-line);
+  transition: background 0.25s, filter 0.25s;
+}
+
+.pips i[data-used='true'] {
+  background: var(--color-alert);
+  filter: drop-shadow(0 0 4px var(--color-alert));
+  animation: strike 0.45s var(--ease-out-soft);
+}
+
+.holo[data-status='checking'] .statusText {
+  color: var(--color-ice);
+}
+
+.holo[data-status='locked'] .statusText {
+  color: var(--color-alert);
+}
+
+.error {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-alert);
+  animation: materialize 0.3s var(--ease-out-soft);
+}
+
+.submit {
+  width: 100%;
+}
+
+.faceButton {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.faceButton svg {
+  flex: none;
+}
+
+.linkHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--color-progress);
+}
+
+.faceLink {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.faceLink[data-state='linked'] {
+  color: var(--color-ok);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* the lock's countdown ring */
+.ring {
+  transform: rotate(-90deg);
+}
+
+.ring circle {
+  fill: none;
+  stroke-width: 2.2;
+}
+
+.ring circle:first-child {
+  stroke: currentColor;
+  opacity: 0.25;
+}
+
+.ring circle:last-child {
+  stroke: currentColor;
+  stroke-dasharray: 1;
+  animation: drain var(--lock-ms) linear forwards;
 }
 
 .accounts {
@@ -78,13 +351,20 @@
   background: transparent;
   color: var(--color-ice-bright);
   font-weight: 500;
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .accounts button:hover {
   background: var(--color-glass-light);
+  border-color: var(--color-ice);
+}
+
+.accounts button[disabled] {
+  opacity: 0.5;
 }
 
 .granted {
+  animation: materialize 0.4s var(--ease-out-soft);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -93,8 +373,19 @@
   text-align: center;
 }
 
-.granted svg {
+.seal {
   color: var(--color-ok);
+  filter: drop-shadow(0 0 14px var(--color-ok));
+}
+
+.sealHex,
+.sealCheck {
+  stroke-dasharray: 1;
+  animation: draw 0.6s var(--ease-out-soft) backwards;
+}
+
+.sealCheck {
+  animation-delay: 0.35s;
 }
 
 .granted b {
@@ -113,6 +404,69 @@
   100% {
     opacity: 1;
     transform: translate(-50%, -50%) scaleY(1);
+  }
+}
+
+@keyframes flicker {
+  0%,
+  30%,
+  70% {
+    opacity: 1;
+  }
+  15%,
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes materialize {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px) brightness(2);
+  }
+}
+
+@keyframes scan {
+  from {
+    top: -46px;
+  }
+  to {
+    top: 100%;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes strike {
+  from {
+    transform: scale(1.8);
+    filter: drop-shadow(0 0 10px var(--color-alert)) brightness(2);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes drain {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
   }
 }
 
@@ -142,7 +496,8 @@
     gap: 9px;
   }
 
-  .subtitle {
+  .subtitle,
+  .kicker {
     display: none;
   }
 }

@@ -81,6 +81,9 @@ const CLIP_ALIASES: Record<ClipName, readonly string[]> = {
   listen: ['listen', 'listening'],
   brace: ['brace', 'bracing', 'hold'],
   poked: ['poked', 'tickle', 'giggle'],
+  hop: ['hop', 'smalljump', 'bounce'],
+  present: ['present', 'presenting', 'showing', 'pointhold'],
+  sulk: ['sulk', 'crossedarms', 'armscrossed', 'impatient', 'waiting'],
 }
 
 /** Maps the model's animation names to Nova clips (`Armature|Waving` → `wave`). */

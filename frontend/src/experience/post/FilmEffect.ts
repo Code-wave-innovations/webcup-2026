@@ -7,6 +7,7 @@ import {
   Uniform,
   UnsignedByteType,
   Vector2,
+  Vector3,
   WebGLRenderTarget,
   type TextureDataType,
   type WebGLRenderer,
@@ -30,10 +31,18 @@ export interface FilmControls {
   veilColor: Color
   /** speed blur focus, in UV */
   center: Vector2
+  /** rack focus: 0 = all sharp, 1 = everything outside `focus` thrown out of focus */
+  focusPull: number
+  /** what stays sharp: centre in UV and radius in screen heights */
+  focus: Vector3
+  /** crepuscular rays streaming from the sun (0 = off) */
+  rays: number
+  /** the sun on screen, in UV (may lie outside the frame) */
+  sun: Vector2
 }
 
 export function createFilmControls(): FilmControls {
-  return { time: 0, exposure: 1, halo: 1, speedBlur: 0, plasma: 0, veil: 1, veilColor: new Color(0, 0, 0), center: new Vector2(0.5, 0.5) }
+  return { time: 0, exposure: 1, halo: 1, speedBlur: 0, plasma: 0, veil: 1, veilColor: new Color(0, 0, 0), center: new Vector2(0.5, 0.5), focusPull: 0, focus: new Vector3(0.5, 0.5, 0.2), rays: 0, sun: new Vector2(0.5, 0.5) }
 }
 
 /**
@@ -70,6 +79,10 @@ export class FilmEffect extends Effect {
         ['uGrain', new Uniform(0.034)],
         ['uCentre', new Uniform(new Vector2(0.5, 0.5))],
         ['uLdr', new Uniform(hdr ? 0 : 1)],
+        ['uMap', new Uniform(0)],
+        ['uRayons', new Uniform(0)],
+        ['uSoleilUv', new Uniform(new Vector2(0.5, 0.5))],
+        ['uNet', new Uniform(new Vector3(0.5, 0.5, 0.2))],
       ]),
     })
     this.hdr = hdr
@@ -102,6 +115,10 @@ export class FilmEffect extends Effect {
     u.get('uVoile')!.value = controls.veil
     ;(u.get('uVoileC')!.value as Color).copy(controls.veilColor)
     ;(u.get('uCentre')!.value as Vector2).copy(controls.center)
+    u.get('uMap')!.value = controls.focusPull
+    u.get('uRayons')!.value = controls.rays
+    ;(u.get('uSoleilUv')!.value as Vector2).copy(controls.sun)
+    ;(u.get('uNet')!.value as Vector3).copy(controls.focus)
   }
 
   override update(renderer: WebGLRenderer, inputBuffer: WebGLRenderTarget): void {

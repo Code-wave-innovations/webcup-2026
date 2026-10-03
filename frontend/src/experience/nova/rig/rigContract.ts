@@ -15,7 +15,7 @@ export type BoneName = (typeof BONES)[number]
 /** Bones the behaviour cannot do without (looking around, gestures, walking). */
 export const REQUIRED_BONES: readonly BoneName[] = ['Hips', 'Spine', 'Neck', 'Head', 'LeftArm', 'LeftForeArm', 'RightArm', 'RightForeArm', 'LeftUpLeg', 'RightUpLeg']
 
-export const CLIPS = ['idle', 'walk', 'wave', 'talk', 'celebrate', 'shakeHead', 'point', 'think', 'coverEyes', 'peek', 'listen', 'brace', 'poked'] as const
+export const CLIPS = ['idle', 'walk', 'wave', 'talk', 'celebrate', 'shakeHead', 'point', 'think', 'coverEyes', 'peek', 'listen', 'brace', 'poked', 'hop', 'present', 'sulk'] as const
 export type ClipName = (typeof CLIPS)[number]
 
 /** Clips a delivered model must bring; the others are generated on its skeleton when missing. */

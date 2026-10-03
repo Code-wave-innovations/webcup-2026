@@ -24,6 +24,8 @@ const HOLDS: ReadonlyArray<readonly [Hold, string]> = [
   ['peek', "Coup d'œil"],
   ['think', 'Réfléchit'],
   ['listen', 'Écoute'],
+  ['present', 'Présente un quartier'],
+  ['sulk', 'Bras croisés (sas verrouillé)'],
   ['brace', "S'accroche"],
 ]
 const EMOTION_LABELS: Record<Emotion, string> = {

@@ -1,16 +1,16 @@
 import { useEffect, useRef } from 'react'
 import { Outlet } from 'react-router'
 import { Experience } from '../experience/Experience'
-import { debugParams } from '../experience/director/debugParams'
+import { debugJump } from '../experience/director/debugParams'
 import { director } from '../experience/director/director'
+import { NovaHitZone } from '../experience/nova/NovaHitZone'
+import { NovaSpeechBubble } from '../experience/nova/NovaSpeechBubble'
 import { useDirectorStore } from '../experience/director/directorStore'
 import { toSession } from '../features/auth/authService'
 import { useAuthStore } from '../features/auth/authStore'
 import { DEMO_ACCOUNTS } from '../features/auth/demoAccounts'
 import { Toast } from '../ui/Toast'
 import styles from './FilmLayout.module.css'
-
-const debugJump = debugParams.view !== undefined || debugParams.arrival !== undefined
 
 /** Shell of the film routes: the persistent 3D behind, the cinema chrome around, the page in front. */
 export function FilmLayout() {
@@ -19,6 +19,7 @@ export function FilmLayout() {
   const cinematic = useDirectorStore((s) => s.cinematic)
   const session = useAuthStore((s) => s.session)
   const debugSignIn = useRef(false)
+  
 
   // the letterbox bars retract once the city is reached (or after a return to the cockpit)
   useEffect(() => {
@@ -44,6 +45,8 @@ export function FilmLayout() {
         <i />
       </div>
       <Outlet />
+      <NovaHitZone />
+      <NovaSpeechBubble />
       {cinematic && (phase === 'entry' || phase === 'descent') && (
         <button type="button" className={styles.skip} onClick={() => director.skip()}>
           Passer l'arrivée

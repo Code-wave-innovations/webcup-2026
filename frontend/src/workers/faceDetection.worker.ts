@@ -27,7 +27,30 @@ const MODEL_URL =
 
 let options: faceapi.TinyFaceDetectorOptions | null = null
 
+/**
+ * face-api only knows the browser page and Node.js: in a worker, its environment is built on
+ * OffscreenCanvas (frames arrive as tensors, so images and videos are never created here).
+ */
+function setWorkerEnv() {
+    const unavailable = () => {
+        throw new Error('not available in a worker')
+    }
+    faceapi.env.setEnv({
+        Canvas: OffscreenCanvas,
+        CanvasRenderingContext2D: OffscreenCanvasRenderingContext2D,
+        Image: class {},
+        ImageData,
+        Video: class {},
+        createCanvasElement: () => new OffscreenCanvas(1, 1),
+        createImageElement: unavailable,
+        createVideoElement: unavailable,
+        fetch: (input: RequestInfo, init?: RequestInit) => fetch(input, init),
+        readFile: unavailable,
+    } as unknown as Parameters<typeof faceapi.env.setEnv>[0])
+}
+
 async function boot() {
+    setWorkerEnv()
     const tf = faceapi.tf as typeof faceapi.tf & {
         setBackend: (backend: string) => Promise<boolean>
         ready: () => Promise<void>

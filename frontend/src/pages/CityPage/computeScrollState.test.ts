@@ -30,4 +30,11 @@ describe('computeScrollState', () => {
     const state = computeScrollState(sections[1].top - 0.3 * SCREEN, SCREEN, sections, { phone: false, reduced: true })
     for (const reveal of state.reveals) expect([0, 1]).toContain(reveal)
   })
+
+  it('on a phone, reads the last column that came into view (those above stay revealed)', () => {
+    const phone = [-1500, -200, 900].map((columnTop, i) => ({ top: i * 1400, height: 1400, columnTop }))
+    const state = computeScrollState(1800, SCREEN, phone, { phone: true, reduced: false })
+    expect(state.reveals.slice(0, 2)).toEqual([1, 1])
+    expect(state.active).toBe(1)
+  })
 })

@@ -1,4 +1,4 @@
-uniform sampler2D tDetail; varying vec3 vPos; varying vec3 vN; varying float vHor;
+uniform sampler2D tDetail; uniform sampler2D tSolVille; uniform vec3 uSolVille; varying vec3 vPos; varying vec3 vN; varying float vHor;
 void main(){
   if(vPos.y<uCoupe) discard;
   vec3 N=normalize(vN); float dist=length(cameraPosition-vPos);
@@ -27,10 +27,14 @@ void main(){
   N=normalize(mix(N,normalize(vN),ville));
   float sunTan=uSoleil.y/max(length(uSoleil.xz),1e-3);
   float ombre=smoothstep(vHor-0.012,vHor+0.045,sunTan);
+  // the city's own shadows, baked once: contact occlusion (r) and the long shadows of the sunset (g)
+  vec2 su=(vPos.xz-uSolVille.xy)/(2.0*uSolVille.z)+0.5;
+  vec2 sv=texture2D(tSolVille,clamp(su,0.0,1.0)).rg*step(abs(su.x-0.5),0.5)*step(abs(su.y-0.5),0.5);
+  ombre*=1.0-sv.g*0.85;
   float ndl=max(dot(N,uSoleil),0.0);
-  vec3 amb=cielBase(normalize(vec3(N.x*0.6,abs(N.y)+0.25,N.z*0.6)))*0.21+vec3(0.010,0.012,0.022);
+  vec3 amb=(cielBase(normalize(vec3(N.x*0.6,abs(N.y)+0.25,N.z*0.6)))*0.21+vec3(0.010,0.012,0.022))*(1.0-sv.r*0.62);
   vec3 cl=mix(vec3(1.0,0.66,0.36),vec3(1.0,0.14,0.08),uAlerte);
-  vec3 col=alb*(ndl*ombre*couleurSoleil()*2.9+amb+clairAstre(N)+cl*exp(-dq/38.0)*0.9*uNuit);
+  vec3 col=alb*(ndl*ombre*couleurSoleil()*2.9+amb+clairAstre(N)+cl*exp(-dq/38.0)*0.9*uNuit*(1.0-sv.r*0.5));
   float lampes=rues*(0.35+0.65*step(0.45,bruit(vec3(q*1.7,3.0))));
   col+=cl*lampes*(0.10+1.9*uNuit);
   col=brume(col,cameraPosition,vPos);

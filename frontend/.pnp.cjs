@@ -43,6 +43,7 @@ const RAW_RUNTIME_STATE =
           ["@types/react-dom", "virtual:c6910786c1a0ec9692e253c38ac51c94af0c74f100ecd66edecc4f744c637924a32014cd9b85c03801b099f01827f3bc3aeda4ba24476a4ea1030242087d8107#npm:19.3.0"],\
           ["@types/three", "npm:0.186.0"],\
           ["@vitejs/plugin-react", "virtual:c6910786c1a0ec9692e253c38ac51c94af0c74f100ecd66edecc4f744c637924a32014cd9b85c03801b099f01827f3bc3aeda4ba24476a4ea1030242087d8107#npm:6.1.1"],\
+          ["@vladmandic/face-api", "npm:1.7.15"],\
           ["axios", "npm:1.20.0"],\
           ["eslint", "virtual:c6910786c1a0ec9692e253c38ac51c94af0c74f100ecd66edecc4f744c637924a32014cd9b85c03801b099f01827f3bc3aeda4ba24476a4ea1030242087d8107#npm:10.12.0"],\
           ["eslint-plugin-react-hooks", "virtual:c6910786c1a0ec9692e253c38ac51c94af0c74f100ecd66edecc4f744c637924a32014cd9b85c03801b099f01827f3bc3aeda4ba24476a4ea1030242087d8107#npm:7.1.1"],\
@@ -1962,6 +1963,15 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "../../../../../Users/a1234/.yarn/berry/cache/@vitest-spy-npm-5.0.3-168f39b5f8-10c0.zip/node_modules/@vitest/spy/",\
         "packageDependencies": [\
           ["@vitest/spy", "npm:5.0.3"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["@vladmandic/face-api", [\
+      ["npm:1.7.15", {\
+        "packageLocation": "./.yarn/unplugged/@vladmandic-face-api-npm-1.7.15-09bf37bfef/node_modules/@vladmandic/face-api/",\
+        "packageDependencies": [\
+          ["@vladmandic/face-api", "npm:1.7.15"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -4909,6 +4919,7 @@ const RAW_RUNTIME_STATE =
           ["@types/react-dom", "virtual:c6910786c1a0ec9692e253c38ac51c94af0c74f100ecd66edecc4f744c637924a32014cd9b85c03801b099f01827f3bc3aeda4ba24476a4ea1030242087d8107#npm:19.3.0"],\
           ["@types/three", "npm:0.186.0"],\
           ["@vitejs/plugin-react", "virtual:c6910786c1a0ec9692e253c38ac51c94af0c74f100ecd66edecc4f744c637924a32014cd9b85c03801b099f01827f3bc3aeda4ba24476a4ea1030242087d8107#npm:6.1.1"],\
+          ["@vladmandic/face-api", "npm:1.7.15"],\
           ["axios", "npm:1.20.0"],\
           ["eslint", "virtual:c6910786c1a0ec9692e253c38ac51c94af0c74f100ecd66edecc4f744c637924a32014cd9b85c03801b099f01827f3bc3aeda4ba24476a4ea1030242087d8107#npm:10.12.0"],\
           ["eslint-plugin-react-hooks", "virtual:c6910786c1a0ec9692e253c38ac51c94af0c74f100ecd66edecc4f744c637924a32014cd9b85c03801b099f01827f3bc3aeda4ba24476a4ea1030242087d8107#npm:7.1.1"],\

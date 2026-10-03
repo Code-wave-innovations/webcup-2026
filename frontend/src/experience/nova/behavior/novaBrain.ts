@@ -2,9 +2,9 @@ import type { Emotion } from '../face/faceState'
 import type { ClipName } from '../rig/rigContract'
 
 /** One-shot moves: they play once, then Nova goes back to what it was doing. */
-export type Gesture = 'wave' | 'celebrate' | 'refuse' | 'point' | 'poked'
+export type Gesture = 'wave' | 'celebrate' | 'refuse' | 'point' | 'poked' | 'hop'
 /** Postures held until released (the password field keeps the hands on the eyes…). */
-export type Hold = 'brace' | 'coverEyes' | 'peek' | 'think' | 'listen'
+export type Hold = 'brace' | 'coverEyes' | 'peek' | 'think' | 'sulk' | 'listen' | 'present'
 
 /** What the rest of the application asks of Nova. */
 export type NovaIntent =
@@ -16,6 +16,8 @@ export type NovaIntent =
   | { type: 'silence' }
   | { type: 'alert'; on: boolean }
   | { type: 'walk'; on: boolean }
+  /** Nova speaks without its bubble (the words go elsewhere: the chat) */
+  | { type: 'talk'; on: boolean }
 
 export interface Speech {
   id: number
@@ -34,6 +36,8 @@ export interface BrainState {
   speech: Speech | null
   alert: boolean
   walking: boolean
+  /** talking outside the bubble (a chat reply streaming in) */
+  talking: boolean
   nextId: number
 }
 
@@ -45,18 +49,20 @@ export const INITIAL_BRAIN: BrainState = {
   speech: null,
   alert: false,
   walking: false,
+  talking: false,
   nextId: 1,
 }
 
 /** Most important posture first: bracing for the entry beats hiding the eyes, which beats thinking… */
-const HOLD_PRIORITY: readonly Hold[] = ['brace', 'coverEyes', 'peek', 'think', 'listen']
+const HOLD_PRIORITY: readonly Hold[] = ['brace', 'coverEyes', 'peek', 'think', 'sulk', 'listen', 'present']
 
-const GESTURE_CLIP: Record<Gesture, ClipName> = { wave: 'wave', celebrate: 'celebrate', refuse: 'shakeHead', point: 'point', poked: 'poked' }
+const GESTURE_CLIP: Record<Gesture, ClipName> = { wave: 'wave', celebrate: 'celebrate', refuse: 'shakeHead', point: 'point', poked: 'poked', hop: 'hop' }
 const GESTURE_FEELING: Partial<Record<Gesture, readonly [Emotion, number]>> = {
   wave: ['happy', 2.2],
   celebrate: ['happy', 3],
   refuse: ['denied', 2.2],
   poked: ['happy', 1.6],
+  hop: ['surprised', 1.1],
 }
 /** A gesture that never reports its end (interrupted clip, missing event) is dropped after this. */
 const GESTURE_TIMEOUT = 5
@@ -104,6 +110,8 @@ export function reduceBrain(state: BrainState, intent: NovaIntent, now: number):
       return { ...state, alert: intent.on }
     case 'walk':
       return { ...state, walking: intent.on }
+    case 'talk':
+      return { ...state, talking: intent.on }
   }
 }
 
@@ -136,15 +144,16 @@ export function resolvePose(state: BrainState, now: number): NovaPose {
   const gesture = state.gesture && now - state.gesture.started < GESTURE_TIMEOUT ? state.gesture : null
   const hold = topHold(state.holds)
   const speech = speechProgress(state.speech, now)
+  const talking = speech.talking || state.talking
 
   let clip: ClipName = 'idle'
   let key = 0
   if (gesture) {
     clip = GESTURE_CLIP[gesture.name]
     key = gesture.id
-  } else if (hold) clip = hold
+  } else if (hold && !(hold === 'present' && state.walking)) clip = hold
   else if (state.walking) clip = 'walk'
-  else if (speech.talking) clip = 'talk'
+  else if (talking) clip = 'talk'
 
   let emotion: Emotion = 'neutral'
   if (now < state.emotionUntil) emotion = state.emotion
@@ -162,7 +171,7 @@ export function resolvePose(state: BrainState, now: number): NovaPose {
     eyesHidden: clip === 'coverEyes' ? 'both' : clip === 'peek' ? 'peek' : 'none',
     thinking: hold === 'think',
     listening: hold === 'listen',
-    talking: speech.talking,
-    floating: clip !== 'walk' && clip !== 'celebrate' && clip !== 'brace' && clip !== 'poked',
+    talking,
+    floating: clip !== 'walk' && clip !== 'celebrate' && clip !== 'brace' && clip !== 'poked' && clip !== 'hop',
   }
 }

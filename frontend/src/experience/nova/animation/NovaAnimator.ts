@@ -45,6 +45,11 @@ export class NovaAnimator {
     this.current = { clip, key, action }
   }
 
+  /** Playback speed of the current looping clip (the walk follows the scroll so the feet do not slide). */
+  setPace(timeScale: number): void {
+    if (this.current && this.current.action.loop === LoopRepeat) this.current.action.setEffectiveTimeScale(timeScale)
+  }
+
   update(dt: number): void {
     this.mixer.update(dt)
   }

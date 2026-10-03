@@ -4,9 +4,10 @@ type WebcamProps = {
     videoRef: RefObject<HTMLVideoElement | null>
     onReady: () => void
     onError: (message: string) => void
+    className?: string
 }
 
-export default function Webcam({ videoRef, onReady, onError }: WebcamProps) {
+export default function Webcam({ videoRef, onReady, onError, className = 'aspect-[3/4] w-full scale-x-[-1] object-cover' }: WebcamProps) {
     const onReadyRef = useRef(onReady)
     const onErrorRef = useRef(onError)
 
@@ -57,7 +58,7 @@ export default function Webcam({ videoRef, onReady, onError }: WebcamProps) {
     return (
         <video
             ref={videoRef}
-            className="aspect-[3/4] w-full scale-x-[-1] object-cover"
+            className={className}
             playsInline
             muted
             autoPlay

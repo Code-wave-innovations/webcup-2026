@@ -21,7 +21,8 @@ export const CAMERA_POSES: readonly CameraPose[] = [
   { position: [-3, 6.5, 47], target: [9, 6.5, 8], hour: 0.16, focal: 42, side: -1, via: [30, 12, 60] },
   { position: [52, 8.5, 8], target: [26, 4.5, -6], hour: 0.34, focal: 40, side: 1, via: [10, 26, 78] },
   { position: [-46, 7.5, 36], target: [-24, 5, 9], hour: 0.55, focal: 40, side: -1, via: [-40, 20, 52] },
-  { position: [20, 27, 36], target: [-4, 37, -10], hour: 0.78, focal: 44, side: 1, via: [24, 44, 110] },
+  { position: [20, 27, 36], target: [-4, 37, -10], hour: 0.74, focal: 44, side: 1, via: [46, 40, 40] },
+  { position: [56, 25, 10], target: [27, 31, -20], hour: 0.88, focal: 42, side: -1, via: [40, 42, 110] },
   { position: [-8, 22, 172], target: [4, 33, 0], hour: 1.0, focal: 40, side: -0.7 },
 ]
 
