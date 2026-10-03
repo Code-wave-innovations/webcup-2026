@@ -28,6 +28,12 @@ const MODEL_URL =
 let options: faceapi.TinyFaceDetectorOptions | null = null
 
 async function boot() {
+    const tf = faceapi.tf as typeof faceapi.tf & {
+        setBackend: (backend: string) => Promise<boolean>
+        ready: () => Promise<void>
+    }
+    await tf.setBackend('cpu')
+    await tf.ready()
     await faceapi.nets.tinyFaceDetector.load(MODEL_URL)
     // inputSize plus grand que le fallback main-thread : le coût ne pénalise plus l'UI.
     options = new faceapi.TinyFaceDetectorOptions({
