@@ -1,10 +1,11 @@
 import express from "express";
 import citizenRequestController from "../controller/citizenRequest.controller";
 import { authenticate, optionalAuth, requireAdmin, requireStaff } from "../middleware/auth";
+import { rateLimit } from "../lib/rateLimit";
 const citizenRequestRouter = express.Router();
 
 // optionalAuth: visitors can send a CONTACT request (D04)
-citizenRequestRouter.post("/", optionalAuth, citizenRequestController.create);
+citizenRequestRouter.post("/", rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), optionalAuth, citizenRequestController.create);
 citizenRequestRouter.get("/", authenticate, citizenRequestController.getAll);
 citizenRequestRouter.get("/:id", authenticate, citizenRequestController.getOne);
 citizenRequestRouter.post("/:id/comments", authenticate, citizenRequestController.addComment);

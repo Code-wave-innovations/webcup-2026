@@ -16,6 +16,7 @@ import {
 } from "../lib/validation";
 import { resolveLocale, searchTranslatedIds, translate, translateServices } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
+import { withAvailability } from "../lib/availability";
 
 // D05 service catalog, F28 featured services, F32 search, F27 translations
 
@@ -71,7 +72,10 @@ const cityServiceController = {
 
     const { skip, take } = toSkipTake(pagination);
     const [services, total] = await cityServiceModel.list(where, SERVICE_ORDER[sort], skip, take);
-    res.json({ data: await translateServices(services, locale), meta: pageMeta(pagination, total) });
+    res.json({
+      data: (await translateServices(services, locale)).map(withAvailability),
+      meta: pageMeta(pagination, total),
+    });
   },
 
   getOne: async (req: Request, res: Response) => {
@@ -86,7 +90,7 @@ const cityServiceController = {
     const locale = resolveLocale(req);
     const [translated] = await translateServices([service], locale);
     res.json({
-      ...translated,
+      ...withAvailability(translated),
       view_count: service.view_count + 1,
       procedures: await translate("Procedure", service.procedures, locale),
     });

@@ -3,6 +3,7 @@
 require("dotenv").config();
 import { PrismaClient, type Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { buildDepartures } from "../src/lib/transit";
 
 const prisma = new PrismaClient();
 const PASSWORD = process.env.SEED_PASSWORD || "NovaTerra2026!";
@@ -403,6 +404,122 @@ async function main() {
         },
       },
     });
+  }
+
+  // F36: transport network
+  const stops = [
+    { code: "HDV", name: "Hôtel de Ville", district: "CENTRE", address: "Place du Conseil" },
+    { code: "GDO", name: "Grand Dôme", district: "CENTRE", address: "Avenue des Dômes" },
+    { code: "RES", name: "Réservoir", district: "SUD", address: "Rue du Réservoir" },
+    { code: "BER", name: "Berges du Sud", district: "SUD", address: "Quai des Berges" },
+    { code: "SAN", name: "Centre de santé", district: "NORD", address: "Avenue des Dômes, Nord" },
+    { code: "ECO", name: "Campus Nord", district: "NORD", address: "Allée du Savoir" },
+    { code: "ENE", name: "Centrale énergétique", district: "EST", address: "Boulevard de l'Énergie" },
+    { code: "SER", name: "Serres agricoles", district: "OUEST", address: "Chemin des Serres" },
+  ];
+  const stopIds: Record<string, number> = {};
+  for (const { district, ...stop } of stops) {
+    const data = { ...stop, district_id: districtIds[district] };
+    const row = await prisma.transitStop.upsert({ where: { code: stop.code }, create: data, update: data });
+    stopIds[stop.code] = row.id;
+  }
+  const lines = [
+    { code: "T1", name: "Tram Centre ↔ Sud", mode: "TRAM" as const, color: "#4a90ff", stops: ["HDV", "GDO", "RES", "BER"], every: 10 },
+    { code: "B2", name: "Bus Nord ↔ Est", mode: "BUS" as const, color: "#f5a623", stops: ["ECO", "SAN", "HDV", "ENE"], every: 15 },
+    {
+      code: "N3",
+      name: "Navette Serres ↔ Centre",
+      mode: "SHUTTLE" as const,
+      color: "#7ed321",
+      stops: ["SER", "GDO", "HDV"],
+      every: 30,
+      status: "DISRUPTED" as const,
+      status_message: "Travaux sur le chemin des Serres : retards d'environ 10 minutes. Le tram T1 reste une alternative depuis le Grand Dôme.",
+    },
+  ];
+  for (const { stops: lineStops, every, ...line } of lines) {
+    const row = await prisma.transitLine.upsert({ where: { code: line.code }, create: line, update: line });
+    const ids = lineStops.map((code) => stopIds[code]);
+    await prisma.transitLineStop.deleteMany({ where: { line_id: row.id } });
+    await prisma.transitLineStop.createMany({ data: ids.map((stop_id, position) => ({ line_id: row.id, stop_id, position })) });
+    await prisma.transitDeparture.deleteMany({ where: { line_id: row.id } });
+    for (const [dayType, first, last, factor] of [
+      ["WEEKDAY", "05:30", "23:00", 1],
+      ["SATURDAY", "06:30", "23:00", 2],
+      ["SUNDAY", "07:30", "21:00", 2],
+    ] as const) {
+      await prisma.transitDeparture.createMany({
+        data: buildDepartures(row.id, ids, {
+          dayType,
+          first,
+          last,
+          everyMinutes: every * factor,
+          minutesBetweenStops: 4,
+          direction: stops.find((s) => s.code === lineStops[lineStops.length - 1])!.name,
+        }),
+      });
+    }
+  }
+
+  // F38: one ongoing degraded incident and one planned maintenance
+  if ((await prisma.serviceInterruption.count()) === 0) {
+    const nextSaturday = new Date();
+    nextSaturday.setDate(nextSaturday.getDate() + ((6 - nextSaturday.getDay() + 7) % 7 || 7));
+    nextSaturday.setHours(8, 0, 0, 0);
+    await prisma.serviceInterruption.createMany({
+      data: [
+        {
+          service_id: serviceIds["eau-energie"],
+          type: "INCIDENT",
+          impact: "DEGRADED",
+          reason: "Incident sur le réseau de suivi des consommations : les demandes sont traitées avec retard.",
+          alternative: "Pour une coupure d'eau urgente, appelez le +00 100 300.",
+          starts_at: new Date(Date.now() - 60 * 60 * 1000),
+          ends_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          created_by_id: userIds["agent@novaterra.local"],
+        },
+        {
+          service_id: serviceIds["etat-civil"],
+          type: "MAINTENANCE",
+          impact: "UNAVAILABLE",
+          reason: "Maintenance du registre numérique d'état civil.",
+          alternative: "Le guichet de l'Hôtel de ville reste ouvert le lundi suivant dès 8h.",
+          starts_at: nextSaturday,
+          ends_at: new Date(nextSaturday.getTime() + 10 * 60 * 60 * 1000),
+          created_by_id: userIds["agent@novaterra.local"],
+        },
+      ],
+    });
+  }
+
+  // F39: appointment slots for the next 10 days (weekdays, 9:00–12:00, every 30 min)
+  if ((await prisma.appointmentSlot.count({ where: { starts_at: { gte: new Date() } } })) === 0) {
+    const slotServices = [
+      { slug: "accueil-nouveaux-arrivants", location: "Hôtel de ville — guichet 2", notes: "Apportez une pièce d'identité et un justificatif de logement." },
+      { slug: "etat-civil", location: "Hôtel de ville — bureau 4", notes: "Munissez-vous de votre livret de famille si vous en avez un." },
+      { slug: "centre-de-sante", location: "Centre de santé — accueil", notes: "Présentez-vous 10 minutes avant avec vos ordonnances en cours." },
+    ];
+    const data: Prisma.AppointmentSlotCreateManyInput[] = [];
+    for (let d = 1; d <= 10; d++) {
+      const day = new Date();
+      day.setDate(day.getDate() + d);
+      if (day.getDay() === 0 || day.getDay() === 6) continue;
+      for (let minutes = 9 * 60; minutes < 12 * 60; minutes += 30) {
+        const startsAt = new Date(day);
+        startsAt.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+        for (const service of slotServices) {
+          data.push({
+            service_id: serviceIds[service.slug],
+            agent_id: userIds["agent@novaterra.local"],
+            starts_at: startsAt,
+            ends_at: new Date(startsAt.getTime() + 30 * 60 * 1000),
+            location: service.location,
+            preparation_notes: service.notes,
+          });
+        }
+      }
+    }
+    await prisma.appointmentSlot.createMany({ data });
   }
 
   console.log("✅ Seed done. Demo accounts (password: %s):", PASSWORD);

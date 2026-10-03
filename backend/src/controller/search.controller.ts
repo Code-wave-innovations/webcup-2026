@@ -5,6 +5,7 @@ import { SERVICE_ORDER, serviceListInclude } from "../model/cityService.model";
 import { ANNOUNCEMENT_ORDER, visibleAnnouncementWhere } from "../model/announcement.model";
 import { resolveLocale, searchTranslatedIds, translate, translateServices } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
+import { withAvailability } from "../lib/availability";
 
 // F32: one search box across services, procedures, announcements and the user's requests.
 
@@ -41,7 +42,7 @@ const searchController = {
         },
         orderBy: SERVICE_ORDER.default,
         take: limit,
-        include: serviceListInclude,
+        include: serviceListInclude(),
       }),
       prisma.procedure.findMany({
         where: {
@@ -78,7 +79,7 @@ const searchController = {
 
     res.json({
       q,
-      services: await translateServices(services, locale),
+      services: (await translateServices(services, locale)).map(withAvailability),
       procedures: await translate("Procedure", procedures, locale),
       announcements: await translate("Announcement", announcements, locale),
       requests,

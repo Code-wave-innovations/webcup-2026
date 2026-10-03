@@ -99,13 +99,17 @@ model User {
   preferences          Json?
   last_login_at        DateTime?
 
-  district       District?        @relation(fields: [district_id], references: [id], onDelete: SetNull)
-  requests       CitizenRequest[] @relation("RequestCitizen")
-  assigned       CitizenRequest[] @relation("RequestAgent")
-  request_events RequestEvent[]
-  notifications  Notification[]
-  announcements  Announcement[]
-  alerts         Alert[]
+  district          District?             @relation(fields: [district_id], references: [id], onDelete: SetNull)
+  requests          CitizenRequest[]      @relation("RequestCitizen")
+  assigned          CitizenRequest[]      @relation("RequestAgent")
+  request_events    RequestEvent[]
+  notifications     Notification[]
+  announcements     Announcement[]
+  alerts            Alert[]
+  appointments      Appointment[]         @relation("AppointmentCitizen")
+  appointment_slots AppointmentSlot[]     @relation("SlotAgent")
+  interruptions     ServiceInterruption[]
+  login_attempts    LoginAttempt[]
 
   @@index([role])
   @@index([district_id])
@@ -119,9 +123,10 @@ model District {
   name        String
   description String?  @db.Text
 
-  users    User[]
-  requests CitizenRequest[]
-  alerts   AlertDistrict[]
+  users         User[]
+  requests      CitizenRequest[]
+  alerts        AlertDistrict[]
+  transit_stops TransitStop[]
 }
 
 // ─── Service catalog (D05, F27, F28, F32) ──────────────────────────────────
@@ -161,10 +166,13 @@ model CityService {
   view_count    Int      @default(0)
   is_active     Boolean  @default(true)
 
-  category      ServiceCategory? @relation(fields: [category_id], references: [id], onDelete: SetNull)
-  procedures    Procedure[]
-  requests      CitizenRequest[]
-  announcements Announcement[]
+  category          ServiceCategory?      @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  procedures        Procedure[]
+  requests          CitizenRequest[]
+  announcements     Announcement[]
+  interruptions     ServiceInterruption[]
+  appointment_slots AppointmentSlot[]
+  appointments      Appointment[]
 
   @@index([category_id])
   @@index([is_featured, priority])
@@ -186,8 +194,9 @@ model Procedure {
   estimated_days     Int?
   is_active          Boolean  @default(true)
 
-  service  CityService      @relation(fields: [service_id], references: [id], onDelete: Cascade)
-  requests CitizenRequest[]
+  service      CityService      @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  requests     CitizenRequest[]
+  appointments Appointment[]
 
   @@index([service_id])
 }
@@ -347,6 +356,208 @@ model Notification {
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id, read_at])
+}
+
+// ─── Security (F37) ─────────────────────────────────────────────────────────
+
+// Every login attempt, used for lockout decisions and the security overview.
+// reason: OK, INVALID_CREDENTIALS, LOCKED, IP_BLOCKED, DISABLED, UNLOCKED_BY_STAFF
+model LoginAttempt {
+  id         Int      @id @default(autoincrement())
+  created_at DateTime @default(now())
+  email      String   @db.VarChar(191)
+  ip         String   @db.VarChar(64)
+  user_agent String?  @db.VarChar(255)
+  success    Boolean
+  reason     String   @db.VarChar(32)
+  user_id    Int?
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([email, created_at])
+  @@index([ip, created_at])
+  @@index([created_at])
+}
+
+// ─── Service interruptions (F38) ────────────────────────────────────────────
+
+enum InterruptionType {
+  MAINTENANCE
+  INCIDENT
+}
+
+enum InterruptionImpact {
+  DEGRADED
+  UNAVAILABLE
+}
+
+// Planned or ongoing unavailability of a service. ends_at null = until further notice.
+model ServiceInterruption {
+  id            Int                @id @default(autoincrement())
+  created_at    DateTime           @default(now())
+  updated_at    DateTime           @updatedAt
+  service_id    Int
+  type          InterruptionType   @default(MAINTENANCE)
+  impact        InterruptionImpact @default(UNAVAILABLE)
+  reason        String             @db.Text
+  // What to do instead (other service, phone number, counter…)
+  alternative   String?            @db.Text
+  starts_at     DateTime           @default(now())
+  ends_at       DateTime?
+  created_by_id Int?
+
+  service    CityService @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  created_by User?       @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
+
+  @@index([service_id, starts_at])
+}
+
+// ─── Appointments (F39, F40) ────────────────────────────────────────────────
+
+enum AppointmentStatus {
+  BOOKED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+// A bookable time window published by a service (optionally for one agent).
+model AppointmentSlot {
+  id                Int      @id @default(autoincrement())
+  created_at        DateTime @default(now())
+  service_id        Int
+  agent_id          Int?
+  starts_at         DateTime
+  ends_at           DateTime
+  location          String
+  capacity          Int      @default(1)
+  // Shown to the citizen to prepare the appointment
+  preparation_notes String?  @db.Text
+  is_active         Boolean  @default(true)
+
+  service      CityService   @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  agent        User?         @relation("SlotAgent", fields: [agent_id], references: [id], onDelete: SetNull)
+  appointments Appointment[]
+
+  @@index([service_id, starts_at])
+  @@index([starts_at])
+}
+
+model Appointment {
+  id                      Int               @id @default(autoincrement())
+  created_at              DateTime          @default(now())
+  updated_at              DateTime          @updatedAt
+  // Confirmation number, e.g. RDV-261003-4F9A2C
+  reference               String            @unique
+  slot_id                 Int
+  // Null once the citizen deleted their account (F33)
+  citizen_id              Int?
+  service_id              Int
+  procedure_id            Int?
+  reason                  String            @db.Text
+  status                  AppointmentStatus @default(BOOKED)
+  // Agent-side notes, never shown to the citizen
+  agent_notes             String?           @db.Text
+  // F40: how long before the appointment the reminder is sent
+  reminder_offset_minutes Int               @default(1440)
+  reminder_sent_at        DateTime?
+  cancelled_at            DateTime?
+
+  slot      AppointmentSlot @relation(fields: [slot_id], references: [id], onDelete: Cascade)
+  citizen   User?           @relation("AppointmentCitizen", fields: [citizen_id], references: [id], onDelete: SetNull)
+  service   CityService     @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  procedure Procedure?      @relation(fields: [procedure_id], references: [id], onDelete: SetNull)
+
+  @@index([citizen_id])
+  @@index([slot_id])
+  @@index([status, reminder_sent_at])
+}
+
+// ─── Public transport (F36) ─────────────────────────────────────────────────
+
+enum TransitMode {
+  BUS
+  TRAM
+  METRO
+  SHUTTLE
+  CABLE
+}
+
+enum TransitLineStatus {
+  NORMAL
+  DISRUPTED
+  INTERRUPTED
+}
+
+enum DayType {
+  WEEKDAY
+  SATURDAY
+  SUNDAY
+}
+
+model TransitLine {
+  id             Int               @id @default(autoincrement())
+  created_at     DateTime          @default(now())
+  updated_at     DateTime          @updatedAt
+  code           String            @unique
+  name           String
+  mode           TransitMode       @default(BUS)
+  color          String?           @db.VarChar(16)
+  description    String?           @db.Text
+  status         TransitLineStatus @default(NORMAL)
+  // Shown with the status: what happens and what to do
+  status_message String?           @db.Text
+  is_active      Boolean           @default(true)
+
+  stops      TransitLineStop[]
+  departures TransitDeparture[]
+}
+
+model TransitStop {
+  id          Int      @id @default(autoincrement())
+  created_at  DateTime @default(now())
+  code        String   @unique
+  name        String
+  district_id Int?
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  // Step-free access (F21)
+  accessible  Boolean  @default(true)
+
+  district   District?          @relation(fields: [district_id], references: [id], onDelete: SetNull)
+  lines      TransitLineStop[]
+  departures TransitDeparture[]
+
+  @@index([district_id])
+}
+
+// Ordered list of stops served by a line
+model TransitLineStop {
+  line_id  Int
+  stop_id  Int
+  position Int
+
+  line TransitLine @relation(fields: [line_id], references: [id], onDelete: Cascade)
+  stop TransitStop @relation(fields: [stop_id], references: [id], onDelete: Cascade)
+
+  @@id([line_id, stop_id])
+}
+
+// Timetable: one row per departure. time is "HH:MM" (sorts as text).
+model TransitDeparture {
+  id        Int     @id @default(autoincrement())
+  line_id   Int
+  stop_id   Int
+  day_type  DayType
+  time      String  @db.Char(5)
+  direction String?
+
+  line TransitLine @relation(fields: [line_id], references: [id], onDelete: Cascade)
+  stop TransitStop @relation(fields: [stop_id], references: [id], onDelete: Cascade)
+
+  @@index([stop_id, day_type, time])
+  @@index([line_id, day_type])
 }
 
 // Make one empty line for your model

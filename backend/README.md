@@ -28,7 +28,10 @@ Demo accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novate
 |---|---|---|
 | `POST /api/auth/register` · `POST /api/auth/login` | public | D01, D03 |
 | `GET/PATCH /api/me` · `PATCH /api/me/password` · `POST /api/me/onboarding/complete` | logged in | D03, D12, D14, F23/F24 (`preferences`) |
-| `GET/POST /api/users` · `GET/PATCH/DELETE /api/users/:id` | admin | D08, D09 |
+| `DELETE /api/me` body `{ password, confirm: true }` | citizen | F33 |
+| `GET /api/users` · `GET/PATCH/DELETE /api/users/:id` · `POST /api/users/:id/unlock-login` | staff (agents: citizens only, no email/password/role changes) | D08, D09, F34 |
+| `POST /api/users` | admin | D08 |
+| `GET /api/security/overview` · `GET /api/security/login-attempts` | admin | F37 |
 | `GET /api/home` | public | D07 (alerts, featured services, categories, news) |
 | `GET /api/search?q=` | public (+ own requests when logged in) | F32 |
 | `GET /api/services?category=&featured=&q=&sort=` · `GET /api/services/:idOrSlug` | public | D05, F28 |
@@ -48,6 +51,14 @@ Demo accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novate
 | `GET /api/alerts/active` · `GET /api/alerts/:id` | public | D18, F29, F31 |
 | `GET /api/alerts` · `POST /api/alerts` · `PATCH /:id` · `POST /:id/close` | staff | D18, F29, F31 |
 | `GET /api/notifications` · `GET /unread-count` · `PATCH /:id/read` · `POST /read-all` · `DELETE /:id` | logged in | F30 |
+| `GET /api/service-interruptions?service_id=&scope=current\|upcoming\|active\|all` | public | F38 |
+| `POST /api/service-interruptions` · `PATCH /:id` · `POST /:id/end` · `DELETE /:id` | staff | F38 |
+| `GET /api/transit/lines` · `/lines/:idOrCode?day=` · `/stops?district_id=&q=` · `/stops/:id?day=&at=` · `/disruptions` | public | F36 |
+| `POST/PATCH/DELETE /api/transit/lines[/:id]` · `PATCH /lines/:id/status` · `PUT /lines/:id/stops` · `PUT /lines/:id/timetable` · stops CRUD | staff | F36 |
+| `GET /api/appointments/slots?service_id=&from=&to=` | public | F39 |
+| `POST /api/appointments/slots` · `POST /slots/bulk` · `PATCH/DELETE /slots/:id` | staff | F39 |
+| `POST /api/appointments` · `GET /api/appointments` · `GET /:id` · `GET /:id/ics` · `POST /:id/cancel` · `PATCH /:id/reminder` | logged in (own) / staff | F39, F40 |
+| `PATCH /api/appointments/:id` (status, agent_notes) · `POST /api/appointments/reminders/run` | staff · admin | F39, F40 |
 | `GET /api/terra-nova/requests` | staff | D19 (needs `TERRA_NOVA_API_KEY`, sent as `X-Webcup-Api-Key`) |
 
 ### Request types
@@ -57,7 +68,23 @@ Demo accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novate
 - `PROCEDURE`: `procedure_id` and `data` (answers to the procedure's `form_schema`; required fields are checked).
 - `INCIDENT`: `location_label` or `latitude` + `longitude`; optional `category`, `district_id`, `attachment` file.
 
-The response contains `reference` (e.g. `NT-261003-4F9A2C`) and a confirmation `message`.
+The response contains `reference` (e.g. `NT-261003-4F9A2C`) and a confirmation `message`. A request on a service that is currently interrupted returns `409 SERVICE_UNAVAILABLE` with `reason`, `alternative` and `back_at`.
+
+### Security (F37)
+
+- 5 wrong passwords for an email within 15 min lock it for 15 min; 20 from one IP block the IP. Responses: `401 INVALID_CREDENTIALS` with `remaining_attempts`, then `429 ACCOUNT_LOCKED`/`IP_BLOCKED` with `Retry-After`.
+- The account owner gets a `SECURITY` notification, and the login response includes `security.failed_attempts_since_last_login`.
+- Staff can lift a lock with `POST /api/users/:id/unlock-login`. Register, login and request creation are also rate limited per IP.
+
+### Appointments (F39, F40)
+
+Booking returns `when` (ISO dates, duration, time zone, readable label), `where`, `with`, `preparation` (notes, documents to bring, contact) and `calendar_url` (.ics with an alarm). Reminders are in-app notifications sent `reminder_offset_minutes` before the slot (default 1440) by a job that runs every minute in the API process.
+
+### Deploying on cPanel
+
+- cPanel serves Node apps through Passenger. After deploying, log in as admin and call `GET /api/security/client-ip`: if `x_forwarded_for` holds your IP, add `TRUST_PROXY=1` to the app's environment variables and restart. Without a known client IP, per-IP limits are skipped and only the per-account lock applies.
+- Passenger stops idle apps, which pauses the in-process reminder job. Add a cPanel Cron Job every 5 minutes: `cd ~/<app folder> && <node path shown by cPanel> dist/src/jobs/sendReminders.js` (`npm run reminders` locally).
+- Set `TZ` in the app's environment variables so timetables and appointment labels use the city's time zone.
 
 ### CRUD generator (simple tables)
 

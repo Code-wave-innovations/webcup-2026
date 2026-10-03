@@ -12,6 +12,8 @@ export const TRANSLATABLE_FIELDS = {
   Announcement: ["title", "summary", "content"],
   Alert: ["title", "message", "instructions"],
   District: ["name", "description"],
+  ServiceInterruption: ["reason", "alternative"],
+  TransitLine: ["name", "description", "status_message"],
 } as const;
 
 export type TranslatableEntity = keyof typeof TRANSLATABLE_FIELDS;

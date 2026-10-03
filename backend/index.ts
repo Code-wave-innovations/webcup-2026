@@ -21,9 +21,17 @@ import dashboardRouter from './src/router/dashboard.router';
 import searchRouter from './src/router/search.router';
 import homeRouter from './src/router/home.router';
 import terraNovaRouter from './src/router/terraNova.router';
+import securityRouter from './src/router/security.router';
+import serviceInterruptionRouter from './src/router/serviceInterruption.router';
+import transitRouter from './src/router/transit.router';
+import appointmentRouter from './src/router/appointment.router';
+import { startScheduler } from './src/lib/scheduler';
 import { errorHandler, notFoundHandler } from './src/middleware/error';
 
 const app = express();
+app.disable('x-powered-by');
+// Behind a reverse proxy, set TRUST_PROXY=1 so req.ip (used by the login guard) is the client IP
+if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 const port = process.env.PORT || 9002;
 
 app.use(cors())
@@ -64,6 +72,10 @@ app.use('/api/dashboard', dashboardRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/home', homeRouter);
 app.use('/api/terra-nova', terraNovaRouter);
+app.use('/api/security', securityRouter);
+app.use('/api/service-interruptions', serviceInterruptionRouter);
+app.use('/api/transit', transitRouter);
+app.use('/api/appointments', appointmentRouter);
 
 const localImages = process.env.ENV && process.env.ENV == "development" ? './public' : '../public'
 app.use('/public', express.static(path.join(__dirname, localImages)));
@@ -71,6 +83,9 @@ app.use('/public', express.static(path.join(__dirname, localImages)));
 // Keep last: JSON 404 for unknown /api routes, then the shared error formatter
 app.use('/api', notFoundHandler);
 app.use(errorHandler);
+
+// F40: appointment reminders
+startScheduler();
 
 app.listen(port, () => {
   console.log(`🚀 Server is running at http://localhost:${port}`);

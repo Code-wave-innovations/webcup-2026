@@ -1,10 +1,14 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
+import { interruptionsInclude } from "../lib/availability";
 
-export const serviceListInclude = {
-  category: { select: { id: true, slug: true, name: true, icon: true } },
-  _count: { select: { procedures: { where: { is_active: true } } } },
-} satisfies Prisma.CityServiceInclude;
+// A function because the interruption filter depends on the current time (F38).
+export const serviceListInclude = () =>
+  ({
+    category: { select: { id: true, slug: true, name: true, icon: true } },
+    _count: { select: { procedures: { where: { is_active: true } } } },
+    interruptions: interruptionsInclude(),
+  }) satisfies Prisma.CityServiceInclude;
 
 // F28: featured first, then the admin-defined priority, then the most viewed.
 export const SERVICE_ORDER: Record<string, Prisma.CityServiceOrderByWithRelationInput[]> = {
@@ -21,7 +25,7 @@ const cityServiceModel = {
     take: number
   ) =>
     prisma.$transaction([
-      prisma.cityService.findMany({ where, orderBy, skip, take, include: serviceListInclude }),
+      prisma.cityService.findMany({ where, orderBy, skip, take, include: serviceListInclude() }),
       prisma.cityService.count({ where }),
     ]),
   getOne: (where: Prisma.CityServiceWhereInput) =>
@@ -34,6 +38,7 @@ const cityServiceModel = {
           orderBy: { title: "asc" },
           select: { id: true, slug: true, title: true, description: true, estimated_days: true },
         },
+        interruptions: interruptionsInclude(),
       },
     }),
   incrementViews: (id: number) =>

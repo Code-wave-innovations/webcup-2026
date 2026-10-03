@@ -11,7 +11,8 @@
     "deploy": "npx prisma migrate deploy",
     "generate": "npx prisma generate",
     "seed": "ts-node prisma/seed.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "reminders": "node dist/src/jobs/sendReminders.js"
   },
   "keywords": [],
   "author": "",

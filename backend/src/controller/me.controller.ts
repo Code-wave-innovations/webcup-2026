@@ -3,11 +3,22 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
 import userModel from "../model/user.model";
-import { badRequest, notFound } from "../lib/errors";
+import { badRequest, forbidden, notFound } from "../lib/errors";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { zBool, zId, zLocale } from "../lib/validation";
 import { zPassword } from "./auth.controller";
 import { OPEN_STATUSES } from "../model/citizenRequest.model";
+
+export const nextAppointmentOf = (userId: number) =>
+  prisma.appointment.findFirst({
+    where: { citizen_id: userId, status: "BOOKED", slot: { starts_at: { gte: new Date() } } },
+    orderBy: { slot: { starts_at: "asc" } },
+    select: {
+      id: true,
+      reference: true,
+      slot: { select: { starts_at: true, ends_at: true, location: true, service: { select: { name: true } } } },
+    },
+  });
 
 // D12: fields a newcomer is asked to fill in during onboarding.
 const PROFILE_FIELDS = ["phone", "address", "district_id"] as const;
@@ -24,6 +35,12 @@ const updateProfileSchema = z.object({
   preferences: z.record(z.unknown()).nullable().optional(),
 });
 
+// F33: the password is asked again so an unattended session cannot delete the account.
+const deleteAccountSchema = z.object({
+  password: z.string().min(1),
+  confirm: z.literal(true, { errorMap: () => ({ message: "Set confirm to true to delete the account" }) }),
+});
+
 const changePasswordSchema = z.object({
   current_password: z.string().min(1),
   new_password: zPassword,
@@ -36,10 +53,11 @@ const meController = {
     const user = await userModel.getById(userId);
     if (!user) throw notFound();
 
-    const [requestsTotal, requestsOpen, unreadNotifications] = await Promise.all([
+    const [requestsTotal, requestsOpen, unreadNotifications, nextAppointment] = await Promise.all([
       prisma.citizenRequest.count({ where: { citizen_id: userId } }),
       prisma.citizenRequest.count({ where: { citizen_id: userId, status: { in: OPEN_STATUSES } } }),
       prisma.notification.count({ where: { user_id: userId, read_at: null } }),
+      nextAppointmentOf(userId),
     ]);
 
     const missing = PROFILE_FIELDS.filter((field) => user[field] === null || user[field] === "");
@@ -54,6 +72,7 @@ const meController = {
         requests_total: requestsTotal,
         requests_open: requestsOpen,
         unread_notifications: unreadNotifications,
+        next_appointment: nextAppointment,
       },
     });
   },
@@ -75,6 +94,29 @@ const meController = {
     if (!(await verifyPassword(current_password, hash))) throw badRequest("Current password is incorrect");
     await userModel.update(req.user!.id, { password_hash: await hashPassword(new_password) });
     res.json({ message: "Password updated" });
+  },
+
+  // F33: citizens delete their own account. Requests are kept for the city's records but
+  // detached from the person; upcoming appointments are cancelled; notifications are deleted.
+  deleteAccount: async (req: Request, res: Response) => {
+    const { password } = deleteAccountSchema.parse(req.body);
+    const user = req.user!;
+    if (user.role !== "CITIZEN") throw forbidden("Staff accounts are removed by an administrator");
+    const hash = await userModel.getPasswordHash(user.id);
+    if (!(await verifyPassword(password, hash))) throw badRequest("Password is incorrect");
+
+    await prisma.$transaction([
+      prisma.appointment.updateMany({
+        where: { citizen_id: user.id, status: "BOOKED" },
+        data: { status: "CANCELLED", cancelled_at: new Date() },
+      }),
+      prisma.user.delete({ where: { id: user.id } }),
+    ]);
+    res.json({
+      deleted: true,
+      message:
+        "Votre compte a été supprimé. Vos demandes passées restent archivées par la ville sans être rattachées à votre identité.",
+    });
   },
 
   // D12

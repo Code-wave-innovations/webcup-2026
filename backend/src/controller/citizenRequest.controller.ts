@@ -11,6 +11,7 @@ import citizenRequestModel, {
 import { badRequest, notFound } from "../lib/errors";
 import { notifyUser } from "../lib/notify";
 import { saveUpload } from "../lib/upload";
+import { assertServiceAvailable } from "../lib/availability";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zId, zJson } from "../lib/validation";
 import { isStaff } from "../middleware/auth";
 import { zEmail } from "./auth.controller";
@@ -129,6 +130,9 @@ const citizenRequestController = {
       if (missing.length) throw badRequest("Missing required procedure fields", { missing });
       serviceId = procedure.service_id;
     }
+
+    // F38: refuse new requests while the service is down, with when to come back and what to do instead
+    if (serviceId) await assertServiceAvailable(serviceId);
 
     const attachment = await saveUpload(req, "attachment", "request");
     const { data, ...fields } = input;

@@ -6,6 +6,7 @@ import { notFound } from "../lib/errors";
 import { idOrSlugWhere, parseId, slugify, zBool, zId, zJson, zSlug } from "../lib/validation";
 import { resolveLocale, translate, translateOne } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
+import { withAvailability } from "../lib/availability";
 
 // D11 / D12: procedures citizens can start. form_schema describes the extra
 // fields the frontend renders; answers are stored in CitizenRequest.data.
@@ -54,7 +55,9 @@ const procedureController = {
       ...(isStaff(req.user) ? {} : { is_active: true }),
     });
     if (!procedure) throw notFound("Procedure not found");
-    res.json(await translateOne("Procedure", procedure, resolveLocale(req)));
+    // F38: tell the citizen before they start if the service is interrupted
+    const translated = await translateOne("Procedure", procedure, resolveLocale(req));
+    res.json({ ...translated, service: withAvailability(procedure.service) });
   },
 
   create: async (req: Request, res: Response) => {
