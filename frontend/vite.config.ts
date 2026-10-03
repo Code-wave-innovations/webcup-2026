@@ -7,8 +7,8 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
-    // three.js + postprocessing + R3F are one deliberate vendor chunk (≈ 260 kB gzipped)
-    chunkSizeWarningLimit: 1024,
+    // three.js + postprocessing + R3F + drei are one deliberate vendor chunk (≈ 300 kB gzipped)
+    chunkSizeWarningLimit: 1200,
     rolldownOptions: {
       output: {
         // The 3D engine changes far less often than the app code: keep it in its own long-cached chunk

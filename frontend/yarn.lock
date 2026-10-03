@@ -1465,6 +1465,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@vladmandic/face-api@npm:^1.7.15":
+  version: 1.7.15
+  resolution: "@vladmandic/face-api@npm:1.7.15"
+  checksum: 10c0/5471b4282cb5efcdc19965497daf696ec3ebc64c0d24c053d09fcf980d1f4ce4ec20468f434489e43c4b567914229b784d0b92def06af5d4905f7c0a07e27792
+  languageName: node
+  linkType: hard
+
 "abbrev@npm:^5.0.0":
   version: 5.0.0
   resolution: "abbrev@npm:5.0.0"
@@ -3873,6 +3880,7 @@ __metadata:
     "@types/react-dom": "npm:^19.2.7"
     "@types/three": "npm:^0.186.0"
     "@vitejs/plugin-react": "npm:^6.1.1"
+    "@vladmandic/face-api": "npm:^1.7.15"
     axios: "npm:^1.20.0"
     eslint: "npm:^10.10.0"
     eslint-plugin-react-hooks: "npm:^7.1.1"

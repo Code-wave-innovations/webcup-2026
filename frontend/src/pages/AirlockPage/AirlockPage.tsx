@@ -2,21 +2,21 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { director } from '../../experience/director/director'
 import { useDirectorStore } from '../../experience/director/directorStore'
+import { novaScenes } from '../../experience/nova/behavior/scenes'
 import { AccessHologram } from '../../features/auth/AccessHologram'
 import type { Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { useReducedMotion } from '../../hooks/useMediaQuery'
-import { useTypewriter } from '../../ui/useTypewriter'
-import { ProjectorBeam, Reticle, Telemetry } from './CockpitOverlay'
+import { useNovaLoginReactions } from './useNovaLoginReactions'
 import styles from './AirlockPage.module.css'
-
-const RADIO_APPROACH = "Vaisseau en approche de Terra Nova. Identifiez-vous pour recevoir un couloir d'entrée."
-const RADIO_CLEARED = "Identité confirmée. Entrée dans l'atmosphère dans quelques secondes, tenez-vous prêts."
 
 type Step = 'login' | 'granted' | 'departing'
 
-/** Act I: the cockpit in orbit. The visitor identifies, then the ship enters the atmosphere. */
+/** Access granted → entry: long enough for Nova's jump of joy and its line. */
+const DEPARTURE_MS = 1900
+
+/** Act I: Terra Nova seen from orbit, Nova and the access panel. The visitor identifies, then dives into the atmosphere. */
 export function AirlockPage() {
   useBodyClass('is-locked')
   const status = useDirectorStore((s) => s.status)
@@ -27,8 +27,8 @@ export function AirlockPage() {
   const { search } = useLocation()
   const reduced = useReducedMotion()
   const [step, setStep] = useState<Step>('login')
-  const hologramRef = useRef<HTMLFormElement>(null)
   const departure = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const novaReacts = useNovaLoginReactions()
 
   // the film reached the surface: the city takes over
   useEffect(() => {
@@ -36,6 +36,13 @@ export function AirlockPage() {
   }, [session, phase, navigate, search])
 
   useEffect(() => () => clearTimeout(departure.current), [])
+
+  // the film comes to light: Nova greets the visitor; then braces for the entry
+  useEffect(() => {
+    if (status !== 'ready') return
+    if (phase === 'approach') return novaScenes.greetPilot()
+    if (phase === 'entry') return novaScenes.enterAtmosphere(reduced)
+  }, [status, phase, reduced])
 
   const onGranted = (granted: Session) => {
     signIn(granted)
@@ -52,23 +59,13 @@ export function AirlockPage() {
         store.setCinematic(true)
         director.enter()
       },
-      reduced ? 300 : 1300,
+      reduced ? 300 : DEPARTURE_MS,
     )
   }
 
-  const radio = useTypewriter(step === 'login' ? (status === 'loading' ? '' : RADIO_APPROACH) : RADIO_CLEARED)
-
   return (
-    <section className={[styles.airlock, step === 'departing' && styles.departing].filter(Boolean).join(' ')} aria-labelledby="airlock-title">
-      <p className={styles.radio} aria-live="polite">
-        <b>Contrôle d'approche</b>
-        <span>{radio}</span>
-      </p>
-      <Telemetry />
-      <Reticle hidden={step !== 'login'} />
-      <AccessHologram formRef={hologramRef} collapsed={step === 'departing'} onGranted={onGranted} />
-      {step !== 'departing' && <ProjectorBeam hologram={hologramRef} />}
-      <p className={styles.note}>Démonstration : le code est vérifié dans la page. Dans l'application, la vérification se fait sur le serveur.</p>
+    <section className={styles.airlock} aria-labelledby="airlock-title">
+      <AccessHologram collapsed={step === 'departing'} onGranted={onGranted} onActivity={novaReacts} />
     </section>
   )
 }

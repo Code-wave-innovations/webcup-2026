@@ -34,6 +34,23 @@ export const DOME_FLATTEN = 0.78
 
 export const COUNCIL_TOWER = { x: -4, z: -10, h: 50 } as const
 
+/** Twin spires flanking the council tower. */
+export const COUNCIL_SPIRES: ReadonlyArray<{ x: number; z: number; h: number }> = [
+  { x: -9.5, z: -16, h: 36 },
+  { x: 2, z: -16.5, h: 34 },
+]
+
+/** The Observatory: a slender tower with a balcony under a glass cap, where Nova chats at night. */
+export const OBSERVATORY = {
+  x: 28,
+  z: -21,
+  h: 42,
+  radius: 2.2,
+  /** the glass cap: its base (share of the height) and its radius (share of the width) */
+  capAt: 0.93,
+  capRadius: 0.3,
+} as const
+
 /** The ring road around the center. */
 export const RING = { radius: 35, height: 3.7, tube: 0.42 } as const
 

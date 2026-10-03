@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { scrollPageTo } from '../../app/smoothScroll'
 import { director } from '../../experience/director/director'
 import { matchesQuery, PHONE_QUERY, useReducedMotion } from '../../hooks/useMediaQuery'
 import { smoothstep } from '../../lib/math'
@@ -51,6 +52,7 @@ export function useCityScroll(root: RefObject<HTMLElement | null>, enabled: bool
       })
       sections[0].scrollHint?.style.setProperty('--reveal', (state.reveals[0] * (1 - smoothstep(0, screen * 0.25, y))).toFixed(3))
       director.setScroll(state.u)
+      director.section = state.active
       if (state.active !== live.current.active) {
         live.current.active = state.active
         setActive(state.active)
@@ -98,7 +100,7 @@ export function useCityScroll(root: RefObject<HTMLElement | null>, enabled: bool
       const y = matchesQuery(PHONE_QUERY)
         ? section.column.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.42
         : section.top + window.innerHeight * (section === sections[0] ? 0 : 0.2)
-      window.scrollTo({ top: Math.max(0, y), behavior: reduced ? 'auto' : 'smooth' })
+      scrollPageTo(Math.max(0, y), reduced)
       return true
     },
     [reduced],

@@ -83,8 +83,9 @@ const LEAD = 34
 const CLEARANCE = 40
 
 /**
- * The line of light from the active panel to its district in the 3D city, redrawn every frame.
- * Hidden when the district is off-screen or tucked behind the panel.
+ * The line of light to the active district in the 3D city, redrawn every frame: from Nova's fingertip
+ * while it presents the district, otherwise from the panel. Hidden when the district is off-screen or
+ * tucked behind the panel.
  */
 export function LinkLine({ live, phone }: { live: RefObject<LiveScroll>; phone: boolean }) {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -97,11 +98,27 @@ export function LinkLine({ live, phone }: { live: RefObject<LiveScroll>; phone: 
       frameBus.subscribe(() => {
         const svg = svgRef.current
         if (!svg || !pathRef.current || !dotRef.current || !pulseRef.current) return
+        const placeTarget = (point: { x: number; y: number }) => {
+          for (const circle of [dotRef.current, pulseRef.current]) {
+            circle?.setAttribute('cx', point.x.toFixed(1))
+            circle?.setAttribute('cy', point.y.toFixed(1))
+          }
+        }
         const section = live.current.sections[live.current.active]
         const anchorId = CITY_SECTIONS[live.current.active]?.anchor
         const anchor = anchorId ? frameState.anchors[anchorId] : null
         if (phone || !section?.panel || !anchor?.visible || section.reveal <= 0.25) {
           svg.style.opacity = '0'
+          return
+        }
+        const { finger, pointing } = frameState.nova
+        if (finger.visible && pointing > 0.3) {
+          // from Nova's fingertip, arching up to the landmark
+          const cx = (finger.x + anchor.x) / 2
+          const cy = Math.min(finger.y, anchor.y) - Math.abs(anchor.x - finger.x) * 0.18
+          pathRef.current.setAttribute('d', `M${finger.x.toFixed(1)} ${finger.y.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${anchor.x.toFixed(1)} ${anchor.y.toFixed(1)}`)
+          placeTarget(anchor)
+          svg.style.opacity = Math.min(pointing, section.reveal).toFixed(2)
           return
         }
         const panel = section.panel.getBoundingClientRect()
@@ -114,10 +131,7 @@ export function LinkLine({ live, phone }: { live: RefObject<LiveScroll>; phone: 
         const y0 = panel.top + 26
         const x1 = x0 + (towardsLeft ? -LEAD : LEAD)
         pathRef.current.setAttribute('d', `M${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y0.toFixed(1)} L${anchor.x.toFixed(1)} ${anchor.y.toFixed(1)}`)
-        for (const circle of [dotRef.current, pulseRef.current]) {
-          circle.setAttribute('cx', anchor.x.toFixed(1))
-          circle.setAttribute('cy', anchor.y.toFixed(1))
-        }
+        placeTarget(anchor)
         svg.style.opacity = section.reveal.toFixed(2)
       }),
     [live, phone],

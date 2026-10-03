@@ -15,6 +15,8 @@ export interface LivingInput {
   voice: number
   /** the cursor is over Nova: head tilted, eyes wide */
   curious: boolean
+  /** the cursor is getting close (0 far → 1 touching): Nova leans towards it */
+  attention: number
 }
 
 /** Critically damped (or springy) follow, frame-rate independent. */
@@ -45,7 +47,7 @@ const LOOK_YAW = MathUtils.degToRad(50)
 const LOOK_PITCH = MathUtils.degToRad(25)
 const VOWELS = /[aeiouyàâäéèêëîïôöûüù]/i
 const LETTERS = /[a-zçœæ]/i
-const ADDITIVE_BONES: readonly BoneName[] = ['Neck', 'Head', 'Chest', 'LeftShoulder', 'RightShoulder', 'Antenna']
+const ADDITIVE_BONES: readonly BoneName[] = ['Spine', 'Neck', 'Head', 'Chest', 'LeftShoulder', 'RightShoulder', 'Antenna']
 
 /**
  * Everything that makes Nova look alive on top of its clips: breathing, blinks (sometimes double),
@@ -69,6 +71,7 @@ export class LivingLayers {
   private lookWeight = 0
   private hoverVelocity = 0
   private curiosity = 0
+  private attention = 0
   private nextBlink = 1.5
   private blinkStart = -10
   private doubleBlink = false
@@ -181,7 +184,9 @@ export class LivingLayers {
     this.add('RightShoulder', 0, 0, -MathUtils.degToRad(1.2) * breath)
     this.add('Neck', pitch * 0.4, yaw * 0.4, 0)
     this.curiosity += ((input.curious ? 1 : 0) - this.curiosity) * damp(7, dt)
-    this.face.surprised = Math.max(this.face.surprised, this.curiosity * 0.4)
+    this.attention += (input.attention - this.attention) * damp(5, dt)
+    this.face.surprised = Math.max(this.face.surprised, this.curiosity * 0.4, this.attention * 0.25)
+    this.add('Spine', MathUtils.degToRad(5) * this.attention, 0, 0)
     this.add('Head', pitch * 0.6, yaw * 0.6, MathUtils.degToRad(3 * Math.sin(time * 0.7) * this.lookWeight + 13 * this.curiosity))
 
     // the antenna lags behind the head's turns and the body's hops

@@ -30,5 +30,11 @@ void main(){
   col+=refl*fres*0.42;
   col+=couleurSoleil()*haut*pow(max(dot(R,uSoleil),0.0),70.0)*3.0;
   col+=emis;
+  // roof gardens on one roof in two, a few garden lamps at night
+  float jardin=smoothstep(0.8,0.95,N.y)*step(0.5,fract(vG*7.31));
+  vec3 vert=vec3(0.030,0.070,0.032)*(0.55+0.9*bruit(vec3(vPos.xz*2.7,vG*9.0)));
+  vec3 colJ=vert*(cielBase(vec3(0.0,1.0,0.0))*0.6+ndl*haut*couleurSoleil()*2.8+clairAstre(N)*2.0);
+  colJ+=vec3(1.0,0.72,0.42)*step(0.9,bruit(vec3(vPos.xz*5.0,vG*3.0)))*uNuit*0.9;
+  col=mix(col,colJ,jardin);
   col=brume(col,cameraPosition,vPos);
   gl_FragColor=vec4(col,1.0); }

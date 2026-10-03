@@ -1,0 +1,23 @@
+/* invisible button over Nova's silhouette: hover, focus and click reach the 3D character */
+.zone {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  will-change: transform;
+  /* rounded like a body, so the corners do not steal clicks */
+  border-radius: 40% 40% 30% 30%;
+}
+
+.zone[data-visible='false'] {
+  visibility: hidden;
+}
+
+.zone:focus-visible {
+  outline: 1px dashed var(--color-ice);
+  outline-offset: 6px;
+}

@@ -1,0 +1,94 @@
+/* Act V: the Observatory's balcony. Nova and the city fill the left; the conversation sits on the right. */
+.page {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  animation: appear 0.8s ease 0.3s backwards;
+}
+
+.page > * {
+  pointer-events: auto;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) var(--gutter) 14px;
+  background: linear-gradient(180deg, var(--color-top-fade), transparent);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--color-line);
+  background: var(--color-glass);
+  color: var(--color-ice-bright);
+  text-decoration: none;
+  font-weight: 600;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.back:hover {
+  background: var(--color-glass-light);
+  border-color: var(--color-ice);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 15px/1 var(--font-display);
+  letter-spacing: 0.08em;
+  color: var(--color-ice);
+}
+
+/* Nova stands in the empty left part of the frame */
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--gutter) calc(24px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+}
+
+.chat {
+  width: min(520px, 42vw);
+  min-height: 0;
+  pointer-events: auto;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+
+/* phone: Nova over the top 38 % of the screen, the conversation below */
+@media (max-width: 860px) {
+  .stage {
+    padding: 0 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    padding-top: calc(38vh - 72px);
+  }
+
+  .chat {
+    width: 100%;
+  }
+
+  .back span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+}

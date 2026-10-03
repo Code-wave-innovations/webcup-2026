@@ -1,0 +1,258 @@
+/* face login: the camera seen through a lens ringed with ticks, in the manner of a biometric reader */
+.scan {
+  --lens: 208px;
+  --tick: rgba(143, 233, 255, 0.16);
+  --lit: var(--color-ice);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+  animation: lens-in 0.6s var(--ease-out-soft) both;
+}
+
+.lens {
+  position: relative;
+  width: var(--lens);
+  height: var(--lens);
+  flex: none;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.ring line {
+  stroke: var(--tick);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  transition: stroke 0.25s;
+}
+
+/* searching: a soft beam turns around the lens */
+.sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(from 0deg, transparent 0 70%, rgba(143, 233, 255, 0.05) 82%, rgba(200, 246, 255, 0.55) 99.5%, transparent 100%);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 15px), #000 calc(100% - 14px), #000 calc(100% - 1px), transparent);
+  mask: radial-gradient(closest-side, transparent calc(100% - 15px), #000 calc(100% - 14px), #000 calc(100% - 1px), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.scan[data-phase='searching'] .sweep {
+  opacity: 1;
+  animation: turn 1.8s linear infinite;
+}
+
+/* a face holds still: the ticks light up clockwise */
+.scan[data-aligned='true'] .sweep {
+  opacity: 0;
+}
+
+.scan[data-aligned='true'] .ring line {
+  animation: light 0.18s ease-out calc(var(--i) * 8ms) forwards;
+}
+
+/* the face engine analyses: every tick lit, a wave runs around */
+.scan[data-phase='analysing'] .ring line {
+  stroke: var(--lit);
+  animation: wave 1s ease-in-out calc(var(--i) * 14ms) infinite;
+}
+
+.scan[data-phase='recognized'] {
+  --lit: var(--color-ok);
+}
+
+.scan[data-phase='recognized'] .ring line {
+  stroke: var(--lit);
+  filter: drop-shadow(0 0 4px var(--color-ok));
+}
+
+.scan[data-phase='recognized'] .lens {
+  animation: recognized 0.7s var(--ease-out-soft);
+}
+
+.scan[data-phase='unknown'] .ring line {
+  stroke: var(--color-progress);
+  opacity: 0.55;
+}
+
+.scan[data-phase='unavailable'] .ring line,
+.scan[data-phase='denied'] .ring line {
+  stroke: var(--color-alert);
+  opacity: 0.4;
+}
+
+/* the camera, behind curved glass */
+.eye {
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, #0d1b2b, var(--color-void));
+  box-shadow:
+    0 0 0 1px var(--color-line-thin),
+    0 18px 50px rgba(0, 0, 0, 0.55);
+}
+
+.eye::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 30% 8%, rgba(255, 255, 255, 0.18), transparent 42%),
+    radial-gradient(closest-side, transparent 72%, rgba(2, 6, 12, 0.6));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 -10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  filter: saturate(0.85) contrast(1.05);
+  opacity: 0;
+  transition: opacity 0.6s, filter 0.6s;
+}
+
+.scan:not([data-phase='starting']) .video {
+  opacity: 1;
+}
+
+.scan[data-phase='unknown'] .video,
+.scan[data-phase='unavailable'] .video {
+  filter: saturate(0.3) brightness(0.6);
+}
+
+/* analysing: a band of light crosses the face */
+.scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -30%;
+  height: 30%;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(180deg, transparent, rgba(143, 233, 255, 0.28) 85%, rgba(200, 246, 255, 0.85) 98%, transparent);
+  mix-blend-mode: screen;
+}
+
+.scan[data-phase='analysing'] .scanline {
+  opacity: 1;
+  animation: descend 1.1s var(--ease-in-out-sharp) infinite;
+}
+
+.message {
+  min-height: 2.6em;
+  margin: 0;
+  max-width: 34ch;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--color-text);
+}
+
+.scan[data-phase='recognized'] .message {
+  color: var(--color-ok);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
+.wide {
+  width: 100%;
+}
+
+.link {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--color-ice-bright);
+  font: 500 15px/1 var(--font-body);
+  text-decoration: underline;
+  text-decoration-color: var(--color-line);
+  text-underline-offset: 4px;
+}
+
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
+.privacy {
+  margin: 0;
+  max-width: 40ch;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+@keyframes lens-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+    filter: blur(6px);
+  }
+}
+
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes light {
+  to {
+    stroke: var(--lit);
+  }
+}
+
+@keyframes wave {
+  50% {
+    stroke: var(--color-ice-bright);
+    stroke-width: 4;
+  }
+}
+
+@keyframes descend {
+  to {
+    top: 100%;
+  }
+}
+
+@keyframes recognized {
+  40% {
+    transform: scale(1.04);
+  }
+}
+
+@media (max-width: 860px), (max-height: 700px) {
+  .scan {
+    --lens: 168px;
+  }
+
+  .eye {
+    inset: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan[data-phase='searching'] .sweep,
+  .scan[data-phase='analysing'] .scanline,
+  .scan[data-phase='analysing'] .ring line {
+    animation: none;
+  }
+}

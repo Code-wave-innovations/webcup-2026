@@ -109,6 +109,31 @@ const thinkKey = (t: number, tilt: number): PoseKey => ({
   reach: [{ side: 'Right', to: 'chin', standoff: 0.03, offset: [0, -0.02, 0], pole: [-0.4, -1, 0.3] }],
 })
 
+const presentKey = (t: number, sway: number): PoseKey => ({
+  t,
+  bones: {
+    RightArm: [-112 - 3 * sway, 0, -16],
+    RightForeArm: [-6 + 2 * sway, 0, 0],
+    RightHand: [0, 0, 0],
+    LeftArm: [4, 0, 9],
+    LeftForeArm: [-14, 0, 0],
+    Chest: [-4, -8, 0],
+    Head: [-6 - 2 * sway, -10, 0],
+  },
+})
+
+// arms crossed, weight on the left leg, the right foot tapping: waiting for the lock to lift
+const sulkKey = (t: number, tap: number): PoseKey => ({
+  t,
+  hips: [0.012, 0, 0],
+  bones: {
+    LeftArm: [-14, -72, 14], RightArm: [-18, 72, -14], LeftForeArm: [-80, 0, 0], RightForeArm: [-72, 0, 0],
+    LeftHand: [0, 0, 0], RightHand: [0, 0, 0],
+    Chest: [-3, 0, -2], Head: [-4, 12, 6], Hips: [0, 0, 3],
+    RightUpLeg: [-6, 0, -5], RightLeg: [10, 0, 0], RightFoot: [-26 * tap, 0, 0],
+  },
+})
+
 const bracePose = (shake: number): PoseKey['bones'] => ({
   LeftUpLeg: [-44, 0, 4], RightUpLeg: [-44, 0, -4], LeftLeg: [78, 0, 0], RightLeg: [78, 0, 0], LeftFoot: [-34, 0, 0], RightFoot: [-34, 0, 0],
   Spine: [20, 0, 0], Chest: [6 + shake, 0, 0],
@@ -204,6 +229,9 @@ export const POSE_LIBRARY: Record<ClipName, ClipDefinition> = {
       rest(1.6),
     ],
   },
+  // held at rest on a district: the right arm raised towards the dome, the body opened to the visitor
+  present: { duration: 2.8, loop: true, keys: [presentKey(0, 0), presentKey(1.4, 1), presentKey(2.8, 0)] },
+  sulk: { duration: 1, loop: true, keys: [sulkKey(0, 0), sulkKey(0.18, 1), sulkKey(0.36, 0), sulkKey(0.54, 1), sulkKey(0.72, 0), sulkKey(1, 0)] },
   think: { duration: 3, loop: true, keys: [thinkKey(0, 10), thinkKey(1.5, 14), thinkKey(3, 10)] },
   coverEyes: { duration: 1.2, loop: true, keys: [coverKey(0, 0), coverKey(0.6, 3), coverKey(1.2, 0)] },
   peek: { duration: 1.6, loop: true, keys: [peekKey(0, 0), peekKey(0.8, 4), peekKey(1.6, 0)] },
@@ -223,6 +251,17 @@ export const POSE_LIBRARY: Record<ClipName, ClipDefinition> = {
       { t: 0, hips: [0, -0.06, 0], bones: bracePose(0) },
       { t: 0.25, hips: [0, -0.062, 0], bones: bracePose(1.5) },
       { t: 0.5, hips: [0, -0.06, 0], bones: bracePose(0) },
+    ],
+  },
+  hop: {
+    duration: 0.6,
+    loop: false,
+    keys: [
+      rest(0),
+      { t: 0.12, hips: [0, -0.03, 0], bones: { LeftUpLeg: [-22, 0, 0], RightUpLeg: [-22, 0, 0], LeftLeg: [40, 0, 0], RightLeg: [40, 0, 0], LeftFoot: [-18, 0, 0], RightFoot: [-18, 0, 0], LeftArm: [0, 0, 20], RightArm: [0, 0, -20] } },
+      { t: 0.3, hips: [0, 0.045, 0], bones: { LeftUpLeg: [-4, 0, 0], RightUpLeg: [-4, 0, 0], LeftLeg: [8, 0, 0], RightLeg: [8, 0, 0], LeftFoot: [10, 0, 0], RightFoot: [10, 0, 0], LeftArm: [0, 0, 32], RightArm: [0, 0, -32], Head: [-8, 0, 0] } },
+      { t: 0.45, hips: [0, -0.015, 0], bones: { LeftUpLeg: [-14, 0, 0], RightUpLeg: [-14, 0, 0], LeftLeg: [26, 0, 0], RightLeg: [26, 0, 0], LeftFoot: [-12, 0, 0], RightFoot: [-12, 0, 0], LeftArm: [0, 0, 12], RightArm: [0, 0, -12] } },
+      { ...rest(0.6), bones: { ...rest(0.6).bones, LeftUpLeg: [0, 0, 0], RightUpLeg: [0, 0, 0], LeftLeg: [0, 0, 0], RightLeg: [0, 0, 0], LeftFoot: [0, 0, 0], RightFoot: [0, 0, 0] } },
     ],
   },
   poked: {
