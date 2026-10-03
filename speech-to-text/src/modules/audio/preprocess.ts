@@ -26,7 +26,7 @@ export function isAudioPreprocessError(
   return err instanceof AudioPreprocessError;
 }
 
-async function probeDurationSec(inputPath: string): Promise<number> {
+export async function probeDurationSec(inputPath: string): Promise<number> {
   const { stdout } = await execFileAsync(
     "ffprobe",
     [
