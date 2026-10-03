@@ -49,6 +49,38 @@ npm run dev                    # http://localhost:9100
 npm run worker                 # needed for 202 / long / options.async
 ```
 
+### Production (VPS + DuckDNS + SSL) — same pattern as face-recognitions
+
+Uses **host nginx** on public `:80`/`:443` and Docker on **`:85`** (`FORCE_HTTP=1`), so it can coexist with face on `:84`.
+
+1. Create a **new** DuckDNS subdomain (e.g. `webcup-stt`), not the face one.
+2. On the VPS:
+
+```bash
+cd speech-to-text
+cp .env.prod.example .env.prod
+# Edit: DOMAIN, DUCKDNS_*, LETSENCRYPT_EMAIL, STT_API_KEY, CORS_ORIGINS,
+#       POSTGRES_PASSWORD, OPENROUTER_API_KEY, ANTHROPIC_API_KEY
+# Keep: HTTP_PORT=85  HTTPS_PORT=448  FORCE_HTTP=1
+
+chmod +x deploy/host-nginx/install-host-nginx.sh deploy/certbot/init-ssl.sh deploy/docker-entrypoint.sh
+mkdir -p data/certbot-www data/letsencrypt
+
+sudo docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+sudo ./deploy/host-nginx/install-host-nginx.sh http
+curl -sS http://127.0.0.1:85/health
+curl -sS http://webcup-stt.duckdns.org/health
+
+sudo ./deploy/certbot/init-ssl.sh
+curl -fsS https://webcup-stt.duckdns.org/health
+```
+
+3. Frontend: `VITE_STT_API_URL=https://webcup-stt.duckdns.org` (and restart Vite).
+
+After cert renewals: `sudo nginx -s reload`.
+
+Local infra only (no TLS): `docker compose up -d` (postgres/redis/rabbitmq).
+
 ### 2. Env on the consumer (`backend/`)
 
 ```bash

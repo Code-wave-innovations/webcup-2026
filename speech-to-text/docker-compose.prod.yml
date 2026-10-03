@@ -1,0 +1,121 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:-stt}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks: [stt-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stt} -d ${POSTGRES_DB:-stt}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [stt-net]
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    networks: [stt-net]
+    # management UI only on localhost if needed:
+    # ports: ["127.0.0.1:15672:15672"]
+
+  stt-api:
+    build: .
+    command: ["api"]
+    env_file: .env.prod
+    environment:
+      PORT: "9100"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stt}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stt}
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    volumes:
+      - stt-uploads:/app/uploads
+      - stt-tmp:/app/tmp
+    restart: unless-stopped
+    networks: [stt-net]
+
+  stt-worker:
+    build: .
+    command: ["worker"]
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stt}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stt}
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      stt-api:
+        condition: service_started
+    volumes:
+      - stt-uploads:/app/uploads
+      - stt-tmp:/app/tmp
+    restart: unless-stopped
+    networks: [stt-net]
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on: [stt-api]
+    ports:
+      # Behind host nginx: HTTP_PORT=85 (face already uses 84)
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      FORCE_HTTP: ${FORCE_HTTP:-0}
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/templates:/etc/nginx/templates:ro
+      - ./deploy/nginx/docker-entrypoint.sh:/docker-entrypoint-stt.sh:ro
+      - ./data/certbot-www:/var/www/certbot:ro
+      - ./data/letsencrypt:/etc/letsencrypt:ro
+    entrypoint: ["/bin/sh", "/docker-entrypoint-stt.sh"]
+    restart: unless-stopped
+    networks: [stt-net]
+
+  certbot:
+    image: certbot/certbot:v2.11.0
+    volumes:
+      - ./data/certbot-www:/var/www/certbot
+      - ./data/letsencrypt:/etc/letsencrypt
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done'
+    restart: unless-stopped
+    networks: [stt-net]
+
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    environment:
+      TZ: UTC
+      SUBDOMAINS: ${DUCKDNS_SUBDOMAIN}
+      TOKEN: ${DUCKDNS_TOKEN}
+      UPDATE_IP: ipv4
+      LOG_FILE: "false"
+    restart: unless-stopped
+    networks: [stt-net]
+
+networks:
+  stt-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  stt-uploads:
+  stt-tmp:
