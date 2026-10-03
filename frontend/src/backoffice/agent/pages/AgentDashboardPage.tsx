@@ -11,6 +11,7 @@ import { RadialGauge } from '../../charts/RadialGauge'
 import { DashboardViewToggle } from '../../shared/DashboardViewToggle'
 import { SimpleDashboard } from '../../shared/SimpleDashboard'
 import { StaffActivityFeed } from '../../shared/StaffActivityFeed'
+import { LiveAuditFeed } from '../../shared/EntityHistory'
 import { TerraNovaGlance } from '../../shared/TerraNovaGlance'
 import { toast } from '../../stores/toastStore'
 import { PriorityTag, Ref, StatusPill } from '../../ui/Badges'
@@ -86,7 +87,7 @@ export default function AgentDashboardPage() {
             <StatTile label="Assignées à moi" value={requests?.assigned_to_me ?? null} icon="user" tone="ice" />
             <StatTile
               label="Rendez-vous aujourd’hui"
-              value={stats?.appointments.today ?? null}
+              value={stats?.appointments?.today ?? null}
               icon="calendar"
               tone="taken"
               trend={appointmentsSeries && appointmentsSeries.length > 1 ? appointmentsSeries : undefined}
@@ -179,6 +180,21 @@ export default function AgentDashboardPage() {
             </Panel>
             <TerraNovaGlance />
           </div>
+
+          <Panel
+            kicker="F47 · F48"
+            title="Journal d’audit"
+            actions={
+              <>
+                <LiveDot />
+                <ButtonLink to="/agent/activite" size="sm" variant="ghost">
+                  Toute l’activité
+                </ButtonLink>
+              </>
+            }
+          >
+            <LiveAuditFeed limit={6} />
+          </Panel>
         </>
       )}
     </motion.div>

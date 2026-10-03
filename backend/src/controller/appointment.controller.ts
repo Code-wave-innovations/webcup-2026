@@ -11,6 +11,7 @@ import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zDate, zId } fr
 import { resolveLocale } from "../lib/translations";
 import { assertNotInMaintenance, getSetting } from "../lib/settings";
 import { isStaff } from "../middleware/auth";
+import { audit, previewText } from "../lib/audit";
 import {
   appointmentInclude,
   generateAppointmentReference,
@@ -133,7 +134,16 @@ const appointmentController = {
   createSlot: async (req: Request, res: Response) => {
     const input = slotSchema.parse(req.body);
     if (input.ends_at <= input.starts_at) throw badRequest("ends_at must be after starts_at");
-    res.status(201).json(await prisma.appointmentSlot.create({ data: input, include: slotInclude }));
+    const slot = await prisma.appointmentSlot.create({ data: input, include: slotInclude });
+    await audit(req, {
+      action: "slot.created",
+      entity: "AppointmentSlot",
+      entityId: slot.id,
+      label: slot.service.name,
+      metadata: { count: 1 },
+      always: true,
+    });
+    res.status(201).json(slot);
   },
 
   // Publishes a series of slots, e.g. every 30 min from 09:00 to 12:00, Monday to Friday.
@@ -175,6 +185,14 @@ const appointmentController = {
     if (data.length === 0) throw badRequest("No slot matches these settings");
     if (data.length > 1000) throw badRequest("Too many slots at once (max 1000)");
     const { count } = await prisma.appointmentSlot.createMany({ data });
+    const service = await prisma.cityService.findUnique({ where: { id: input.service_id }, select: { name: true } });
+    await audit(req, {
+      action: "slot.created",
+      entity: "AppointmentSlot",
+      label: service?.name ?? null,
+      metadata: { count, from_date: input.from_date, to_date: input.to_date },
+      always: true,
+    });
     res.status(201).json({ created: count });
   },
 
@@ -191,7 +209,25 @@ const appointmentController = {
     if (input.capacity !== undefined && input.capacity < booked) {
       throw conflict(`Capacity cannot be lower than the ${booked} existing booking(s)`);
     }
-    res.json(await prisma.appointmentSlot.update({ where: { id }, data: input, include: slotInclude }));
+    const updated = await prisma.appointmentSlot.update({ where: { id }, data: input, include: slotInclude });
+    await audit(req, {
+      action: "slot.updated",
+      entity: "AppointmentSlot",
+      entityId: id,
+      label: updated.service.name,
+      changes: [
+        ...(input.capacity !== undefined && input.capacity !== slot.capacity
+          ? [{ field: "capacity", from: String(slot.capacity), to: String(updated.capacity) }]
+          : []),
+        ...(input.is_active !== undefined && input.is_active !== slot.is_active
+          ? [{ field: "is_active", from: String(slot.is_active), to: String(updated.is_active) }]
+          : []),
+        ...(input.location !== undefined && input.location !== slot.location
+          ? [{ field: "location", from: slot.location, to: updated.location }]
+          : []),
+      ],
+    });
+    res.json(updated);
   },
 
   // Removes a free slot, or deactivates a booked one and cancels its bookings (citizens are notified).
@@ -202,8 +238,16 @@ const appointmentController = {
       include: { ...slotInclude, appointments: { where: { status: "BOOKED" } } },
     });
     if (!slot) throw notFound("Slot not found");
+    const label = slot.service.name;
     if (slot.appointments.length === 0) {
       await prisma.appointmentSlot.delete({ where: { id } });
+      await audit(req, {
+        action: "slot.deleted",
+        entity: "AppointmentSlot",
+        entityId: id,
+        label,
+        always: true,
+      });
       res.json({ id, deleted: true });
       return;
     }
@@ -224,6 +268,14 @@ const appointmentController = {
         data: { appointment_id: appointment.id },
       });
     }
+    await audit(req, {
+      action: "slot.deleted",
+      entity: "AppointmentSlot",
+      entityId: id,
+      label: slot.service.name,
+      metadata: { deactivated: true, cancelled: slot.appointments.length },
+      always: true,
+    });
     res.json({ id, deleted: false, deactivated: true, cancelled: slot.appointments.length });
   },
 
@@ -365,6 +417,17 @@ const appointmentController = {
         data: { appointment_id: appointment.id },
       });
     }
+    if (staff) {
+      await audit(req, {
+        action: "appointment.status",
+        entity: "Appointment",
+        entityId: appointment.id,
+        label: appointment.reference,
+        changes: [{ field: "status", from: appointment.status, to: "CANCELLED" }],
+        metadata: reason ? { note: previewText(reason) } : undefined,
+        always: true,
+      });
+    }
     res.json(present(req, updated));
   },
 
@@ -389,6 +452,26 @@ const appointmentController = {
       data: { ...input, ...(input.status === "CANCELLED" ? { cancelled_at: new Date() } : {}) },
       include: appointmentInclude,
     });
+    if (input.status && input.status !== appointment.status) {
+      await audit(req, {
+        action: "appointment.status",
+        entity: "Appointment",
+        entityId: appointment.id,
+        label: appointment.reference,
+        changes: [{ field: "status", from: appointment.status, to: input.status }],
+        always: true,
+      });
+    }
+    if (input.agent_notes !== undefined && input.agent_notes !== appointment.agent_notes) {
+      await audit(req, {
+        action: "appointment.notes",
+        entity: "Appointment",
+        entityId: appointment.id,
+        label: appointment.reference,
+        metadata: { note: previewText(input.agent_notes ?? "") },
+        always: true,
+      });
+    }
     res.json(present(req, updated));
   },
 

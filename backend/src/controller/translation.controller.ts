@@ -4,6 +4,7 @@ import prisma from "../lib/prisma";
 import { badRequest } from "../lib/errors";
 import { parseId, zId, zLocale } from "../lib/validation";
 import { TRANSLATABLE_FIELDS, type TranslatableEntity } from "../lib/translations";
+import { audit } from "../lib/audit";
 
 // F27: manage per-locale content. Allowed entities/fields live in TRANSLATABLE_FIELDS.
 
@@ -56,11 +57,32 @@ const translationController = {
             })
       )
     );
+    await audit(req, {
+      action: "translation.updated",
+      entity,
+      entityId: entity_id,
+      label: locale,
+      metadata: { locale, fields: Object.keys(fields) },
+      always: true,
+    });
     res.json(await prisma.contentTranslation.findMany({ where: key, orderBy: { field: "asc" } }));
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await prisma.contentTranslation.delete({ where: { id: parseId(req.params.id) } }));
+    const id = parseId(req.params.id);
+    const row = await prisma.contentTranslation.findUnique({ where: { id } });
+    const deleted = await prisma.contentTranslation.delete({ where: { id } });
+    if (row) {
+      await audit(req, {
+        action: "translation.updated",
+        entity: row.entity,
+        entityId: row.entity_id,
+        label: row.locale,
+        metadata: { locale: row.locale, field: row.field, removed: true },
+        always: true,
+      });
+    }
+    res.json(deleted);
   },
 };
 

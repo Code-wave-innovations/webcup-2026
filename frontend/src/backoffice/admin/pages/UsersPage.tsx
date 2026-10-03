@@ -8,6 +8,7 @@ import { useNow } from '../../lib/useNow'
 import { DISTRICTS } from '../../mocks/people'
 import type { Role, User } from '../../mocks/types'
 import { CitizenCard } from '../../shared/CitizenCard'
+import { LinkedHistory } from '../../shared/EntityHistory'
 import { changeRole, createStaff, setActive, unlockLogin, updateProfile, useUserStore } from '../../stores/userStore'
 import { Flag, Tag } from '../../ui/Badges'
 import { Button } from '../../ui/Button'
@@ -32,6 +33,7 @@ export default function UsersPage() {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [drawerTab, setDrawerTab] = useState<'fiche' | 'history'>('fiche')
   const [creating, setCreating] = useState(false)
   const [draft, setDraft] = useState({ name: '', last_name: '', email: '', role: 'AGENT' as Role })
   const [profile, setProfile] = useState<Pick<User, 'phone' | 'address' | 'district_id' | 'is_vulnerable'>>({ phone: null, address: null, district_id: null, is_vulnerable: false })
@@ -45,6 +47,7 @@ export default function UsersPage() {
 
   const openEdit = (u: User) => {
     setEditingId(u.id)
+    setDrawerTab('fiche')
     setProfile({ phone: u.phone, address: u.address, district_id: u.district_id, is_vulnerable: u.is_vulnerable })
   }
 
@@ -74,7 +77,7 @@ export default function UsersPage() {
         u.role === 'CITIZEN' ? (
           <Tag tone="neutral">Citoyen</Tag>
         ) : (
-          <Select aria-label={`Rôle de ${u.name}`} value={u.role} onClick={(e) => e.stopPropagation()} onChange={(e) => changeRole(u.id, e.target.value as Role, actor.id)} disabled={u.id === actor.id}>
+          <Select aria-label={`Rôle de ${u.name}`} value={u.role} onClick={(e) => e.stopPropagation()} onChange={(e) => changeRole(u.id, e.target.value as Role)} disabled={u.id === actor.id}>
             <option value="AGENT">Agent</option>
             <option value="ADMIN">Administrateur</option>
           </Select>
@@ -106,11 +109,11 @@ export default function UsersPage() {
       cell: (u) => (
         <span className={layout.row} style={{ justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
           {u.login_locked && (
-            <Button size="sm" icon="unlock" onClick={() => unlockLogin(u.id, actor.id)}>
+            <Button size="sm" icon="unlock" onClick={() => unlockLogin(u.id)}>
               Déverrouiller
             </Button>
           )}
-          <Toggle hideLabel label={`${u.is_active ? 'Désactiver' : 'Réactiver'} ${u.name} ${u.last_name}`} checked={u.is_active} disabled={u.id === actor.id} onChange={(v) => setActive(u.id, v, actor.id)} />
+          <Toggle hideLabel label={`${u.is_active ? 'Désactiver' : 'Réactiver'} ${u.name} ${u.last_name}`} checked={u.is_active} disabled={u.id === actor.id} onChange={(v) => setActive(u.id, v)} />
         </span>
       ),
     },
@@ -163,7 +166,7 @@ export default function UsersPage() {
         title={editing ? `${editing.name} ${editing.last_name}` : ''}
         footer={
           editing && (
-            <Button variant="primary" icon="check" onClick={() => updateProfile(editing.id, profile, actor.id)}>
+            <Button variant="primary" icon="check" onClick={() => updateProfile(editing.id, profile)} disabled={drawerTab === 'history'}>
               Enregistrer
             </Button>
           )
@@ -171,6 +174,21 @@ export default function UsersPage() {
       >
         {editing && (
           <>
+            <Tabs
+              label="Fiche du compte"
+              idPrefix="user-drawer"
+              value={drawerTab}
+              onChange={setDrawerTab}
+              tabs={[
+                { value: 'fiche', label: 'Fiche' },
+                { value: 'history', label: 'Historique' },
+              ]}
+            />
+            <div id="user-drawer-panel" role="tabpanel" aria-labelledby={`user-drawer-tab-${drawerTab}`}>
+              {drawerTab === 'history' ? (
+                <LinkedHistory entity="User" match={editing.email} />
+              ) : (
+                <>
             <CitizenCard citizen={editing} />
             <hr className={layout.divider} />
             <div className={layout.formGrid}>
@@ -199,6 +217,9 @@ export default function UsersPage() {
             <p className={[layout.muted, layout.small].join(' ')}>
               L’e-mail et le mot de passe ne peuvent pas être modifiés ici : le citoyen garde seul l’accès à son espace.
             </p>
+                </>
+              )}
+            </div>
           </>
         )}
       </Drawer>
@@ -218,7 +239,7 @@ export default function UsersPage() {
               icon="plus"
               disabled={!draft.name || !draft.last_name || !draft.email.includes('@')}
               onClick={() => {
-                createStaff(draft, actor.id)
+                createStaff(draft)
                 setCreating(false)
                 setDraft({ name: '', last_name: '', email: '', role: 'AGENT' })
                 setTab(draft.role)

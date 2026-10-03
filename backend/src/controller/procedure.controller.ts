@@ -7,6 +7,8 @@ import { idOrSlugWhere, parseId, slugify, zBool, zId, zJson, zSlug } from "../li
 import { resolveLocale, translate, translateOne } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
 import { withAvailability } from "../lib/availability";
+import { audit, diffChanges } from "../lib/audit";
+import prisma from "../lib/prisma";
 
 // D11 / D12: procedures citizens can start. form_schema describes the extra
 // fields the frontend renders; answers are stored in CitizenRequest.data.
@@ -68,21 +70,49 @@ const procedureController = {
       required_documents: toJson(required_documents),
       form_schema: toJson(form_schema),
     });
+    await audit(req, {
+      action: "procedure.created",
+      entity: "Procedure",
+      entityId: procedure.id,
+      label: procedure.title,
+      always: true,
+    });
     res.status(201).json(procedure);
   },
 
   update: async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    const before = await prisma.procedure.findUnique({ where: { id } });
+    if (!before) throw notFound("Procedure not found");
     const { required_documents, form_schema, ...input } = updateSchema.parse(req.body);
-    const procedure = await procedureModel.update(parseId(req.params.id), {
+    const procedure = await procedureModel.update(id, {
       ...input,
       required_documents: toJson(required_documents),
       form_schema: toJson(form_schema),
+    });
+    await audit(req, {
+      action: "procedure.updated",
+      entity: "Procedure",
+      entityId: procedure.id,
+      label: procedure.title,
+      changes: diffChanges(before, procedure, ["title", "description", "is_active", "service_id", "estimated_days", "slug"]),
     });
     res.json(procedure);
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await procedureModel.delete(parseId(req.params.id)));
+    const id = parseId(req.params.id);
+    const before = await prisma.procedure.findUnique({ where: { id }, select: { id: true, title: true } });
+    if (!before) throw notFound("Procedure not found");
+    const deleted = await procedureModel.delete(id);
+    await audit(req, {
+      action: "procedure.deleted",
+      entity: "Procedure",
+      entityId: id,
+      label: before.title,
+      always: true,
+    });
+    res.json(deleted);
   },
 };
 

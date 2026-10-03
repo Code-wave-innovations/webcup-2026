@@ -15,6 +15,7 @@ import { fullName } from '../../lib/lookups'
 import { CITIZEN_STATUS_LABEL, EXPLAINED_STATUSES } from '../../lib/requests'
 import { useNow } from '../../lib/useNow'
 import { CitizenCard } from '../../shared/CitizenCard'
+import { LinkedHistory } from '../../shared/EntityHistory'
 import { RequestTimeline } from '../../shared/RequestTimeline'
 import { toast } from '../../stores/toastStore'
 import { PriorityTag, Ref, StatusPill, Tag } from '../../ui/Badges'
@@ -416,6 +417,10 @@ function RequestWorkspace({ request, base }: { request: RequestDetail; base: str
           </Panel>
         </div>
       </div>
+
+      <Panel kicker="F48" title="Historique des modifications">
+        <LinkedHistory entity="CitizenRequest" match={request.reference} />
+      </Panel>
     </motion.div>
   )
 }

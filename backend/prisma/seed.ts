@@ -6,7 +6,7 @@ require("dotenv").config();
 import { PrismaClient, type Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { buildDepartures } from "../src/lib/transit";
-import { ACCOUNTS, seedDemoScenario } from "./demoScenario";
+import { ACCOUNTS, requestReference, seedDemoScenario } from "./demoScenario";
 
 const prisma = new PrismaClient();
 const PASSWORD = process.env.SEED_PASSWORD || "NovaTerra2026!";
@@ -360,11 +360,103 @@ async function main() {
 
   // Staff, citizens, requests, appointments, information, interruptions, security, notifications
   await seedDemoScenario(prisma, { passwordHash, districtIds, serviceIds, procedureIds, reset: RESET });
+  await seedAuditHistory(prisma);
 
   console.log("✅ Seed done%s. Demo accounts (password: %s):", RESET ? " (scenario reset)" : "", PASSWORD);
   for (const account of ACCOUNTS.filter((a) => a.email.endsWith("@novaterra.local"))) {
     console.log(`   ${account.role.padEnd(8)} ${account.email}`);
   }
+}
+
+const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000);
+
+/** A few immutable rows so the audit screens are not empty on a fresh database. Replaced on every seed. */
+async function seedAuditHistory(prisma: PrismaClient) {
+  await prisma.$executeRaw`DELETE FROM AuditLog WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.seed')) = 'demo'`;
+
+  const [admin, agent, hanta] = await Promise.all([
+    prisma.user.findUnique({ where: { email: "admin@novaterra.local" } }),
+    prisma.user.findUnique({ where: { email: "agent@novaterra.local" } }),
+    prisma.user.findUnique({ where: { email: "hanta.agent@novaterra.local" } }),
+  ]);
+  const service = await prisma.cityService.findUnique({ where: { slug: "prevention-sante" } });
+  const request = await prisma.citizenRequest.findUnique({ where: { reference: requestReference(1) } });
+  if (!admin || !agent || !service) return;
+
+  const actor = (user: { id: number; name: string; last_name: string; role: "CITIZEN" | "AGENT" | "ADMIN" }) => ({
+    actor_id: user.id,
+    actor_role: user.role,
+    actor_name: `${user.name} ${user.last_name}`,
+  });
+  const seed = { seed: "demo" };
+
+  await prisma.auditLog.createMany({
+    data: [
+      {
+        created_at: minutesAgo(2),
+        ...actor(admin),
+        action: "service.updated",
+        entity: "CityService",
+        entity_id: service.id,
+        entity_label: service.name,
+        changes: [{ field: "priority", from: "2", to: "5" }],
+        metadata: seed,
+        ip: "10.4.0.12",
+      },
+      {
+        created_at: minutesAgo(18),
+        ...actor(agent),
+        action: "request.status_changed",
+        entity: "CitizenRequest",
+        entity_id: request?.id ?? null,
+        entity_label: request?.reference ?? requestReference(1),
+        changes: [{ field: "status", from: "IN_REVIEW", to: "IN_PROGRESS" }],
+        metadata: seed,
+        ip: "10.4.0.21",
+      },
+      {
+        created_at: minutesAgo(46),
+        ...actor(hanta ?? agent),
+        action: "request.assigned",
+        entity: "CitizenRequest",
+        entity_id: request?.id ?? null,
+        entity_label: request?.reference ?? requestReference(1),
+        changes: [{ field: "assigned_agent_id", from: null, to: `${agent.name} ${agent.last_name}` }],
+        metadata: seed,
+        ip: "10.4.0.33",
+      },
+      {
+        created_at: minutesAgo(90),
+        ...actor(admin),
+        action: "settings.updated",
+        entity: "PlatformSetting",
+        entity_label: "Paramètres de la plateforme",
+        changes: [{ field: "registration_open", from: "false", to: "true" }],
+        metadata: seed,
+        ip: "10.4.0.12",
+      },
+      {
+        created_at: minutesAgo(240),
+        ...actor(admin),
+        action: "security.2fa_enabled",
+        entity: "User",
+        entity_id: admin.id,
+        entity_label: `${admin.name} ${admin.last_name}`,
+        metadata: seed,
+        ip: "10.4.0.12",
+      },
+      {
+        created_at: minutesAgo(60 * 26),
+        ...actor(agent),
+        action: "auth.staff_login",
+        entity: "User",
+        entity_id: agent.id,
+        entity_label: `${agent.name} ${agent.last_name}`,
+        metadata: seed,
+        ip: "10.4.0.21",
+      },
+    ],
+  });
 }
 
 main()

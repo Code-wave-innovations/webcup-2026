@@ -8,6 +8,7 @@ import { hashPassword, verifyPassword } from "../lib/password";
 import { zBool, zId, zLocale } from "../lib/validation";
 import { zPassword } from "./auth.controller";
 import { OPEN_STATUSES } from "../model/citizenRequest.model";
+import { audit, personName } from "../lib/audit";
 
 export const nextAppointmentOf = (userId: number) =>
   prisma.appointment.findFirst({
@@ -105,6 +106,10 @@ const meController = {
     const hash = await userModel.getPasswordHash(user.id);
     if (!(await verifyPassword(password, hash))) throw badRequest("Password is incorrect");
 
+    const profile = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { name: true, last_name: true },
+    });
     await prisma.$transaction([
       prisma.appointment.updateMany({
         where: { citizen_id: user.id, status: "BOOKED" },
@@ -112,6 +117,16 @@ const meController = {
       }),
       prisma.user.delete({ where: { id: user.id } }),
     ]);
+    // F33: the row stays, without phone, address or email.
+    await audit(req, {
+      action: "user.self_deleted",
+      entity: "User",
+      entityId: user.id,
+      label: personName(profile),
+      actor: { id: user.id, role: user.role, name: personName(profile) },
+      includeIp: false,
+      always: true,
+    });
     res.json({
       deleted: true,
       message:

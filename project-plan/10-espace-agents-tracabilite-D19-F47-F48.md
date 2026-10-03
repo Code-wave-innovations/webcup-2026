@@ -192,8 +192,8 @@ On retire la mention « Lignes d'exemple ».
 
 ## 6. Étapes
 
-1. [ ] **Juste après le PLAN-01** : `AuditLog`, `lib/audit.ts`, appels dans les contrôleurs existants, `GET /api/audit-logs`
-2. [ ] `src/api/audit.ts` : `ActivityPage`, `AuditPage` (export compris), historiques dans les tiroirs, suppression de l'audit côté navigateur
+1. [x] **Juste après le PLAN-01** : `AuditLog`, `lib/audit.ts`, appels dans les contrôleurs existants, `GET /api/audit-logs`
+2. [x] `src/api/audit.ts` : `ActivityPage`, `AuditPage` (export compris), historiques dans les tiroirs, suppression de l'audit côté navigateur
 3. [ ] `dashboard/trends`, `audit-logs/stats` et `AdminOverviewPage` ; encarts du tableau de bord agent
 4. [ ] `src/api/terraNova.ts` et `NovaTerraPage` : flux réel, compte à rebours, nouvelle vague
 5. [ ] `FeatureDelivery`, `/registry`, seed des livraisons ; `RegistryPanel` côté citoyen

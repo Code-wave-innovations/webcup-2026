@@ -576,4 +576,24 @@ model TransitDeparture {
   @@index([line_id, day_type])
 }
 
-// Make one empty line for your model
+// F47 / F48: who did what, when, on which record (before -> after).
+// Append-only: no update or delete route, and no automatic purge.
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  created_at   DateTime @default(now())
+  actor_id     Int?
+  actor_role   Role?
+  actor_name   String?
+  action       String   @db.VarChar(64)
+  entity       String   @db.VarChar(64)
+  entity_id    Int?
+  entity_label String?
+  changes      Json?
+  metadata     Json?
+  ip           String?  @db.VarChar(64)
+
+  @@index([entity, entity_id])
+  @@index([actor_id, created_at])
+  @@index([action])
+  @@index([created_at])
+}

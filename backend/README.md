@@ -68,6 +68,9 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 | `GET /api/terra-nova/requests` | staff | D19 (needs `TERRA_NOVA_API_KEY`, sent as `X-Webcup-Api-Key`) |
 | `GET /api/settings/public` | public | D07, D08 (home blocks, registrations, maintenance, contacts, emergency numbers, default reminder) |
 | `GET /api/settings` · `PATCH /api/settings` (any subset of keys) | admin | D07, D08, F37 (`security` thresholds read-only, `updated` = who changed each key) |
+| `GET /api/audit-logs?actor_id=&entity=&entity_id=&action=&from=&to=&q=&page=` | staff | F47, F48 (agents: no `security.*` rows, no IP; `summary=1` and `facets=1` add the counters and the author list) |
+| `GET /api/audit-logs/export.csv` | admin | F47 (same filters, UTF-8 CSV with BOM; the export is itself audited) |
+| `GET /api/audit-logs/stats?days=14` | admin | F47 (actions per day and per author) |
 
 ### Platform settings
 

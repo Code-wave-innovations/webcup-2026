@@ -3,7 +3,6 @@ import { motion } from 'motion/react'
 import { isApiError, messageFor } from '../../../api/errors'
 import { useAdminSettings, useUpdateSettings } from '../../../api/settings'
 import type { HomeSection, PlatformSettings, SettingsAdminView } from '../../../api/types'
-import { useActor } from '../../layout/persona'
 import { formatRelative } from '../../lib/format'
 import { useNow } from '../../lib/useNow'
 import { LOCALES } from '../../mocks/config'
@@ -94,7 +93,6 @@ function LastChange({ view, keys, now }: { view: SettingsAdminView; keys: (keyof
 
 function SettingsForm({ view }: { view: SettingsAdminView }) {
   const now = useNow()
-  const actor = useActor()
   const update = useUpdateSettings()
   const simulated = useConfigStore((s) => s.settings)
   const { settings, security } = view
@@ -204,7 +202,7 @@ function SettingsForm({ view }: { view: SettingsAdminView }) {
         <Panel kicker="D14 · F27" title="Langues" actions={<DemoNote>Simulé, multilingue hors périmètre</DemoNote>}>
           <Field label="Langue par défaut">
             {(id) => (
-              <Select id={id} value={simulated.default_locale} onChange={(e) => updateSimulated({ default_locale: e.target.value }, actor.id, 'Langue par défaut')}>
+              <Select id={id} value={simulated.default_locale} onChange={(e) => updateSimulated({ default_locale: e.target.value }, 'Langue par défaut')}>
                 {LOCALES.filter((l) => simulated.enabled_locales.includes(l.code)).map((l) => (
                   <option key={l.code} value={l.code}>
                     {l.label}
@@ -224,7 +222,6 @@ function SettingsForm({ view }: { view: SettingsAdminView }) {
                 onChange={(on) =>
                   updateSimulated(
                     { enabled_locales: on ? [...simulated.enabled_locales, l.code] : simulated.enabled_locales.filter((c) => c !== l.code) },
-                    actor.id,
                     'Langues proposées',
                   )
                 }

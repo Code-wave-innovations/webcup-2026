@@ -17,6 +17,8 @@ import {
 import { resolveLocale, searchTranslatedIds, translate, translateServices } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
 import { withAvailability } from "../lib/availability";
+import { audit, diffChanges } from "../lib/audit";
+import prisma from "../lib/prisma";
 
 // D05 service catalog, F28 featured services, F32 search, F27 translations
 
@@ -48,6 +50,31 @@ const createSchema = z.object({
 });
 
 const updateSchema = createSchema.partial();
+
+const SERVICE_FIELDS = [
+  "name",
+  "slug",
+  "category_id",
+  "summary",
+  "description",
+  "keywords",
+  "icon",
+  "contact_email",
+  "contact_phone",
+  "address",
+  "opening_hours",
+  "external_url",
+  "is_featured",
+  "priority",
+  "is_active",
+] as const;
+
+const serviceAction = (changes: { field: string }[], active: boolean) => {
+  const keys = new Set(changes.map((change) => change.field));
+  if (keys.size === 1 && keys.has("is_featured")) return "service.featured";
+  if (keys.size === 1 && keys.has("is_active")) return active ? "service.enabled" : "service.disabled";
+  return "service.updated";
+};
 
 const cityServiceController = {
   getAll: async (req: Request, res: Response) => {
@@ -98,15 +125,51 @@ const cityServiceController = {
 
   create: async (req: Request, res: Response) => {
     const input = createSchema.parse(req.body);
-    res.status(201).json(await cityServiceModel.create({ ...input, slug: input.slug ?? slugify(input.name) }));
+    const service = await cityServiceModel.create({ ...input, slug: input.slug ?? slugify(input.name) });
+    await audit(req, {
+      action: "service.created",
+      entity: "CityService",
+      entityId: service.id,
+      label: service.name,
+      changes: [
+        { field: "priority", to: String(service.priority) },
+        { field: "is_active", to: String(service.is_active) },
+      ],
+      always: true,
+    });
+    res.status(201).json(service);
   },
 
   update: async (req: Request, res: Response) => {
-    res.json(await cityServiceModel.update(parseId(req.params.id), updateSchema.parse(req.body)));
+    const id = parseId(req.params.id);
+    const input = updateSchema.parse(req.body);
+    const before = await prisma.cityService.findUnique({ where: { id } });
+    if (!before) throw notFound("Service not found");
+    const service = await cityServiceModel.update(id, input);
+    const changes = diffChanges(before, service, SERVICE_FIELDS);
+    await audit(req, {
+      action: serviceAction(changes, service.is_active),
+      entity: "CityService",
+      entityId: service.id,
+      label: service.name,
+      changes,
+    });
+    res.json(service);
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await cityServiceModel.delete(parseId(req.params.id)));
+    const id = parseId(req.params.id);
+    const before = await prisma.cityService.findUnique({ where: { id }, select: { id: true, name: true } });
+    if (!before) throw notFound("Service not found");
+    const deleted = await cityServiceModel.delete(id);
+    await audit(req, {
+      action: "service.deleted",
+      entity: "CityService",
+      entityId: id,
+      label: before.name,
+      always: true,
+    });
+    res.json(deleted);
   },
 };
 

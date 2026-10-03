@@ -8,6 +8,7 @@ import { saveUpload } from "../lib/upload";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zDate, zId } from "../lib/validation";
 import { resolveLocale, translate, translateOne } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
+import { audit, diffChanges } from "../lib/audit";
 
 // D06 publications, F30 notification on important announcements
 
@@ -93,6 +94,14 @@ const announcementController = {
       ...(publish ? { status: "PUBLISHED", published_at: input.published_at ?? new Date() } : {}),
     });
     if (publish) await notifyIfImportant(announcement);
+    await audit(req, {
+      action: publish ? "announcement.published" : "announcement.created",
+      entity: "Announcement",
+      entityId: announcement.id,
+      label: announcement.title,
+      changes: [{ field: "status", to: announcement.status }],
+      always: true,
+    });
     res.status(201).json(announcement);
   },
 
@@ -110,6 +119,15 @@ const announcementController = {
       ...(goesLive && !current.published_at && !input.published_at ? { published_at: new Date() } : {}),
     });
     if (goesLive) await notifyIfImportant(announcement);
+    const published = current.status !== "PUBLISHED" && announcement.status === "PUBLISHED";
+    const archived = current.status !== "ARCHIVED" && announcement.status === "ARCHIVED";
+    await audit(req, {
+      action: published ? "announcement.published" : archived ? "announcement.archived" : "announcement.updated",
+      entity: "Announcement",
+      entityId: announcement.id,
+      label: announcement.title,
+      changes: diffChanges(current, announcement, ["title", "summary", "status", "category", "is_important", "is_pinned", "service_id"]),
+    });
     res.json(announcement);
   },
 
@@ -126,11 +144,30 @@ const announcementController = {
       published_at: current.published_at ?? new Date(),
     });
     await notifyIfImportant(announcement);
+    await audit(req, {
+      action: "announcement.published",
+      entity: "Announcement",
+      entityId: announcement.id,
+      label: announcement.title,
+      changes: [{ field: "status", from: current.status, to: "PUBLISHED" }],
+      always: true,
+    });
     res.json(announcement);
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await announcementModel.delete(parseId(req.params.id)));
+    const id = parseId(req.params.id);
+    const current = await announcementModel.getOne({ id });
+    if (!current) throw notFound("Announcement not found");
+    const deleted = await announcementModel.delete(id);
+    await audit(req, {
+      action: "announcement.deleted",
+      entity: "Announcement",
+      entityId: id,
+      label: current.title,
+      always: true,
+    });
+    res.json(deleted);
   },
 };
 

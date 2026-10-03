@@ -130,14 +130,14 @@ La mention « Données simulées » de l'ancien flux en direct disparaît.
 
 ## 6. Étapes
 
-1. [ ] **Étape 1, backend :**
-   - [ ] `AuditLog`, migration et `lib/audit.ts` ;
-   - [ ] appels dans les contrôleurs existants (demandes, comptes, catalogue, interruptions, annonces, alertes, rendez-vous, transports, paramètres) ;
-   - [ ] `GET /api/audit-logs` et seed.
-2. [ ] `src/api/audit.ts`, `ActivityPage`, `AuditPage` et l'export
-3. [ ] `EntityHistory`, posé dans les tiroirs déjà branchés, puis dans ceux des plans suivants
-4. [ ] `AuditFeed` sur données réelles, puis suppression de l'audit côté navigateur
-5. [ ] `GET /api/audit-logs/stats`, pour la vue globale (BO-02)
+1. [x] **Étape 1, backend :**
+   - [x] `AuditLog`, migration et `lib/audit.ts` ;
+   - [x] appels dans les contrôleurs existants (demandes, comptes, catalogue, interruptions, annonces, alertes, rendez-vous, transports, paramètres) ;
+   - [x] `GET /api/audit-logs` et seed.
+2. [x] `src/api/audit.ts`, `ActivityPage`, `AuditPage` et l'export
+3. [x] `EntityHistory`, posé dans les tiroirs Services, Utilisateurs et dans `RequestDetailPage` (identifiant réel via slug, e-mail ou référence). Les tiroirs Annonces, Alertes, Lieux et Lexique le recevront quand ces écrans seront branchés.
+4. [x] `AuditFeed` sur données réelles, puis suppression de l'audit côté navigateur
+5. [x] `GET /api/audit-logs/stats`, pour la vue globale (BO-02)
 
 ## 7. Critères d'acceptation
 

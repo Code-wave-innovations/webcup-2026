@@ -15,6 +15,7 @@ import { Heatmap } from '../../charts/Heatmap'
 import { DashboardViewToggle } from '../../shared/DashboardViewToggle'
 import { SimpleDashboard } from '../../shared/SimpleDashboard'
 import { StaffActivityFeed } from '../../shared/StaffActivityFeed'
+import { LiveAuditFeed } from '../../shared/EntityHistory'
 import { Tag } from '../../ui/Badges'
 import { ButtonLink } from '../../ui/Button'
 import { EmptyState, LiveDot, Skeleton } from '../../ui/Feedback'
@@ -220,26 +221,42 @@ export default function AdminOverviewPage() {
             </Panel>
           </div>
 
-          <Panel
-            kicker="F22 · Traitement des demandes"
-            title="Activité du personnel en direct"
-            actions={
-              <>
-                <LiveDot />
-                <ButtonLink to="/admin/demandes" size="sm" variant="ghost">
-                  Supervision
-                </ButtonLink>
-              </>
-            }
-          >
-            {activity.data ? (
-              <StaffActivityFeed events={activity.data} base="/admin" />
-            ) : activity.isError ? (
-              <EmptyState title={messageFor(activity.error)} icon="alert" />
-            ) : (
-              <Skeleton lines={6} />
-            )}
-          </Panel>
+          <div className={[layout.grid, layout.split].join(' ')}>
+            <Panel
+              kicker="F22 · Traitement des demandes"
+              title="Activité du personnel en direct"
+              actions={
+                <>
+                  <LiveDot />
+                  <ButtonLink to="/admin/demandes" size="sm" variant="ghost">
+                    Supervision
+                  </ButtonLink>
+                </>
+              }
+            >
+              {activity.data ? (
+                <StaffActivityFeed events={activity.data} base="/admin" />
+              ) : activity.isError ? (
+                <EmptyState title={messageFor(activity.error)} icon="alert" />
+              ) : (
+                <Skeleton lines={6} />
+              )}
+            </Panel>
+            <Panel
+              kicker="F47 · Traçabilité"
+              title="Journal d’audit"
+              actions={
+                <>
+                  <LiveDot />
+                  <ButtonLink to="/admin/audit" size="sm" variant="ghost">
+                    Tout voir
+                  </ButtonLink>
+                </>
+              }
+            >
+              <LiveAuditFeed showIp />
+            </Panel>
+          </div>
         </>
       )}
     </motion.div>

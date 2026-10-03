@@ -175,7 +175,7 @@ Le détail est dans le BO-00.
 | BO-00 | Fait | `plan-00` fusionné ; connexion, gardes, identité réelle, cloche, compteurs |
 | BO-01 | À faire | |
 | BO-02 | À faire | |
-| BO-03 | À faire | |
+| BO-03 | Fait | Journal immuable, filtres, export CSV, historiques. API vérifiée avec les comptes du seed. |
 | BO-04 | À faire | |
 | BO-05 | À faire | |
 | BO-06 | À faire | |
