@@ -1,0 +1,26 @@
+/*
+  Global helpers for the back-office only (loaded with its lazy chunk).
+  Everything is prefixed "bo-" so nothing can leak into the citizen app.
+*/
+
+.bo-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.bo-root ::selection {
+  background: var(--color-ice);
+  color: var(--color-ink);
+}
+
+.bo-root * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}

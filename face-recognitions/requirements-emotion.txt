@@ -1,4 +1,0 @@
-# Optional: mini-XCEPTION emotion head (heavy).
-keras==2.15.0
-tensorflow==2.15.1
-h5py==3.10.0

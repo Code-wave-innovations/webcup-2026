@@ -1,0 +1,121 @@
+.tag,
+.priority,
+.flag {
+  --tone: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, transparent);
+  background: color-mix(in srgb, var(--tone) 9%, transparent);
+  color: var(--color-text);
+  font: 600 12.5px/1 var(--font-body);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  background: var(--tone);
+  transform: rotate(45deg);
+  box-shadow: 0 0 8px var(--tone);
+}
+
+.neutral {
+  --tone: var(--color-text-muted);
+}
+.ice {
+  --tone: var(--color-ice);
+}
+.ok {
+  --tone: var(--color-ok);
+}
+.progress {
+  --tone: var(--color-progress);
+}
+.taken {
+  --tone: var(--color-taken);
+}
+.alert {
+  --tone: var(--color-alert);
+}
+.ember {
+  --tone: var(--color-ember);
+}
+
+.pulse {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+}
+
+.bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.bars i {
+  width: 3px;
+  background: color-mix(in srgb, var(--tone) 25%, transparent);
+}
+
+.bars i:nth-child(1) {
+  height: 4px;
+}
+.bars i:nth-child(2) {
+  height: 7px;
+}
+.bars i:nth-child(3) {
+  height: 10px;
+}
+.bars i:nth-child(4) {
+  height: 12px;
+}
+
+.bars i[data-on='true'] {
+  background: var(--tone);
+}
+
+.ref {
+  font: 600 12.5px/1 var(--font-body);
+  letter-spacing: 0.1em;
+  padding: 5px 7px;
+  border: 1px solid var(--color-line-thin);
+  color: var(--color-ice-bright);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.counter {
+  --tone: var(--color-ember);
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--tone);
+  color: var(--color-ink);
+  font: 700 11.5px/1 var(--font-body);
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+}
+
+.flag {
+  border-style: dashed;
+}
+
+.flag svg {
+  color: var(--tone);
+}
