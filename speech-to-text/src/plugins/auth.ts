@@ -11,6 +11,10 @@ export const authPlugin = (config: Config): FastifyPluginAsync =>
     async (app) => {
       app.addHook("onRequest", async (req, reply) => {
         if (req.url.startsWith("/health")) return;
+        // WebSocket handshake: browsers cannot set headers, auth is done in-handler via ?token=.
+        if (req.url.startsWith("/v1/transcriptions/realtime")) return;
+        // Ephemeral token endpoint: the browser has no API key (it receives the short-lived token instead).
+        if (req.url.startsWith("/v1/realtime/tokens")) return;
         const header = req.headers.authorization;
         if (!header?.startsWith("Bearer ") || header.slice(7) !== config.STT_API_KEY) {
           return reply

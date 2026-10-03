@@ -1,0 +1,22 @@
+services:
+  face-engine:
+    build: .
+    ports:
+      - "9000:9000"
+    environment:
+      ENV: production
+      FACE_DEBUG: "false"
+      FACE_API_KEY: ${FACE_API_KEY:-}
+      FACE_CORS_ORIGINS: ${FACE_CORS_ORIGINS:-http://localhost:5173}
+      FACE_VERIFY_THRESHOLD: "0.45"
+      FACE_IDENTIFY_THRESHOLD: "0.40"
+      FACE_LIVENESS_THRESHOLD: "0.55"
+      FACE_REQUIRE_LIVENESS_VERIFY: "true"
+    volumes:
+      - face-data:/app/data
+      - insightface-models:/root/.insightface
+    restart: unless-stopped
+
+volumes:
+  face-data:
+  insightface-models:

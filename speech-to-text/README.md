@@ -26,6 +26,160 @@ Fastify · TypeScript · PostgreSQL · Prisma · Redis · RabbitMQ · FFmpeg · 
 
 Default API port: `9100` · Base path: `/v1`
 
+## Integration (how to call this service)
+
+**Rule:** never put `STT_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` in the frontend (`VITE_*`). Only this service and a **server-side** consumer (Express `backend/`, BFF, job) may hold `STT_API_KEY`.
+
+```
+Browser / React
+    │  (audio only — no STT secret)
+    ▼
+backend/ (Express)  ──Bearer STT_API_KEY──►  speech-to-text :9100
+```
+
+### 1. Run the STT service
+
+```bash
+cd speech-to-text
+docker compose up -d postgres redis rabbitmq
+cp .env.example .env   # set STT_API_KEY + provider keys + DATABASE_URL
+npm install && npx prisma migrate dev
+export PATH="$PWD/bin:$PATH"   # optional: local ffmpeg x265 workaround
+npm run dev                    # http://localhost:9100
+npm run worker                 # needed for 202 / long / options.async
+```
+
+### 2. Env on the consumer (`backend/`)
+
+```bash
+# backend/.env (example)
+STT_BASE_URL=http://localhost:9100
+STT_API_KEY=same-value-as-speech-to-text-STT_API_KEY
+```
+
+Do **not** add these to `frontend/.env`.
+
+### 3. API contract (v1)
+
+| Method | Path | Auth | Body |
+|--------|------|------|------|
+| `GET` | `/health` | none | — |
+| `POST` | `/v1/transcriptions` | `Authorization: Bearer <STT_API_KEY>` | `multipart/form-data` |
+| `GET` | `/v1/transcriptions/:id` | Bearer | — |
+
+**POST fields**
+
+| Field | Required | Notes |
+|-------|----------|--------|
+| `audio` | yes | file (wav, mp3, webm, m4a, …) |
+| `mode` | no | `FAST` \| `BALANCED` (default) \| `ACCURATE` |
+| `languageHints` | no | JSON string, e.g. `["fr","mg"]` |
+| `context` | no | JSON string, e.g. `{"domain":"erp","keywords":["Fanampiana"]}` |
+| `options` | no | JSON string: `retainAudio`, `wordTimestamps`, `async` |
+
+**Response** (`200` sync short audio, or `202` queued):
+
+```json
+{
+  "id": "uuid",
+  "status": "queued|processing|completed|failed",
+  "mode": "BALANCED",
+  "text": "…",
+  "languages": ["french"],
+  "confidence": 0.61,
+  "segments": [{ "startMs": 0, "endMs": 5000, "text": "…", "confidence": 0.61 }],
+  "createdAt": "…",
+  "completedAt": "…"
+}
+```
+
+If `status` is `queued` / `processing`, poll `GET /v1/transcriptions/:id` until `completed` or `failed`.
+
+### 4. From Express (`backend/`) — recommended
+
+```ts
+import FormData from "form-data";
+import fs from "node:fs";
+import axios from "axios";
+
+const stt = axios.create({
+  baseURL: process.env.STT_BASE_URL ?? "http://localhost:9100",
+  headers: { Authorization: `Bearer ${process.env.STT_API_KEY}` },
+  maxBodyLength: Infinity,
+});
+
+export async function transcribeFile(filePath: string) {
+  const form = new FormData();
+  form.append("audio", fs.createReadStream(filePath));
+  form.append("mode", "BALANCED");
+  form.append("languageHints", JSON.stringify(["fr", "en", "mg"]));
+  form.append(
+    "context",
+    JSON.stringify({ domain: "erp", keywords: ["Fanampiana", "Dolibarr"] }),
+  );
+
+  const { data, status } = await stt.post("/v1/transcriptions", form, {
+    headers: form.getHeaders(),
+  });
+
+  if (status === 202 || data.status === "queued" || data.status === "processing") {
+    return waitForJob(data.id);
+  }
+  return data;
+}
+
+async function waitForJob(id: string, timeoutMs = 120_000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const { data } = await stt.get(`/v1/transcriptions/${id}`);
+    if (data.status === "completed" || data.status === "failed") return data;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error("STT job timeout");
+}
+```
+
+Mount a thin proxy on Express if the UI must upload through your API, e.g. `POST /api/stt` → forward multipart to `STT_BASE_URL/v1/transcriptions` with the server key. The browser never sees `STT_API_KEY`.
+
+### 5. From the frontend (`frontend/`) — via your backend only
+
+```ts
+// Browser: upload to YOUR backend, not to :9100 with a secret
+const form = new FormData();
+form.append("audio", audioBlob, "recording.webm");
+form.append("mode", "BALANCED");
+
+const { data } = await fileHttp.post("/stt", form); // your Express route
+// data.text, data.segments, data.status
+```
+
+Do not call `http://localhost:9100` from Vite with the STT bearer key.
+
+### 6. curl (manual)
+
+```bash
+set -a && source .env && set +a
+
+curl -s -X POST http://localhost:9100/v1/transcriptions \
+  -H "Authorization: Bearer $STT_API_KEY" \
+  -F "audio=@./test/fixtures/sample-fr.wav" \
+  -F "mode=BALANCED" \
+  -F 'languageHints=["fr"]' \
+  -F 'context={"keywords":["Fanampiana"]}'
+```
+
+### 7. Errors to handle
+
+| HTTP / status | Meaning |
+|---------------|---------|
+| `401` | Missing/invalid `STT_API_KEY` |
+| `400` | Validation (mode, JSON fields, missing `audio`) |
+| `413` | File too large / duration over limit (default 12 min) |
+| `502` | Queue unavailable (async publish failed) |
+| `status: "failed"` | Pipeline error — read `error.code` / `error.message` (sanitized) |
+
+Full contracts: [docs/SPEC.md](./docs/SPEC.md) §7.
+
 ## Status (v1 MVP)
 
 **Branch:** `feat/stt-orchestrator` — MVP application code is in place (REST API, worker, pipeline, Prisma job store, API key auth).
@@ -93,4 +247,8 @@ cd speech-to-text && npm test
 
 ## Tests
 
-- **27 passed**, **2 skipped** (FFmpeg preprocess) when ffprobe is unavailable — last run on `feat/stt-orchestrator`.
+```bash
+cd speech-to-text && export PATH="$PWD/bin:$PATH" && npm test
+```
+
+Expect **35 passed** when local ffmpeg works (use `bin/` wrappers if Homebrew x265 is broken).

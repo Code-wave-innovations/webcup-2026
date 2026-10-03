@@ -1,0 +1,13 @@
+dataset
+trash
+input
+data/
+__pycache__/
+*.py[cod]
+.env
+.venv/
+venv/
+*.egg-info/
+.insightface/
+models/anti_spoof/*.onnx
+!models/anti_spoof/.gitkeep
