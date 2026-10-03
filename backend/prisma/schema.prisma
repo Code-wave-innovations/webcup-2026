@@ -6,12 +6,347 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
-// Make one empty line for your model 
 
-model User {
-  id	Int	@id	@default(autoincrement())
-  created_at	DateTime	@default(now())
-	name	String	
-	last_name	String	@unique		
+// ─── Enums ──────────────────────────────────────────────────────────────────
+// Adding a value to an enum only needs `npx prisma migrate dev`.
+
+// D08 / D09: user profiles
+enum Role {
+  CITIZEN
+  AGENT
+  ADMIN
 }
-  
+
+// D04 contact, D11 procedure, F25 incident report
+enum RequestType {
+  CONTACT
+  PROCEDURE
+  INCIDENT
+}
+
+enum RequestStatus {
+  SUBMITTED
+  IN_REVIEW
+  IN_PROGRESS
+  WAITING_CITIZEN
+  RESOLVED
+  REJECTED
+  CLOSED
+}
+
+enum RequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum RequestEventType {
+  CREATED
+  STATUS_CHANGED
+  ASSIGNED
+  PRIORITY_CHANGED
+  COMMENT
+}
+
+enum PublicationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AnnouncementCategory {
+  NEWS
+  SERVICE_CHANGE
+  PRACTICAL_INFO
+  EVENT
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+// D18 everyone, F29 targeted districts, F31 vulnerable people
+enum AlertAudience {
+  ALL
+  DISTRICTS
+  VULNERABLE
+}
+
+// ─── Users ──────────────────────────────────────────────────────────────────
+
+// D01 register, D03 login, D08 roles, D12 onboarding, D14 locale, F23/F24 accessibility
+model User {
+  id                   Int       @id @default(autoincrement())
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  email                String    @unique
+  password_hash        String
+  name                 String
+  last_name            String
+  phone                String?
+  address              String?
+  district_id          Int?
+  role                 Role      @default(CITIZEN)
+  locale               String    @default("fr")
+  // F31: opt-in flag so health alerts can target vulnerable people
+  is_vulnerable        Boolean   @default(false)
+  is_active            Boolean   @default(true)
+  onboarding_completed Boolean   @default(false)
+  // F21/F23/F24: free-form UI preferences (high_contrast, font_scale, reduced_motion…)
+  preferences          Json?
+  last_login_at        DateTime?
+
+  district       District?        @relation(fields: [district_id], references: [id], onDelete: SetNull)
+  requests       CitizenRequest[] @relation("RequestCitizen")
+  assigned       CitizenRequest[] @relation("RequestAgent")
+  request_events RequestEvent[]
+  notifications  Notification[]
+  announcements  Announcement[]
+  alerts         Alert[]
+
+  @@index([role])
+  @@index([district_id])
+}
+
+// F25 / F29: city districts used for locating reports and targeting alerts
+model District {
+  id          Int      @id @default(autoincrement())
+  created_at  DateTime @default(now())
+  code        String   @unique
+  name        String
+  description String?  @db.Text
+
+  users    User[]
+  requests CitizenRequest[]
+  alerts   AlertDistrict[]
+}
+
+// ─── Service catalog (D05, F27, F28, F32) ──────────────────────────────────
+
+model ServiceCategory {
+  id          Int      @id @default(autoincrement())
+  created_at  DateTime @default(now())
+  slug        String   @unique
+  name        String
+  description String?  @db.Text
+  icon        String?
+  sort_order  Int      @default(0)
+
+  services CityService[]
+}
+
+model CityService {
+  id            Int      @id @default(autoincrement())
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  slug          String   @unique
+  category_id   Int?
+  name          String
+  summary       String   @db.VarChar(500)
+  description   String?  @db.Text
+  // Comma-separated search terms (F32)
+  keywords      String?  @db.VarChar(500)
+  icon          String?
+  contact_email String?
+  contact_phone String?
+  address       String?
+  opening_hours String?
+  external_url  String?
+  // F28: highlighted services, ordered by priority then usage
+  is_featured   Boolean  @default(false)
+  priority      Int      @default(0)
+  view_count    Int      @default(0)
+  is_active     Boolean  @default(true)
+
+  category      ServiceCategory? @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  procedures    Procedure[]
+  requests      CitizenRequest[]
+  announcements Announcement[]
+
+  @@index([category_id])
+  @@index([is_featured, priority])
+}
+
+// D11 / D12: online procedures a citizen can start for a service
+model Procedure {
+  id                 Int      @id @default(autoincrement())
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  service_id         Int
+  slug               String   @unique
+  title              String
+  description        String?  @db.Text
+  // Free text or JSON list, rendered by the frontend
+  required_documents Json?
+  // Optional dynamic form definition: [{ name, label, type, required }]
+  form_schema        Json?
+  estimated_days     Int?
+  is_active          Boolean  @default(true)
+
+  service  CityService      @relation(fields: [service_id], references: [id], onDelete: Cascade)
+  requests CitizenRequest[]
+
+  @@index([service_id])
+}
+
+// F27: generic per-locale override of any text field of any entity.
+// entity is the Prisma model name (CityService, ServiceCategory, Procedure, Announcement, Alert…).
+model ContentTranslation {
+  id         Int      @id @default(autoincrement())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  entity     String   @db.VarChar(64)
+  entity_id  Int
+  locale     String   @db.VarChar(10)
+  field      String   @db.VarChar(64)
+  value      String   @db.Text
+
+  @@unique([entity, entity_id, locale, field])
+  @@index([entity, locale])
+}
+
+// ─── Citizen requests (D04, D11, D16, D17, F22, F25, F26) ──────────────────
+
+model CitizenRequest {
+  id                Int             @id @default(autoincrement())
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+  // D16: human-readable confirmation number, e.g. NT-261003-4F9A2C
+  reference         String          @unique
+  type              RequestType
+  status            RequestStatus   @default(SUBMITTED)
+  priority          RequestPriority @default(NORMAL)
+  subject           String
+  message           String          @db.Text
+  // Null when sent by a visitor without an account (D04)
+  citizen_id        Int?
+  contact_name      String?
+  contact_email     String?
+  service_id        Int?
+  procedure_id      Int?
+  assigned_agent_id Int?
+  // F25: incident category and location
+  category          String?
+  district_id       Int?
+  location_label    String?
+  latitude          Float?
+  longitude         Float?
+  attachment        String?
+  // Answers to the procedure form_schema
+  data              Json?
+  resolved_at       DateTime?
+
+  citizen        User?          @relation("RequestCitizen", fields: [citizen_id], references: [id], onDelete: SetNull)
+  assigned_agent User?          @relation("RequestAgent", fields: [assigned_agent_id], references: [id], onDelete: SetNull)
+  service        CityService?   @relation(fields: [service_id], references: [id], onDelete: SetNull)
+  procedure      Procedure?     @relation(fields: [procedure_id], references: [id], onDelete: SetNull)
+  district       District?      @relation(fields: [district_id], references: [id], onDelete: SetNull)
+  events         RequestEvent[]
+
+  @@index([status])
+  @@index([type])
+  @@index([citizen_id])
+  @@index([assigned_agent_id])
+  @@index([service_id])
+}
+
+// D11: timeline of a request. is_internal events are only visible to agents.
+model RequestEvent {
+  id          Int              @id @default(autoincrement())
+  created_at  DateTime         @default(now())
+  request_id  Int
+  author_id   Int?
+  type        RequestEventType
+  from_status RequestStatus?
+  to_status   RequestStatus?
+  message     String?          @db.Text
+  is_internal Boolean          @default(false)
+
+  request CitizenRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  author  User?          @relation(fields: [author_id], references: [id], onDelete: SetNull)
+
+  @@index([request_id])
+}
+
+// ─── Information (D06, D18, F29, F30, F31) ─────────────────────────────────
+
+model Announcement {
+  id           Int                  @id @default(autoincrement())
+  created_at   DateTime             @default(now())
+  updated_at   DateTime             @updatedAt
+  title        String
+  summary      String?              @db.VarChar(500)
+  content      String               @db.Text
+  category     AnnouncementCategory @default(NEWS)
+  status       PublicationStatus    @default(DRAFT)
+  // F30: publishing an important announcement notifies every citizen
+  is_important Boolean              @default(false)
+  is_pinned    Boolean              @default(false)
+  cover_image  String?
+  service_id   Int?
+  author_id    Int?
+  published_at DateTime?
+  expires_at   DateTime?
+
+  service CityService? @relation(fields: [service_id], references: [id], onDelete: SetNull)
+  author  User?        @relation(fields: [author_id], references: [id], onDelete: SetNull)
+
+  @@index([status, published_at])
+}
+
+model Alert {
+  id              Int           @id @default(autoincrement())
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+  title           String
+  message         String        @db.Text
+  // Free category so new kinds (FLOOD, HEATWAVE, OUTAGE…) need no migration
+  category        String        @default("GENERAL")
+  severity        AlertSeverity @default(WARNING)
+  audience        AlertAudience @default(ALL)
+  // What people must do, shown prominently (F29 / F31)
+  instructions    String?       @db.Text
+  recommendations Json?
+  source          String?
+  starts_at       DateTime      @default(now())
+  ends_at         DateTime?
+  is_active       Boolean       @default(true)
+  created_by_id   Int?
+
+  created_by User?           @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
+  districts  AlertDistrict[]
+
+  @@index([is_active, starts_at])
+}
+
+model AlertDistrict {
+  alert_id    Int
+  district_id Int
+
+  alert    Alert    @relation(fields: [alert_id], references: [id], onDelete: Cascade)
+  district District @relation(fields: [district_id], references: [id], onDelete: Cascade)
+
+  @@id([alert_id, district_id])
+}
+
+// F30 / D18 / D11: in-app notifications for a user
+model Notification {
+  id         Int       @id @default(autoincrement())
+  created_at DateTime  @default(now())
+  user_id    Int
+  type       String
+  title      String
+  body       String?   @db.Text
+  link       String?
+  data       Json?
+  read_at    DateTime?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, read_at])
+}
+
+// Make one empty line for your model

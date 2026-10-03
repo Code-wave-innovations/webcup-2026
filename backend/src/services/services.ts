@@ -1,19 +1,37 @@
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
-const SECRET = "iLoveYou";
 
-const generateToken = (id: number | undefined, email: string | undefined) => {
+// Development fallback only: set JWT_SECRET in .env for any shared or deployed environment.
+const DEV_SECRET = "iLoveYou";
+
+let warnedAboutSecret = false;
+
+const jwtSecret = () => {
+  if (!process.env.JWT_SECRET && !warnedAboutSecret) {
+    warnedAboutSecret = true;
+    console.warn("⚠️  JWT_SECRET is not set, using the insecure development secret");
+  }
+  return process.env.JWT_SECRET || DEV_SECRET;
+};
+
+const generateToken = (id: number | undefined, email: string | undefined, role?: string) => {
   const token = jwt.sign(
     {
       id,
       email,
+      role,
     },
-    SECRET,
+    jwtSecret(),
     {
-      expiresIn: "365d",
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
     }
   );
   return token;
+};
+
+// Throws when the token is invalid or expired.
+const verifyToken = (token: string): { id: number; email?: string; role?: string } => {
+  return jwt.verify(token, jwtSecret());
 };
 
 const uploadFile = (chemin: any, fichier: any, add_name: any) => {
@@ -52,4 +70,4 @@ const deleteFile = (path: any) => {
   }
 };
 
-export { generateToken, uploadFile, deleteFile };
+export { generateToken, verifyToken, uploadFile, deleteFile };
