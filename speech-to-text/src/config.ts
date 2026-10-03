@@ -9,8 +9,8 @@ const schema = z.object({
     STT_API_KEY: z.string().min(8),
     OPENROUTER_API_KEY: z.string().min(1),
     OPENROUTER_STT_MODEL: z.string().default("openai/whisper-large-v3"),
-    /** Realtime STT model — default large-v3 for FR/EN quality (turbo is faster but weaker). */
-    OPENROUTER_REALTIME_STT_MODEL: z.string().default("openai/whisper-large-v3"),
+    /** Realtime STT model — turbo default for lower latency; batch STT stays large-v3. */
+    OPENROUTER_REALTIME_STT_MODEL: z.string().default("openai/whisper-large-v3-turbo"),
     OPENROUTER_BASE_URL: z.string().default("https://openrouter.ai/api/v1"),
     OPENAI_API_KEY: z.string().optional(),
     ANTHROPIC_API_KEY: z.string().min(1),
@@ -29,7 +29,7 @@ const schema = z.object({
     /** Client VAD already gates silence; skip extra FFmpeg gate for lower latency. */
     REALTIME_SKIP_SPEECH_GATE: z
         .enum(["true", "false"])
-        .default("false")
+        .default("true")
         .transform((v) => v === "true"),
     RETAIN_AUDIO_DEFAULT: z
         .enum(["true", "false"])

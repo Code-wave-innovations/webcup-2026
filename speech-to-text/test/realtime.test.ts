@@ -11,6 +11,26 @@ function ensureTestEnv(): void {
   process.env.ANTHROPIC_API_KEY ??= "sk-ant-test-anthropic-key";
 }
 
+test("realtime config defaults favor turbo and skip speech gate", async () => {
+  ensureTestEnv();
+  // Isolate defaults: wipe only the vars under test, keep required keys from ensureTestEnv
+  const prevModel = process.env.OPENROUTER_REALTIME_STT_MODEL;
+  const prevGate = process.env.REALTIME_SKIP_SPEECH_GATE;
+  delete process.env.OPENROUTER_REALTIME_STT_MODEL;
+  delete process.env.REALTIME_SKIP_SPEECH_GATE;
+  try {
+    const { loadConfig } = await import("../src/config.js");
+    const config = loadConfig();
+    assert.equal(config.OPENROUTER_REALTIME_STT_MODEL, "openai/whisper-large-v3-turbo");
+    assert.equal(config.REALTIME_SKIP_SPEECH_GATE, true);
+  } finally {
+    if (prevModel !== undefined) process.env.OPENROUTER_REALTIME_STT_MODEL = prevModel;
+    else delete process.env.OPENROUTER_REALTIME_STT_MODEL;
+    if (prevGate !== undefined) process.env.REALTIME_SKIP_SPEECH_GATE = prevGate;
+    else delete process.env.REALTIME_SKIP_SPEECH_GATE;
+  }
+});
+
 interface FakeSttResult {
   text: string;
   confidence?: number;
