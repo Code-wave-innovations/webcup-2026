@@ -156,13 +156,17 @@ async function withSocket(
   }
 }
 
-test("POST /v1/realtime/tokens without key returns 401", async () => {
+test("POST /v1/realtime/tokens without Authorization mints ephemeral token (public)", async () => {
   ensureTestEnv();
   const { buildApp } = await import("../src/app.js");
   const { loadConfig } = await import("../src/config.js");
   const app = await buildApp(loadConfig());
   const res = await app.inject({ method: "POST", url: "/v1/realtime/tokens" });
-  assert.equal(res.statusCode, 401);
+  assert.equal(res.statusCode, 201);
+  const body = res.json() as { token: string; expiresAt: string; wsUrl: string };
+  assert.equal(body.token.split(".").length, 3);
+  assert.equal(body.wsUrl, "/v1/transcriptions/realtime");
+  assert.ok(new Date(body.expiresAt).getTime() > Date.now());
   await app.close();
 });
 

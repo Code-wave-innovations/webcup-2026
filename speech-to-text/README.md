@@ -262,4 +262,4 @@ cd speech-to-text && npm test
 cd speech-to-text && export PATH="$PWD/bin:$PATH" && npm test
 ```
 
-Expect **35 passed** when local ffmpeg works (use `bin/` wrappers if Homebrew x265 is broken).
+Expect **69 passed**, **0 failed** when ffmpeg/ffprobe are on `PATH` (use `bin/` wrappers if Homebrew x265 is broken). Without ffmpeg, **2** preprocess tests are skipped and the rest should still pass.
