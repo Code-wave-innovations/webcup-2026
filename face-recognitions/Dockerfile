@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY app ./app
 COPY api_pro.py .
+COPY passenger_wsgi.py .
 COPY scripts ./scripts
 COPY models ./models
 
@@ -29,5 +30,5 @@ ENV ENV=production \
 
 EXPOSE 9000
 
-# InsightFace weights: mount volume or run scripts/download_models.py at build/runtime
-CMD ["gunicorn", "-b", "0.0.0.0:9000", "-w", "1", "-t", "120", "--factory", "app.main:create_app"]
+# Use a concrete WSGI app (passenger_wsgi) — avoids gunicorn --factory, which some builds reject.
+CMD ["gunicorn", "-b", "0.0.0.0:9000", "-w", "1", "-t", "120", "passenger_wsgi:application"]
