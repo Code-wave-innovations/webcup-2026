@@ -1,0 +1,256 @@
+/*
+  Chart roles on the NOVA dark surface. Categorical order validated with the dataviz
+  validator (dark, surface #08111d, all pairs): cyan, amber, rose.
+*/
+.root {
+  --series-1: #2a9fd0;
+  --series-2: #cf7a2a;
+  --series-3: #d65c8c;
+  --grid: rgba(143, 233, 255, 0.1);
+  --axis-text: var(--color-text-muted);
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+.axis {
+  fill: var(--axis-text);
+  font: 500 11.5px/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.gridLine {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.label {
+  fill: var(--color-text);
+  font: 600 12.5px/1 var(--font-body);
+}
+
+.valueLabel {
+  fill: var(--color-text);
+  font: 600 12px/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.crosshair {
+  stroke: var(--color-line);
+  stroke-width: 1;
+}
+
+.hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+/* tooltip */
+.tooltip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  min-width: 140px;
+  padding: 9px 11px;
+  background: var(--color-glass-dense);
+  border: 1px solid var(--color-line);
+  box-shadow: 0 0 24px var(--color-ice-halo);
+  font-size: 12.5px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transform: translate(-50%, calc(-100% - 12px));
+  white-space: nowrap;
+}
+
+.tooltipTitle {
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: var(--color-text);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+}
+
+.tooltipRow strong {
+  margin-left: auto;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  flex: none;
+}
+
+.line {
+  width: 14px;
+  height: 2px;
+  flex: none;
+}
+
+/* legend */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* frame: chart / table switch */
+.frameBar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.switch {
+  display: inline-flex;
+  border: 1px solid var(--color-line-thin);
+}
+
+.switch button {
+  min-height: 30px;
+  padding: 0 10px;
+  background: none;
+  border: 0;
+  color: var(--color-text-muted);
+  font: 600 12px/1 var(--font-body);
+  cursor: pointer;
+}
+
+.switch button[aria-pressed='true'] {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--color-line-thin);
+  text-align: left;
+}
+
+.table td:not(:first-child),
+.table th:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+/* donut / gauge centre */
+.center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.centerValue {
+  font: 500 clamp(26px, 3vw, 38px) / 1 var(--font-display);
+}
+
+.centerLabel {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+}
+
+/* radar sweep (respects reduced motion through the global rule) */
+.sweep {
+  transform-origin: 50% 50%;
+  animation: sweep 4s linear infinite;
+}
+
+@keyframes sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.blip {
+  animation: blip 2s ease-in-out infinite;
+}
+
+@keyframes blip {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.donutWrap {
+  display: grid;
+  grid-template-columns: minmax(140px, 190px) 1fr;
+  align-items: center;
+  gap: 18px;
+}
+
+.donutLegend {
+  display: grid;
+  gap: 10px;
+  font-size: 13.5px;
+}
+
+.donutLegend li {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.donutLegend li strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.heatScale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.heatScale span[aria-hidden] {
+  width: 120px;
+  height: 8px;
+  background: linear-gradient(90deg, rgba(42, 159, 208, 0.08), #2a9fd0, #c8f6ff);
+}
+
+@media (max-width: 520px) {
+  .donutWrap {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}

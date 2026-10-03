@@ -77,12 +77,29 @@ Static uploads are served at `/public`. `index.ts` resolves the folder to `./pub
 npm run dev       # Vite dev server
 npm run build     # tsc -b && vite build
 npm run lint      # eslint (flat config in eslint.config.js)
+npm test          # vitest, src/**/*.test.ts
 npm run preview
 ```
 
+Install: the repo carries Yarn PnP files (`.pnp.cjs`) and a `package-lock.json` that npm 10.8 fails to resolve (`edgesOut` error). `npm install --no-package-lock --legacy-peer-deps` creates `node_modules` without touching tracked files.
+
 `tsconfig.app.json` enables `noUnusedLocals`/`noUnusedParameters`, `verbatimModuleSyntax` (use `import type` for type-only imports), and `erasableSyntaxOnly` (no enums, namespaces, or parameter properties).
 
-Routes are declared in `src/App.tsx`: `/` (Home), `/face` (FaceUnlock), `/transcription` (RealtimeTranscription). Animations use `motion`. The brand palette is defined as CSS variables in `src/index.css` (`--navy: #0a2342`, `--wave: #4a90ff`); some components also use these hex values inline as Tailwind arbitrary values.
+Routes are declared in `src/app/App.tsx`:
+- `/` (airlock login) and `/ville` (citizen app) run inside `FilmLayout`, which mounts the persistent three.js scene.
+- `/equipe` is the team page.
+- `/agent/*` and `/admin/*` lazy-load the staff back-office (`src/backoffice/`) outside the film layout.
+
+The citizen app ("NOVA") is styled with CSS Modules reading the design tokens of `src/styles/tokens.css` (`@theme static`, e.g. `--color-ice`, `--color-glass`, `--font-display`). The look is dark glass, cut corners via `clip-path` rather than border-radius, and a cyan "ice" light. Shared primitives live in `src/ui/`, feature widgets in `src/features/`, and state in zustand stores.
+
+### Back-office (`src/backoffice/`)
+
+The agent and admin dashboards are a separate area: don't import it from the citizen app, and don't modify client files for it. It is still design-only: every screen reads simulated zustand stores (`stores/`) seeded from `mocks/`, whose types in `mocks/types.ts` mirror the backend's Prisma models and API responses.
+- **Binding the API:** replace each store action (`changeStatus`, `assignRequest`, `createAlert`…) with the matching `/api` call, documented in `backend/README.md`. Every action also calls `recordAudit()`. The backend has no audit table yet (F47/F48): `AuditLog` in `mocks/types.ts` is the intended contract.
+- **Persona:** decided by the URL (`layout/persona.ts`): `/agent` acts as Alex (AGENT), `/admin` as Ada (ADMIN). The routes are not guarded yet.
+- **Structure:** `layout/` holds the shell (sidebar, top bar, ⌘K palette, boot sequence), `ui/` its own primitives (`Panel`, `DataTable`, `Drawer`/`Modal`, `StatTile`…), `charts/` hand-made SVG charts animated with `motion`, `shared/` business components used by both spaces, and `agent/pages`/`admin/pages` the screens. Navigation and each screen's Terra Nova request codes live in `nav.ts`.
+- **Lint constraints** (React Compiler rules): don't call `Date.now()` during render (use `useNow()` from `lib/useNow.ts`), and don't reassign variables inside render callbacks.
+- **Charts:** the categorical colors (`--series-1..3` in `charts/Charts.module.css`) were validated for colorblind safety on the dark surface. Every chart has a table view through `ChartFrame`.
 
 Service URLs come from `frontend/.env` (copy `.env.example`, typed in `src/vite-env.d.ts`, restart `npm run dev` after changes). Each service has its own client:
 - `src/hooks/useHttps.ts` → Express backend (`VITE_BASE_URL`, `VITE_API_URL`, `VITE_IMG_URL`). Returns module-level axios instances that are stable across renders: `http` (JSON) and `fileHttp` (multipart, for generated endpoints that have `file` fields).

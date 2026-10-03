@@ -1,0 +1,119 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+  font-family: var(--font-body);
+  color: var(--color-text);
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--color-veil-strong);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.palette {
+  position: relative;
+  width: min(640px, 100%);
+  background:
+    repeating-linear-gradient(0deg, var(--color-scanline) 0 1px, transparent 1px 4px),
+    var(--color-glass-dense);
+  border: 1px solid var(--color-line);
+  box-shadow: 0 0 90px var(--color-ice-halo);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-line-thin);
+  color: var(--color-ice);
+}
+
+.inputRow input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--color-text);
+  font: 500 16px/1 var(--font-body);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.item {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.item[aria-selected='true'] {
+  color: var(--color-text);
+}
+
+.item > svg,
+.label,
+.hint {
+  position: relative;
+  z-index: 1;
+}
+
+.item[aria-selected='true'] > svg {
+  color: var(--color-ice);
+}
+
+.activeBg {
+  position: absolute;
+  inset: 0;
+  background: var(--color-hover);
+  border-left: 2px solid var(--color-ice);
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14.5px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+}
+
+.empty {
+  padding: 18px 12px;
+  color: var(--color-text-muted);
+}
+
+.foot {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-top: 1px solid var(--color-line-thin);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
