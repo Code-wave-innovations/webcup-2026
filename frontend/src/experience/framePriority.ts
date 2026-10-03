@@ -6,7 +6,7 @@ export const FRAME_PRIORITY = {
   director: -30,
   /** camera, sun and time of day */
   stage: -20,
-  /** moving details that read the stage state (shuttles, beams) */
+  /** moving details that read the stage state (birds, beams) */
   details: -15,
   /** the lake's mirror render, once the scene is up to date */
   reflection: -10,

@@ -8,7 +8,7 @@ export interface CityContextValue {
   data: CityData
   textures: BakedTextures
   uniforms: WorldUniforms
-  /** pixel size of point lights, shared by beacons and shuttles (differs in the half-size reflection) */
+  /** pixel size of point lights, shared by the beacons (differs in the half-size reflection) */
   pointScale: IUniform<number>
   hdr: boolean
 }

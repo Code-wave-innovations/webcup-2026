@@ -3,7 +3,7 @@ uniform vec3 uSoleil; uniform vec3 uAstre; uniform float uHeure; uniform float u
 vec3 clairAstre(vec3 N){ return vec3(0.060,0.085,0.170)*uNuit*(0.25+0.75*max(dot(N,uAstre),0.0)); }
 float fbm4(vec3 p){ float a=0.5; float s=0.0; for(int i=0;i<4;i++){ s+=a*bruit(p); p=p*2.03+vec3(1.7,9.2,3.1); a*=0.5; } return s; }
 // sun colour: it reddens and fades as it sets
-vec3 couleurSoleil(){ float e=smoothstep(-0.035,0.13,uSoleil.y); return mix(vec3(1.0,0.26,0.08),vec3(1.0,0.60,0.32),e)*e; }
+vec3 couleurSoleil(){ float e=smoothstep(-0.035,0.13,uSoleil.y); return mix(vec3(1.0,0.26,0.08),vec3(1.0,0.60,0.32),e)*e*0.7; }
 // sky gradient: warm towards the sun, cold opposite, dark at the zenith
 vec3 cielBase(vec3 rd){
   float y=clamp(rd.y,0.0,1.0); float s=max(dot(rd,uSoleil),0.0);
@@ -16,8 +16,8 @@ vec3 cielBase(vec3 rd){
   vec3 col=mix(hor,mil,smoothstep(0.0,0.20,y));
   col=mix(col,zen,smoothstep(0.09,0.62,y));
   float lueur=1.0-0.78*uHeure;
-  col+=vec3(1.5,0.58,0.20)*pow(s,10.0)*0.26*lueur;
-  col+=vec3(1.8,1.0,0.5)*pow(s,110.0)*0.75*lueur*smoothstep(-0.07,0.02,uSoleil.y);
+  col+=vec3(1.5,0.58,0.20)*pow(s,10.0)*0.17*lueur;
+  col+=vec3(1.8,1.0,0.5)*pow(s,110.0)*0.5*lueur*smoothstep(-0.07,0.02,uSoleil.y);
   return col; }
 // height fog: dense in the valleys, tinted by the sky in the viewing direction
 vec3 brume(vec3 col,vec3 ro,vec3 p){

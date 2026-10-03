@@ -6,6 +6,7 @@ import { useDisposeOnUnmount } from '../../../hooks/useDisposeOnUnmount'
 import { matchesQuery, PHONE_QUERY } from '../../../hooks/useMediaQuery'
 import { clamp, damp } from '../../../lib/math'
 import { DISTRICTS } from '../../city/districts'
+import { NOVA_WORLD_SCALE, novaFlightFrame, type FlightPhase } from '../../city/explore/flightPath'
 import { director } from '../../director/director'
 import { frameState } from '../../director/frameState'
 import { FRAME_PRIORITY } from '../../framePriority'
@@ -98,6 +99,9 @@ export function NovaActor({ light }: { light: boolean }) {
       frame: { x: 0, y: 0, z: 0, scale: 1, up: 'camera' } as StageFrame,
       spot: { ndcX: 0, ndcY: 0, height: 0, depth: 0 } as WalkwaySpot,
       inCity: false,
+      /** standing (or flying) in the world at full size, rather than on the walkway */
+      inWorld: false,
+      flightPhase: null as FlightPhase | null,
       /** on the Observatory's balcony (the chat) rather than the flyover's walkway */
       onBalcony: false,
       stage: '' as string,
@@ -120,6 +124,7 @@ export function NovaActor({ light }: { light: boolean }) {
       point: new Vector3(),
       local: new Vector3(),
       forward: new Vector3(),
+      feet: new Vector3(),
       turn: new Quaternion(),
     }),
     [],
@@ -165,8 +170,9 @@ export function NovaActor({ light }: { light: boolean }) {
     const now = novaNow()
     const reduced = director.reducedMotion
     const city = stage === 'city'
-    const inCity = city && director.phase === 'city'
-    const onBalcony = inCity && director.observatory > 0.5
+    const inCity = city && director.inCity
+    const onGround = director.novaInWorld
+    const onBalcony = inCity && director.observatory > 0.5 && !onGround
     rackFocus(dt, now, size, onBalcony && !matchesQuery(PHONE_QUERY) ? BALCONY_FOCUS * director.observatory : 0)
 
     if (inCity && !m.inCity) {
@@ -179,8 +185,14 @@ export function NovaActor({ light }: { light: boolean }) {
       m.entrance = reduced ? 1 : 0
       setPresenting(false)
     }
+    if (inCity && !onGround && m.inWorld) {
+      // gone up out of the frame on the way back to the flyover: Nova walks onto the walkway again
+      m.entrance = reduced ? 1 : 0
+    }
+    m.inWorld = onGround
     m.onBalcony = onBalcony
     m.inCity = inCity
+    poseForFlight(m, director.flight?.phase ?? null)
     frame.visible = city ? inCity : true
     if (!frame.visible) {
       setWalking(false)
@@ -196,7 +208,16 @@ export function NovaActor({ light }: { light: boolean }) {
     let yaw: number
     let x: number
     const f = m.frame
-    if (city) {
+    if (onGround) {
+      const nova = director.roam.nova
+      f.x = nova.x
+      f.y = nova.y
+      f.z = nova.z
+      f.scale = NOVA_WORLD_SCALE
+      f.up = 'world'
+      x = 0
+      yaw = 0
+    } else if (city) {
       if (onBalcony) balconySpot(phone, m.spot)
       else walkwaySpot(u, phone, m.spot)
       walkwayFrame(camera, m.spot, f, m.point)
@@ -221,17 +242,36 @@ export function NovaActor({ light }: { light: boolean }) {
       m.shift = reduced ? target : m.shift + clamp(target - m.shift, -stride, stride)
       x = m.shift
     }
-    walkway.mesh.visible = city && !onBalcony
+    walkway.mesh.visible = city && !onBalcony && !onGround
 
-    frame.position.set(f.x, f.y, f.z).applyMatrix4(camera.matrixWorld)
-    if (f.up === 'camera') {
-      camera.getWorldQuaternion(frame.quaternion)
+    if (onGround) {
+      // heading, banked into the turns, tilted into the flight around the waist
+      novaFlightFrame(director.roam.nova, NOVA_WORLD_SCALE, frame.position, frame.quaternion)
     } else {
-      camera.getWorldDirection(m.forward)
-      frame.quaternion.setFromAxisAngle(UP, Math.atan2(-m.forward.x, -m.forward.z))
+      frame.position.set(f.x, f.y, f.z).applyMatrix4(camera.matrixWorld)
+      if (f.up === 'camera') {
+        camera.getWorldQuaternion(frame.quaternion)
+      } else {
+        camera.getWorldDirection(m.forward)
+        frame.quaternion.setFromAxisAngle(UP, Math.atan2(-m.forward.x, -m.forward.z))
+      }
     }
     frame.scale.setScalar(f.scale)
     body.position.set(x, 0, 0)
+    if (inCity && !onGround && !onBalcony) {
+      // the explore flight takes off from here: the walkway's Nova at full size, at the same place on screen
+      body.updateWorldMatrix(true, false)
+      const feet = body.getWorldPosition(m.feet)
+      const grow = NOVA_WORLD_SCALE / f.scale
+      const launch = director.launch
+      launch.x = camera.position.x + (feet.x - camera.position.x) * grow
+      launch.y = camera.position.y + (feet.y - camera.position.y) * grow
+      launch.z = camera.position.z + (feet.z - camera.position.z) * grow
+      launch.yaw = Math.atan2(camera.position.x - feet.x, camera.position.z - feet.z)
+      launch.valid = m.entrance >= 1
+    } else {
+      director.launch.valid = false
+    }
 
     // ——— walking: the cadence follows the distance travelled (on a phone, the scroll) ———
     if (stage !== m.stage) {
@@ -240,11 +280,17 @@ export function NovaActor({ light }: { light: boolean }) {
       m.x = x
       m.u = u
     }
-    const travel = dt > 0 ? (city && phone ? ((u - m.u) / dt) * PHONE_STRIDE : (x - m.x) / dt) : 0
+    const travel = onGround
+      ? director.flying ? 0 : director.roam.nova.speed / NOVA_WORLD_SCALE
+      : dt > 0
+        ? city && phone
+          ? ((u - m.u) / dt) * PHONE_STRIDE
+          : (x - m.x) / dt
+        : 0
     m.x = x
     m.u = u
     m.pace += (Math.abs(travel) - m.pace) * damp(10, dt)
-    if (Math.abs(travel) > 0.05) m.direction = Math.sign(travel)
+    if (!onGround && Math.abs(travel) > 0.05) m.direction = Math.sign(travel)
     if (reduced) {
       setWalking(false)
     } else if (!m.walking && m.pace > WALK_START) {
@@ -257,7 +303,7 @@ export function NovaActor({ light }: { light: boolean }) {
 
     // ——— resting on a district: present it, arm towards its landmark ———
     // on a phone the camera follows the text continuously: Nova rests wherever the scroll stops
-    const resting = city && !onBalcony && m.entrance >= 1 ? (phone ? director.section : restingSection(u)) : null
+    const resting = city && !onBalcony && !onGround && m.entrance >= 1 ? (phone ? director.section : restingSection(u)) : null
     m.restFor = resting !== null && !m.walking ? m.restFor + dt : 0
     const district = resting !== null ? DISTRICTS[resting] : undefined
     const present = !!district && resting! > 0 && m.restFor > PRESENT_AFTER
@@ -271,7 +317,7 @@ export function NovaActor({ light }: { light: boolean }) {
     setPresenting(present)
 
     // ——— halfway between two districts with the scroll stopped: "shall we go on?" ———
-    m.pausedFor = city && !onBalcony && !phone && m.entrance >= 1 && resting === null && !m.walking ? m.pausedFor + dt : 0
+    m.pausedFor = city && !onBalcony && !onGround && !phone && m.entrance >= 1 && resting === null && !m.walking ? m.pausedFor + dt : 0
     if (m.pausedFor > NUDGE_AFTER && now > m.nudgeReady) {
       m.nudgeReady = now + NUDGE_EVERY
       novaScenes.nudge()
@@ -279,7 +325,9 @@ export function NovaActor({ light }: { light: boolean }) {
 
     // ——— facing: where it walks, the landmark it presents, or the visitor ———
     let heading = 0
-    if (!city && director.entry) {
+    if (onGround) {
+      heading = 0
+    } else if (!city && director.entry) {
       heading = BRACE_YAW - yaw
     } else if (m.walking) {
       heading = m.direction * WALK_HEADING
@@ -317,6 +365,16 @@ export function NovaActor({ light }: { light: boolean }) {
       </group>
     </group>
   )
+}
+
+/** The flight's postures: crouched before the burst, flying, then the superhero landing (a one-shot gesture). */
+function poseForFlight(m: { flightPhase: FlightPhase | null }, phase: FlightPhase | null) {
+  if (phase === m.flightPhase) return
+  const airborne = (p: FlightPhase | null) => p === 'takeoff' || p === 'cruise' || p === 'flare'
+  if ((phase === 'crouch') !== (m.flightPhase === 'crouch')) nova.hold('crouch', phase === 'crouch')
+  if (airborne(phase) !== airborne(m.flightPhase)) nova.hold('fly', airborne(phase))
+  if (phase === 'landing') nova.gesture('land')
+  m.flightPhase = phase
 }
 
 /**

@@ -1,5 +1,5 @@
 import { smoothstep } from '../../../lib/math'
-import { CITY_CENTER, FIRST_VIEWPOINT, SUN_AZIMUTH } from '../cityConfig'
+import { CITY_CENTER, FIRST_VIEWPOINT, POIS, SUN_AZIMUTH } from '../cityConfig'
 
 /*
  * The landscape around the city, as a pure height function (CPU side, also used to place towers).
@@ -56,8 +56,8 @@ function riverAxis(z: number): number {
   return 6 - 10 * Math.sin((z - 82) * 0.012) + 5 * Math.sin(z * 0.047)
 }
 
-/** Ground height at (x, z); below 0 is water. */
-export function relief(x: number, z: number): number {
+/** Ground height at (x, z) before the sites are levelled; below 0 is water. */
+export function naturalRelief(x: number, z: number): number {
   const dx = x - CITY_CENTER.x
   const dz = z - CITY_CENTER.z
   const d = Math.sqrt(dx * dx + dz * dz)
@@ -80,4 +80,41 @@ export function relief(x: number, z: number): number {
   const river = z > 70 ? Math.abs(x - riverAxis(z)) - 6.5 - smoothstep(95, 150, z) * 15 + shore * 0.6 : 1e3
   const bank = smoothstep(-2, 6, Math.min(lake, river))
   return height * bank - 2.6 * (1 - bank)
+}
+
+let plateaus: Float32Array | null = null
+
+/** Height of each site's plateau: the natural ground averaged over its extent (so levelling digs no crater). */
+export function sitePlateaus(): Float32Array {
+  if (plateaus) return plateaus
+  plateaus = Float32Array.from(POIS, (poi) => {
+    let sum = 0
+    let n = 0
+    for (let ring = 0; ring <= 3; ring++) {
+      const r = (poi.radius * ring) / 3
+      const steps = ring === 0 ? 1 : 12 * ring
+      for (let k = 0; k < steps; k++) {
+        const a = (Math.PI * 2 * k) / steps
+        sum += naturalRelief(poi.x + Math.cos(a) * r, poi.z + Math.sin(a) * r)
+        n++
+      }
+    }
+    return Math.max(sum / n, 0.8)
+  })
+  return plateaus
+}
+
+/** Ground height at (x, z); below 0 is water. The sites are levelled towards their plateau, fading out softly. */
+export function relief(x: number, z: number): number {
+  let h = naturalRelief(x, z)
+  for (let i = 0; i < POIS.length; i++) {
+    const poi = POIS[i]
+    const dx = x - poi.x
+    const dz = z - poi.z
+    const reach = poi.radius * 1.8
+    if (dx * dx + dz * dz >= reach * reach) continue
+    const level = (1 - smoothstep(poi.radius * 0.85, reach, Math.sqrt(dx * dx + dz * dz))) * poi.flatten
+    h += (sitePlateaus()[i] - h) * level
+  }
+  return h
 }

@@ -20,6 +20,8 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.ts'],
+    // the city and bird simulations take a few seconds each, and longer when every file runs in parallel
+    testTimeout: 30000,
     environment: 'node',
   },
 })

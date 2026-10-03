@@ -1,54 +1,72 @@
 import { useMemo } from 'react'
-import { BoxGeometry, CatmullRomCurve3, InstancedMesh, Matrix4, Quaternion, TorusGeometry, TubeGeometry, Vector3 } from 'three'
-import { BRIDGE_PATH, CITY_CENTER, RING } from '../cityConfig'
+import { BoxGeometry, CylinderGeometry, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three'
+import { useDisposeOnUnmount } from '../../../hooks/useDisposeOnUnmount'
+import { CITY_CENTER, RING, ROAD_LIFT } from '../cityConfig'
 import { useCity } from '../CityContext'
+import { relief } from '../layout/relief'
+import { circleCurve, deckProfile, sweepProfile } from '../layout/sweep'
 import { createWorldMaterial } from '../worldMaterial'
 import roadVert from '../glsl/road.vert.glsl?raw'
 import roadFrag from '../glsl/road.frag.glsl?raw'
 import towerVert from '../glsl/tower.vert.glsl?raw'
-import plainFrag from '../glsl/plain.frag.glsl?raw'
+import bridgeFrag from '../glsl/bridge.frag.glsl?raw'
 
-const RING_PILLARS = 40
-const BRIDGE_PILLARS = 25
+const PILLARS = 48
+const DEPTH = 1.3
 
-/** Elevated ring road and the bridge over the lake, with traffic lights running along them, on pillars. */
+const dispose = (parts: { deck: { geometry: { dispose(): void }; material: { dispose(): void } }; pillars: InstancedMesh; caps: InstancedMesh }) => {
+  parts.deck.geometry.dispose()
+  parts.deck.material.dispose()
+  for (const mesh of [parts.pillars, parts.caps]) mesh.geometry.dispose()
+  ;(parts.pillars.material as { dispose(): void }).dispose()
+}
+
+/** The elevated ring road: a box-girder viaduct with sidewalks and parapets, on columns with hammerhead caps. */
 export function Roads() {
   const { uniforms } = useCity()
 
   const parts = useMemo(() => {
-    const ringGeometry = new TorusGeometry(RING.radius, RING.tube, 6, 240)
-    ringGeometry.rotateX(Math.PI / 2)
-    const ringMaterial = createWorldMaterial(uniforms, roadVert, roadFrag, { uLongueur: { value: 2 * Math.PI * RING.radius } })
-
-    const path = new CatmullRomCurve3(BRIDGE_PATH.map(([x, y, z]) => new Vector3(x, y, z)))
-    const bridgeGeometry = new TubeGeometry(path, 220, RING.tube, 6, false)
-    const bridgeMaterial = createWorldMaterial(uniforms, roadVert, roadFrag, { uLongueur: { value: path.getLength() } })
-
-    const feet: Array<readonly [x: number, z: number, deck: number]> = []
-    for (let i = 0; i < RING_PILLARS; i++) {
-      const a = (i / RING_PILLARS) * Math.PI * 2
-      feet.push([CITY_CENTER.x + Math.cos(a) * RING.radius, CITY_CENTER.z + Math.sin(a) * RING.radius, RING.height])
+    const curve = circleCurve(CITY_CENTER.x, CITY_CENTER.z, RING.radius, RING.height + ROAD_LIFT)
+    const half = RING.deckWidth / 2
+    const deck = {
+      geometry: sweepProfile(curve, deckProfile(half - 0.6, 0.6, DEPTH, true), 360),
+      material: createWorldMaterial(uniforms, roadVert, roadFrag, { uLongueur: { value: curve.getLength() } }),
     }
-    for (let i = 1; i <= BRIDGE_PILLARS; i++) {
-      const p = path.getPoint(i / 60)
-      feet.push([p.x, p.z, p.y])
-    }
-    const pillars = new InstancedMesh(new BoxGeometry(0.34, 1, 0.34), createWorldMaterial(uniforms, towerVert, plainFrag), feet.length)
+
+    const concrete = createWorldMaterial(uniforms, towerVert, bridgeFrag, { uMat: { value: 0 }, uHautPylone: { value: 7 } })
+    const column = new CylinderGeometry(0.42, 0.55, 1, 12)
+    column.translate(0, 0.5, 0)
+    const pillars = new InstancedMesh(column, concrete, PILLARS)
+    const cap = new BoxGeometry(1, 1, 1)
+    const caps = new InstancedMesh(cap, concrete, PILLARS)
     const matrix = new Matrix4()
-    const identity = new Quaternion()
-    feet.forEach(([x, z, deck], n) => {
-      matrix.compose(new Vector3(x, (deck - 3) / 2 - 0.2, z), identity, new Vector3(1, deck + 3, 1))
-      pillars.setMatrixAt(n, matrix)
-    })
+    const rotation = new Quaternion()
+    const position = new Vector3()
+    const scale = new Vector3()
+    const up = new Vector3(0, 1, 0)
+    const underside = RING.height + ROAD_LIFT - DEPTH
+    for (let n = 0; n < PILLARS; n++) {
+      const a = (n / PILLARS) * Math.PI * 2
+      const x = CITY_CENTER.x + Math.cos(a) * RING.radius
+      const z = CITY_CENTER.z + Math.sin(a) * RING.radius
+      const ground = relief(x, z) - 0.4
+      const top = underside - 0.45
+      pillars.setMatrixAt(n, matrix.compose(position.set(x, ground, z), rotation.identity(), scale.set(1, top - ground, 1)))
+      // hammerhead cap, across the road
+      rotation.setFromAxisAngle(up, -a)
+      caps.setMatrixAt(n, matrix.compose(position.set(x, top + 0.225, z), rotation, scale.set(half * 1.5, 0.45, 0.9)))
+    }
     pillars.frustumCulled = false
-    return { ringGeometry, ringMaterial, bridgeGeometry, bridgeMaterial, pillars }
+    caps.frustumCulled = false
+    return { deck, pillars, caps }
   }, [uniforms])
+  useDisposeOnUnmount(parts, dispose)
 
   return (
     <>
-      <mesh geometry={parts.ringGeometry} material={parts.ringMaterial} position={[CITY_CENTER.x, RING.height, CITY_CENTER.z]} />
-      <mesh geometry={parts.bridgeGeometry} material={parts.bridgeMaterial} />
+      <mesh geometry={parts.deck.geometry} material={parts.deck.material} frustumCulled={false} />
       <primitive object={parts.pillars} />
+      <primitive object={parts.caps} />
     </>
   )
 }

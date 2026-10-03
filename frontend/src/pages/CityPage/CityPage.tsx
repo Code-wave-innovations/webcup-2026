@@ -18,6 +18,8 @@ import { useBodyClass } from '../../hooks/useBodyClass'
 import { PHONE_QUERY, useMediaQuery, useReducedMotion } from '../../hooks/useMediaQuery'
 import { ButtonLink } from '../../ui/Button'
 import { NovaInvite } from './NovaInvite'
+import { ExploreHud } from '../../experience/city/explore/ExploreHud'
+import { exploreActions } from '../../experience/city/explore/exploreActions'
 import { LinkLine, RouteRail, TopBar } from './CityChrome'
 import { CitySection } from './CitySection'
 import { CITY_SECTIONS } from './citySections'
@@ -44,7 +46,8 @@ function CityView({ session }: { session: Session }) {
   const status = useDirectorStore((s) => s.status)
   const phase = useDirectorStore((s) => s.phase)
   const alert = useDirectorStore((s) => s.alert)
-  const arrived = phase === 'city'
+  const exploring = phase === 'explore'
+  const arrived = phase === 'city' || exploring
   const [leaving, setLeaving] = useState(false)
   const reduced = useReducedMotion()
   const phone = useMediaQuery(PHONE_QUERY)
@@ -52,10 +55,10 @@ function CityView({ session }: { session: Session }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const leaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const { active, scrollTo, live } = useCityScroll(rootRef, arrived && !leaving)
-  useBodyClass('is-locked', !arrived || leaving)
+  const { active, scrollTo, live } = useCityScroll(rootRef, arrived && !leaving && !exploring)
+  useBodyClass('is-locked', !arrived || leaving || exploring)
   useHeroReveal(rootRef, arrived, reduced)
-  useSmoothScroll(arrived && !leaving && !reduced)
+  useSmoothScroll(arrived && !leaving && !exploring && !reduced)
   useNovaCityReactions()
 
   // Nova walks into the frame and welcomes the resident
@@ -77,12 +80,17 @@ function CityView({ session }: { session: Session }) {
     const id = hash.slice(1) || (debugParams.view ? CITY_SECTIONS[Math.round(debugParams.view)]?.id : '')
     const view = id ? document.getElementById(id) : null
     window.scrollTo(0, view ? view.getBoundingClientRect().top + window.scrollY : 0)
+    // `?site=golf`: straight onto a site (screenshots of the explore mode)
+    if (debugParams.site) director.enterExplore(debugParams.site, true)
     const frame = requestAnimationFrame(() => headingRef.current?.focus({ preventScroll: true }))
     return () => cancelAnimationFrame(frame)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- only on arrival, not when the hash changes while reading
   }, [arrived])
 
-  useEffect(() => () => clearTimeout(leaveTimer.current), [])
+  useEffect(() => () => {
+    clearTimeout(leaveTimer.current)
+    director.exitExplore(true)
+  }, [])
 
   const quit = () => {
     setLeaving(true)
@@ -108,13 +116,26 @@ function CityView({ session }: { session: Session }) {
   }
 
   return (
-    <div ref={rootRef} className={[styles.city, arrived && !leaving && styles.visible].filter(Boolean).join(' ')} hidden={!arrived} onClick={onClick}>
-      <TopBar session={session} active={active} alert={alert} onQuit={quit} />
+    <div
+      ref={rootRef}
+      className={[styles.city, arrived && !leaving && styles.visible, exploring && styles.exploring].filter(Boolean).join(' ')}
+      hidden={!arrived}
+      onClick={onClick}
+    >
+      <TopBar
+        session={session}
+        active={active}
+        alert={alert}
+        exploring={exploring}
+        onQuit={quit}
+        onToggleExplore={() => (exploring ? exploreActions.leave() : exploreActions.enter())}
+      />
       <AlertBanner />
-      <RouteRail active={active} />
-      <LinkLine live={live} phone={phone} />
+      {!exploring && <RouteRail active={active} />}
+      {!exploring && <LinkLine live={live} phone={phone} />}
+      <ExploreHud exploring={exploring} ready={status === 'ready' && arrived && !leaving} phone={phone} />
 
-      <main>
+      <main inert={exploring}>
         <section className={`${styles.section} ${styles.arrival}`} id={ARRIVAL.id} data-city-section aria-labelledby="arrival-title">
           <div className={styles.frame}>
             <div className={styles.column} data-column>

@@ -15,15 +15,6 @@ export interface Tower {
   kind: 0 | 1 | 2
 }
 
-export interface ShuttleRoute {
-  radiusX: number
-  radiusZ: number
-  altitude: number
-  speed: number
-  phase: number
-  tilt: number
-}
-
 /** Everything about the city that is computed rather than authored (built off the main thread). */
 export interface CityData {
   terrain: {
@@ -38,7 +29,6 @@ export interface CityData {
   towers: Tower[]
   /** blink phase of each tower's beacon, in `towers` order */
   beaconPhases: Float32Array
-  shuttles: ShuttleRoute[]
   /** low-rise urban fabric, LOW_RISE_STRIDE floats each: x, ground y, z, width, depth, height, rotation, seed */
   lowRise: Float32Array
   /** trees of the terraces and the avenue, TREE_STRIDE floats each: x, ground y, z, size, seed */
@@ -67,17 +57,8 @@ export function generateCity(light: boolean): CityData {
   occupied.add(OBSERVATORY.x, OBSERVATORY.z, OBSERVATORY.radius + 1.2)
   const trees = plantTrees(light ? 220 : 420, random, occupied)
   const lowRise = buildLowRise(light ? 500 : 1000, random, occupied)
-  const shuttles = Array.from({ length: light ? 4 : 7 }, () => {
-    const radiusX = 20 + random() * 46
-    const radiusZ = 16 + random() * 40
-    const altitude = 10 + random() * 34
-    const speed = (0.05 + random() * 0.07) * (random() < 0.5 ? -1 : 1)
-    const phase = random() * 6.28
-    const tilt = random() * 0.5
-    return { radiusX, radiusZ, altitude, speed, phase, tilt }
-  })
   const groundShadows = bakeGroundShadows(footprints(towers, lowRise))
-  return { terrain, horizonAtCenter: horizonFrom(heights, CITY_CENTER.x, 1.2, CITY_CENTER.z), towers, beaconPhases, shuttles, lowRise, trees, groundShadows }
+  return { terrain, horizonAtCenter: horizonFrom(heights, CITY_CENTER.x, 1.2, CITY_CENTER.z), towers, beaconPhases, lowRise, trees, groundShadows }
 }
 
 /** Coarse height grid, bilinearly sampled by the shadow march (much cheaper than `relief`). */
@@ -176,7 +157,7 @@ function inCorridor(x: number, z: number, margin: number): boolean {
 }
 
 /** Distance to the nearest of the six radial avenues drawn on the city floor (see terrain.frag). */
-function avenueDistance(x: number, z: number): number {
+export function avenueDistance(x: number, z: number): number {
   const qx = x - CITY_CENTER.x
   const qz = z - CITY_CENTER.z
   const sector = Math.PI / 3

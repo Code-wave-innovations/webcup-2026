@@ -6,4 +6,5 @@ import { useDirectorStore } from './directorStore'
 export const director = new FilmDirector(
   (phase) => useDirectorStore.getState().setPhase(phase),
   matchesQuery(REDUCED_MOTION_QUERY),
+  (explore) => useDirectorStore.getState().setExplore(explore),
 )

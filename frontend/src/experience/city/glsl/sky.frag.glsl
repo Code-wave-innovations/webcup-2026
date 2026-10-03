@@ -39,5 +39,5 @@ void main(){ vec3 rd=normalize(vDir);
   float vs=pow(max(dot(normalize(rd.xz),normalize(uSoleil.xz)),0.0),1.6);
   vec3 cn=mix(vec3(0.20,0.15,0.24),vec3(1.5,0.60,0.30),vs)*(1.0-0.88*uHeure)+vec3(0.02,0.022,0.045);
   col=mix(col,cn,dens*0.72);
-  col+=vec3(9.0,4.8,1.9)*smoothstep(0.99990,0.99996,dot(rd,uSoleil));
+  col+=vec3(6.2,3.3,1.3)*smoothstep(0.99990,0.99996,dot(rd,uSoleil));
   gl_FragColor=vec4(col,1.0); }

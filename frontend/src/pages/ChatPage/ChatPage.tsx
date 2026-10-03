@@ -43,6 +43,7 @@ function Observatory({ session }: { session: Session }) {
   // reload or deep link while the film waits in the cockpit: land by the Observatory
   useEffect(() => {
     const store = useDirectorStore.getState()
+    if (director.phase === 'explore') director.exitExplore(true)
     if (status === 'ready' && director.phase === 'approach') director.land(OBSERVATORY_SECTION)
     else if (status === 'unsupported' && store.phase !== 'city') store.setPhase('city')
   }, [status])

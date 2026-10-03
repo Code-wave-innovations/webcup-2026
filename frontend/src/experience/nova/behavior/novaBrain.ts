@@ -2,9 +2,9 @@ import type { Emotion } from '../face/faceState'
 import type { ClipName } from '../rig/rigContract'
 
 /** One-shot moves: they play once, then Nova goes back to what it was doing. */
-export type Gesture = 'wave' | 'celebrate' | 'refuse' | 'point' | 'poked' | 'hop'
+export type Gesture = 'wave' | 'celebrate' | 'refuse' | 'point' | 'poked' | 'hop' | 'land'
 /** Postures held until released (the password field keeps the hands on the eyes…). */
-export type Hold = 'brace' | 'coverEyes' | 'peek' | 'think' | 'sulk' | 'listen' | 'present'
+export type Hold = 'fly' | 'crouch' | 'brace' | 'coverEyes' | 'peek' | 'think' | 'sulk' | 'listen' | 'present'
 
 /** What the rest of the application asks of Nova. */
 export type NovaIntent =
@@ -53,16 +53,17 @@ export const INITIAL_BRAIN: BrainState = {
   nextId: 1,
 }
 
-/** Most important posture first: bracing for the entry beats hiding the eyes, which beats thinking… */
-const HOLD_PRIORITY: readonly Hold[] = ['brace', 'coverEyes', 'peek', 'think', 'sulk', 'listen', 'present']
+/** Most important posture first: flying beats everything, bracing for the entry beats hiding the eyes, which beats thinking… */
+const HOLD_PRIORITY: readonly Hold[] = ['fly', 'crouch', 'brace', 'coverEyes', 'peek', 'think', 'sulk', 'listen', 'present']
 
-const GESTURE_CLIP: Record<Gesture, ClipName> = { wave: 'wave', celebrate: 'celebrate', refuse: 'shakeHead', point: 'point', poked: 'poked', hop: 'hop' }
+const GESTURE_CLIP: Record<Gesture, ClipName> = { wave: 'wave', celebrate: 'celebrate', refuse: 'shakeHead', point: 'point', poked: 'poked', hop: 'hop', land: 'land' }
 const GESTURE_FEELING: Partial<Record<Gesture, readonly [Emotion, number]>> = {
   wave: ['happy', 2.2],
   celebrate: ['happy', 3],
   refuse: ['denied', 2.2],
   poked: ['happy', 1.6],
   hop: ['surprised', 1.1],
+  land: ['focused', 1.6],
 }
 /** A gesture that never reports its end (interrupted clip, missing event) is dropped after this. */
 const GESTURE_TIMEOUT = 5
@@ -135,6 +136,11 @@ export interface NovaPose {
   floating: boolean
 }
 
+/** clips that move the head on purpose (the look at the visitor stays off) */
+const NO_LOOK: readonly ClipName[] = ['shakeHead', 'coverEyes', 'peek', 'brace', 'think', 'crouch', 'fly', 'land']
+/** clips with the feet on the ground, or flying (no hovering bob) */
+const GROUNDED: readonly ClipName[] = ['walk', 'celebrate', 'brace', 'poked', 'hop', 'crouch', 'fly', 'land']
+
 export function topHold(holds: readonly Hold[]): Hold | null {
   return HOLD_PRIORITY.find((h) => holds.includes(h)) ?? null
 }
@@ -159,19 +165,19 @@ export function resolvePose(state: BrainState, now: number): NovaPose {
   if (now < state.emotionUntil) emotion = state.emotion
   else if (state.alert) emotion = 'alarmed'
   else if (speech.visible && state.speech) emotion = state.speech.emotion
-  else if (hold === 'brace') emotion = 'focused'
+  else if (hold === 'brace' || hold === 'fly' || hold === 'crouch') emotion = 'focused'
 
   return {
     clip,
     once: !!gesture,
     key,
     emotion,
-    lookAtTarget: clip !== 'shakeHead' && clip !== 'coverEyes' && clip !== 'peek' && clip !== 'brace' && clip !== 'think',
+    lookAtTarget: !NO_LOOK.includes(clip),
     lookUp: clip === 'think',
     eyesHidden: clip === 'coverEyes' ? 'both' : clip === 'peek' ? 'peek' : 'none',
     thinking: hold === 'think',
     listening: hold === 'listen',
     talking,
-    floating: clip !== 'walk' && clip !== 'celebrate' && clip !== 'brace' && clip !== 'poked' && clip !== 'hop',
+    floating: !GROUNDED.includes(clip),
   }
 }

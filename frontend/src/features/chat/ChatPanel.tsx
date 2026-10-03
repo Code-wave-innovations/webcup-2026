@@ -25,7 +25,7 @@ const STATUS_LABEL: Record<ChatStatus, string> = { idle: 'en ligne', thinking: '
 export function ChatPanel({ messages, status, onSend, onStop, onComposing, onKeystroke }: ChatPanelProps) {
   const [draft, setDraft] = useState('')
   const [focused, setFocused] = useState(false)
-  const logRef = useRef<HTMLOListElement>(null)
+  const logRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const busy = status !== 'idle'
   const last = messages.at(-1)
@@ -89,27 +89,30 @@ export function ChatPanel({ messages, status, onSend, onStop, onComposing, onKey
         <span className={styles.place}>Observatoire · nuit</span>
       </header>
 
-      <ol ref={logRef} className={styles.log} role="log" aria-label="Conversation avec Nova" aria-busy={busy} aria-live="polite">
-        {messages.map((message) => (
-          <li key={message.id} className={styles.message} data-role={message.role}>
-            <span className={styles.author}>{message.role === 'nova' ? 'Nova' : 'Vous'}</span>
-            <p>
-              {message.text}
-              {message === last && status === 'streaming' && <i className={styles.caret} aria-hidden="true" />}
-            </p>
-          </li>
-        ))}
-        {status === 'thinking' && (
-          <li className={styles.message} data-role="nova" aria-label="Nova réfléchit">
-            <span className={styles.author}>Nova</span>
-            <span className={styles.dots} aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
-          </li>
-        )}
-      </ol>
+      <div ref={logRef} className={styles.log} role="log" aria-label="Conversation avec Nova" aria-busy={busy} aria-live="polite">
+        <ol className={styles.thread}>
+          {messages.map((message) => (
+            <li key={message.id} className={styles.message} data-role={message.role}>
+              <span className={styles.author}>{message.role === 'nova' ? 'Nova' : 'Vous'}</span>
+              <p>
+                {message.text}
+                {message === last && status === 'streaming' && <i className={styles.caret} aria-hidden="true" />}
+              </p>
+            </li>
+          ))}
+          {status === 'thinking' && (
+            <li className={styles.message} data-role="nova">
+              <span className={styles.author}>Nova</span>
+              <span className={styles.srOnly}>réfléchit…</span>
+              <span className={styles.dots} aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+            </li>
+          )}
+        </ol>
+      </div>
 
       <div className={styles.suggestions}>
         {CHAT_SUGGESTIONS.map((suggestion) => (

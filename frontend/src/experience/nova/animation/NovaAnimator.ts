@@ -3,7 +3,7 @@ import type { NovaRig } from '../rig/createRig'
 import type { ClipName } from '../rig/rigContract'
 
 /** Crossfade per destination: hands reach the eyes in 450 ms, a gesture starts briskly. */
-const FADE: Partial<Record<ClipName, number>> = { coverEyes: 0.45, peek: 0.35, brace: 0.3, think: 0.4, listen: 0.4, walk: 0.3 }
+const FADE: Partial<Record<ClipName, number>> = { coverEyes: 0.45, peek: 0.35, brace: 0.3, think: 0.4, listen: 0.4, walk: 0.3, crouch: 0.18, fly: 0.45, land: 0.06 }
 const DEFAULT_FADE = 0.25
 
 /**

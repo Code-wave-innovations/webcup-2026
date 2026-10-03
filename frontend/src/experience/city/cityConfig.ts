@@ -1,4 +1,4 @@
-/** Fixed geography of Terra Nova: everything else (towers, shuttles) is generated from a seed around it. */
+/** Fixed geography of Terra Nova: everything else (towers, trees, blocks) is generated from a seed around it. */
 
 export const CITY_CENTER = { x: 0, z: -4 } as const
 /** Where the flyover starts: the valley in front of it stays clear of mountains. */
@@ -51,8 +51,30 @@ export const OBSERVATORY = {
   capRadius: 0.3,
 } as const
 
-/** The ring road around the center. */
-export const RING = { radius: 35, height: 3.7, tube: 0.42 } as const
+/** The ring road around the center: `height` is the deck's middle, the road surface is ROAD_LIFT above it. */
+export const RING = { radius: 35, height: 3.7, tube: 0.42, deckWidth: 6, deckThick: 0.8 } as const
+
+/** Road surface above the path points of the ring and the bridge (where the cars drive). */
+export const ROAD_LIFT = RING.deckThick / 2
+
+/**
+ * The cable-stayed bridge over the lake: an A-shaped pylon straddling the deck, `pylonAt` metres along the bridge
+ * from the ring, its apex `pylonHeight` above the road and a mast above it carrying two fans of stays.
+ */
+export const BRIDGE = {
+  roadHalf: 3.1,
+  sidewalk: 0.9,
+  depth: 1.6,
+  pylonAt: 50,
+  pylonHeight: 26,
+  mast: 8,
+  /** the legs' feet, either side of the deck, on the lake bed */
+  legSpread: 5.6,
+  /** stays per side in each fan: a short back span towards the ring (the flyover passes by it), a long one south */
+  staysBack: 7,
+  staysOut: 11,
+  staySpacing: 2.6,
+} as const
 
 /** The bridge over the lake, from the ring to the valley road. */
 export const BRIDGE_PATH: ReadonlyArray<readonly [number, number, number]> = [
@@ -60,3 +82,34 @@ export const BRIDGE_PATH: ReadonlyArray<readonly [number, number, number]> = [
 ]
 
 export const CITY_SEED = 20260310
+
+/* ─── Sites the visitor can fly to (beyond the ring road, out of the flyover's frames) ─── */
+
+export type PoiId = 'golf' | 'stade' | 'village-est' | 'village-nord'
+
+export interface POI {
+  id: PoiId
+  name: string
+  /** one line shown when Nova lands there */
+  blurb: string
+  icon: 'golf' | 'stadium' | 'village'
+  x: number
+  z: number
+  /** extent of the site (its decoration and its ground) */
+  radius: number
+  /** how much of the natural relief is levelled: 1 = flat plateau, 0 = untouched slopes */
+  flatten: number
+}
+
+/**
+ * Sites chosen by a terrain scan: off the camera path, above the water, on gentle ground. The stadium and the golf
+ * course sit in the gap towards the setting sun (the flattest land); the villages follow their hillsides.
+ */
+export const POIS: readonly POI[] = [
+  { id: 'golf', name: 'Golf de la Trouée', blurb: 'Neuf hectares de fairways face au soleil couchant.', icon: 'golf', x: 72, z: -120, radius: 34, flatten: 0.6 },
+  { id: 'stade', name: 'Stade Nova', blurb: 'Vingt mille places, et la pelouse est arrosée par la pluie du dôme.', icon: 'stadium', x: 45, z: -60, radius: 27, flatten: 1 },
+  { id: 'village-est', name: "Village de l'Est", blurb: 'Murs blancs, tuiles rouges et une fontaine sur la place.', icon: 'village', x: 78, z: -24, radius: 20, flatten: 0.45 },
+  { id: 'village-nord', name: 'Village du Nord', blurb: 'Des chalets accrochés à la pente, au pied des crêtes.', icon: 'village', x: -20, z: -70, radius: 20, flatten: 0.45 },
+]
+
+export const poiById = (id: PoiId): POI => POIS.find((p) => p.id === id)!

@@ -10,11 +10,17 @@ import { useDirectorStore } from '../director/directorStore'
 import { frameState, type AnchorId } from '../director/frameState'
 import { FRAME_PRIORITY } from '../framePriority'
 import { createPathSample, sampleCameraPath } from './cameraPath'
+import { FlightFx } from './explore/FlightFx'
+import { CROUCH_SECONDS } from './explore/flightPath'
+import { installExploreCollision } from './explore/exploreCollision'
 import { SUN_AZIMUTH } from './cityConfig'
 import { CityContext, type CityContextValue } from './CityContext'
 import type { CityData } from './layout/generateCity'
 import { AlertSpotlights, SignalBeam } from './parts/Beams'
 import { Beacons } from './parts/Beacons'
+import { Birds } from './parts/Birds'
+import { Bridge } from './parts/Bridge'
+import { CityLife } from './parts/CityLife'
 import { DescentClouds } from './parts/DescentClouds'
 import { DistrictMarkers } from './parts/DistrictMarkers'
 import { Dust } from './parts/Dust'
@@ -24,11 +30,13 @@ import { Observatory } from './parts/Observatory'
 import { ANCHORS } from './landmarks'
 import { Domes } from './parts/Domes'
 import { Roads } from './parts/Roads'
-import { Shuttles } from './parts/Shuttles'
 import { Sky } from './parts/Sky'
 import { Terrain } from './parts/Terrain'
 import { Towers } from './parts/Towers'
 import { Water } from './parts/Water'
+import { GolfCourse } from './parts/GolfCourse'
+import { Stadium } from './parts/Stadium'
+import { Villages } from './parts/Villages'
 import { createWorldMaterial, createWorldUniforms } from './worldMaterial'
 import towerVert from './glsl/tower.vert.glsl?raw'
 import towerFrag from './glsl/tower.frag.glsl?raw'
@@ -37,7 +45,7 @@ interface CityStageProps {
   data: CityData
   textures: BakedTextures
   hdr: boolean
-  /** low tier: less dust */
+  /** low tier: less dust, fewer birds */
   light: boolean
 }
 
@@ -45,6 +53,8 @@ interface CityStageProps {
  * The descent: a curved flight from high in the atmosphere, banking out over the lake, then low over the
  * bridge into the arrival framing (cubic Bézier; the last point is the first pose of the flyover).
  */
+/** sun elevation while exploring, in degrees (golden hour) */
+const EXPLORE_SUN = 17
 const DESCENT_FROM = new Vector3(-80, 230, 350)
 const DESCENT_C1 = new Vector3(120, 150, 380)
 const DESCENT_C2 = new Vector3(70, 34, 250)
@@ -80,16 +90,24 @@ export function CityStage({ data, textures, hdr, light }: CityStageProps) {
   const cameras = useMemo(() => ({ main: new PerspectiveCamera(40, 1, 0.4, 4000), mirror: new PerspectiveCamera(40, 1, 0.4, 4000) }), [])
   const alertLevel = useMemo(() => ({ value: 0 }), [])
   const scratch = useMemo(
-    () => ({ path: createPathSample(), position: new Vector3(), target: new Vector3(), point: new Vector3(), buffer: new Vector2(), sun: new Vector3() }),
+    () => ({
+      path: createPathSample(),
+      position: new Vector3(),
+      target: new Vector3(),
+      point: new Vector3(),
+      buffer: new Vector2(),
+      sun: new Vector3(),
+    }),
     [],
   )
 
   useLayoutEffect(() => {
     director.cameras.city = cameras.main
+    installExploreCollision(data)
     return () => {
       director.cameras.city = null
     }
-  }, [cameras])
+  }, [cameras, data])
 
   useEffect(() => {
     const aspect = size.width / size.height
@@ -107,7 +125,9 @@ export function CityStage({ data, textures, hdr, light }: CityStageProps) {
     const camera = cameras.main
     const phone = matchesQuery(PHONE_QUERY)
 
-    director.scrollSmooth += (director.scrollTarget - director.scrollSmooth) * (reduced || debugParams.instantCamera ? 1 : damp(3.4, dt))
+    if (director.phase !== 'explore') {
+      director.scrollSmooth += (director.scrollTarget - director.scrollSmooth) * (reduced || debugParams.instantCamera ? 1 : damp(3.4, dt))
+    }
     const pose = sampleCameraPath(director.scrollSmooth, scratch.path)
     const position = scratch.position.fromArray(pose.position)
     const target = scratch.target.fromArray(pose.target)
@@ -122,7 +142,18 @@ export function CityStage({ data, textures, hdr, light }: CityStageProps) {
       pose.focal = lerp(pose.focal, BALCONY.focal, visit)
       pose.side = lerp(pose.side, BALCONY.side, visit)
     }
-    const hour = debugParams.hour ?? pose.hour
+    // explore: the director has moved Nova and its camera this frame (flight chase, landing, walk orbit)
+    const walk = director.exploreBlend
+    // exploring is done in the golden hour, whatever the time on the flyover (`?heure` still wins)
+    const lit = debugParams.hour === undefined ? walk : 0
+    const hour = debugParams.hour ?? lerp(pose.hour, 0, walk)
+    if (walk > 0) {
+      const view = director.exploreCamera.view
+      position.lerp(view.position, walk)
+      target.lerp(view.target, walk)
+      pose.focal = lerp(pose.focal, view.focal, walk)
+      pose.side = lerp(pose.side, 0, walk)
+    }
 
     // descent from the upper atmosphere along its curve (`arrival` is already eased), shaking until the air thickens
     let roll = 0
@@ -135,9 +166,19 @@ export function CityStage({ data, textures, hdr, light }: CityStageProps) {
         position.y += (Math.random() - 0.5) * 2.4 * (1 - arrival)
       }
     }
+    const flight = director.flight
+    if (flight && !reduced) {
+      // a jolt at the burst and at the touchdown; the camera leans a little with Nova in the turns
+      const burst = Math.max(0, 1 - Math.abs(flight.t - CROUCH_SECONDS - 0.15) / 0.5)
+      const impact = flight.plan.lands ? Math.max(0, 1 - Math.abs(flight.t - flight.plan.arrival) / 0.35) * 1.6 : 0
+      const jolt = (burst + impact) * 0.22 * walk
+      position.x += (Math.random() - 0.5) * jolt
+      position.y += (Math.random() - 0.5) * jolt
+      roll -= director.roam.nova.roll * 0.18 * walk
+    }
     if (!reduced) {
       // hand-held drift and pointer parallax (quieter on the balcony, Nova is close)
-      const sway = 1 - visit * 0.75
+      const sway = (1 - visit * 0.75) * (1 - walk)
       position.x += (Math.sin(time * 0.21) * 0.22 + director.pointerSmooth.x * 1.3) * sway
       position.y += (Math.sin(time * 0.27 + 1.3) * 0.16 - director.pointerSmooth.y * 0.6) * sway
     }
@@ -158,7 +199,8 @@ export function CityStage({ data, textures, hdr, light }: CityStageProps) {
     camera.updateMatrixWorld()
 
     // the sun goes down as the visitor scrolls
-    const elevation = ((6.5 - 17 * hour) * Math.PI) / 180
+    // exploring, the sun stands a little higher (the sites lie in the shadow of the ridges at sunset): long warm light
+    const elevation = (lerp(6.5 - 17 * hour, EXPLORE_SUN, lit) * Math.PI) / 180
     uniforms.uSoleil.value.set(SUN_AZIMUTH.x * Math.cos(elevation), Math.sin(elevation), SUN_AZIMUTH.z * Math.cos(elevation))
     uniforms.uHeure.value = smoothstep(0.2, 1, hour)
     uniforms.uNuit.value = smoothstep(0.26, 0.92, hour)
@@ -190,15 +232,18 @@ export function CityStage({ data, textures, hdr, light }: CityStageProps) {
     }
 
     const film = director.film
-    film.speedBlur = 0
+    // the rush of the flight: radial blur with the speed
+    film.speedBlur = flight && !reduced ? smoothstep(0.4, 1, flight.speed) * 0.22 * walk : 0
     film.plasma = 0
-    film.exposure = lerp(0.95, 1.3, uniforms.uNuit.value) * (1 + (1 - arrival) * 0.5)
-    film.halo = 1
+    // the hero looks into the setting sun: keep the glow, just a step quieter
+    const night = uniforms.uNuit.value
+    film.exposure = lerp(0.82, 1.3, night) * (1 + (1 - arrival) * 0.32)
+    film.halo = lerp(0.72, 1, night)
 
     // crepuscular rays while the sun is up and in front of the camera, fading as it nears the edges
     const sun = scratch.sun.copy(uniforms.uSoleil.value).multiplyScalar(800).add(camera.position).project(camera)
     const facing = sun.z < 1 ? 1 - smoothstep(0.75, 1.15, Math.hypot(sun.x, sun.y)) : 0
-    film.rays = facing * (1 - smoothstep(0, 0.4, uniforms.uNuit.value)) * smoothstep(-0.04, 0.06, uniforms.uSoleil.value.y)
+    film.rays = facing * (1 - smoothstep(0, 0.4, night)) * smoothstep(-0.04, 0.06, uniforms.uSoleil.value.y) * 0.62
     film.sun.set(sun.x * 0.5 + 0.5, sun.y * 0.5 + 0.5)
   }, FRAME_PRIORITY.stage)
 
@@ -215,8 +260,14 @@ export function CityStage({ data, textures, hdr, light }: CityStageProps) {
         <Greenery />
         <Domes plinthMaterial={towerMaterial} />
         <Roads />
+        <Bridge />
         <Beacons />
-        <Shuttles />
+        <Birds light={light} />
+        <CityLife light={light} />
+        <GolfCourse />
+        <Stadium />
+        <Villages />
+        <FlightFx light={light} />
         <SignalBeam />
         <AlertSpotlights alertLevel={alertLevel} />
         <DistrictMarkers />

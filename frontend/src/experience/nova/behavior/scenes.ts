@@ -74,6 +74,26 @@ export const novaScenes = {
     if (firstVisit && district.intro) nova.say(district.intro, district.mood)
   },
 
+  /** the visitor asks to explore: Nova takes off with them towards the first site */
+  enterStreets(siteName: string): void {
+    nova.say(`Accrochez-vous, on décolle ! Destination : ${siteName}.`, 'focused')
+  },
+
+  /** back to the flyover: Nova shoots up into the sky */
+  leaveStreets(): void {
+    nova.say('On remonte !', 'happy')
+  },
+
+  /** Nova takes off from a site towards another one */
+  flyToPoi(name: string): void {
+    nova.say(`On décolle ! Destination : ${name}.`, 'focused')
+  },
+
+  /** Nova has landed on a site: it introduces it */
+  landAtPoi(name: string, blurb: string): void {
+    nova.say(`${name}. ${blurb}`, 'happy')
+  },
+
   /** the visitor stopped scrolling halfway between two districts */
   nudge(): void {
     nova.gesture('wave')

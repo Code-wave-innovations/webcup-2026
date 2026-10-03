@@ -84,6 +84,9 @@ const CLIP_ALIASES: Record<ClipName, readonly string[]> = {
   hop: ['hop', 'smalljump', 'bounce'],
   present: ['present', 'presenting', 'showing', 'pointhold'],
   sulk: ['sulk', 'crossedarms', 'armscrossed', 'impatient', 'waiting'],
+  crouch: ['crouch', 'crouching', 'takeoff', 'jumpstart'],
+  fly: ['fly', 'flying', 'superman', 'flight'],
+  land: ['land', 'landing', 'superherolanding', 'heroland'],
 }
 
 /** Maps the model's animation names to Nova clips (`Armature|Waving` → `wave`). */

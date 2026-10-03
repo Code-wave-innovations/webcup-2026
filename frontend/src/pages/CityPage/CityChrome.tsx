@@ -33,12 +33,14 @@ interface TopBarProps {
   session: Session
   active: number
   alert: boolean
+  exploring: boolean
   onQuit: () => void
+  onToggleExplore: () => void
 }
 
-export function TopBar({ session, active, alert, onQuit }: TopBarProps) {
+export function TopBar({ session, active, alert, exploring, onQuit, onToggleExplore }: TopBarProps) {
   return (
-    <header className={styles.bar} data-alert={alert}>
+    <header className={styles.bar} data-alert={alert} data-exploring={exploring}>
       <div className={styles.brand}>
         <NovaMark />
         <span>NOVA</span>
@@ -58,6 +60,15 @@ export function TopBar({ session, active, alert, onQuit }: TopBarProps) {
           <span>{session.name}</span>
           <small>{session.roleLabel}</small>
         </div>
+        <button
+          type="button"
+          className={styles.round}
+          aria-label={exploring ? 'Reprendre le survol' : 'Marcher dans la ville'}
+          aria-pressed={exploring}
+          onClick={onToggleExplore}
+        >
+          <Icon name="walk" />
+        </button>
         <button type="button" className={styles.round} aria-label="Quitter la ville et revenir au contrôle d'accès" onClick={onQuit}>
           <Icon name="logout" />
         </button>

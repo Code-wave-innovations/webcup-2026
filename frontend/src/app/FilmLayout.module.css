@@ -1,3 +1,25 @@
+/* hidden until reached with the keyboard */
+.skipLink {
+  position: fixed;
+  z-index: 30;
+  left: var(--gutter);
+  top: 12px;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--color-ice);
+  background: var(--color-glass-dense);
+  color: var(--color-ice-bright);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skipLink:focus-visible {
+  transform: none;
+}
+
 /* letterbox bars during the atmospheric entry */
 .letterbox {
   position: fixed;

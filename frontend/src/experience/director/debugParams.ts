@@ -1,3 +1,5 @@
+import { POIS, type PoiId } from '../city/cityConfig'
+
 /**
  * URL switches inherited from the prototype, used to frame a given moment of the film for screenshots
  * and visual checks (e.g. `/?entree=3`, `/ville?vue=2&fige=1`).
@@ -25,6 +27,8 @@ export interface DebugParams {
   entry?: number
   /** jump into the descent at this progress — `?arrivee=0.5` */
   arrival?: number
+  /** with `?vue`: explore mode, Nova standing on this site — `?site=golf` */
+  site?: PoiId
 }
 
 function parse(search: string): DebugParams {
@@ -48,6 +52,7 @@ function parse(search: string): DebugParams {
     view: num('vue'),
     entry: num('entree'),
     arrival: num('arrivee'),
+    site: POIS.find((poi) => poi.id === params.get('site'))?.id,
   }
 }
 

@@ -1,0 +1,87 @@
+/* the sound switch, bottom left of every film route */
+.toggle {
+  position: fixed;
+  z-index: 7;
+  left: var(--gutter);
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-line-thin);
+  background: var(--color-glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--color-text-muted);
+  font: 600 12px/1 var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.toggle:hover {
+  color: var(--color-ice-bright);
+  border-color: var(--color-line);
+}
+
+.toggle[aria-pressed='true'] {
+  color: var(--color-ice);
+  border-color: var(--color-line);
+}
+
+/* an equalizer: flat and dim when muted, dancing when on */
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.bars i {
+  width: 2px;
+  height: 3px;
+  background: currentColor;
+  transition: height 0.3s var(--ease-out-soft);
+}
+
+.toggle[aria-pressed='true'] .bars i {
+  height: 14px;
+  transform-origin: bottom;
+  animation: level 0.9s ease-in-out infinite alternate;
+}
+
+.toggle[aria-pressed='true'] .bars i:nth-child(2) {
+  animation-duration: 0.62s;
+  animation-delay: -0.2s;
+}
+
+.toggle[aria-pressed='true'] .bars i:nth-child(3) {
+  animation-duration: 0.78s;
+  animation-delay: -0.5s;
+}
+
+.toggle[aria-pressed='true'] .bars i:nth-child(4) {
+  animation-duration: 0.55s;
+  animation-delay: -0.1s;
+}
+
+@keyframes level {
+  from {
+    transform: scaleY(0.2);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* phones have no free corner (the city panels and the chat composer reach the bottom): the switch is desktop only */
+@media (max-width: 860px) {
+  .toggle {
+    display: none;
+  }
+}

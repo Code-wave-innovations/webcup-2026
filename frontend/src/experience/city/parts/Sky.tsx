@@ -1,5 +1,8 @@
+import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, type Ref } from 'react'
 import { BackSide, CanvasTexture, Vector3, Vector4, type Mesh } from 'three'
+import { director } from '../../director/director'
+import { FRAME_PRIORITY } from '../../framePriority'
 import { useCity } from '../CityContext'
 import { createWorldMaterial } from '../worldMaterial'
 import skyVert from '../glsl/sky.vert.glsl?raw'
@@ -59,6 +62,11 @@ export function Sky({ meshRef }: { meshRef: Ref<Mesh> }) {
       ),
     [uniforms, textures, title],
   )
+
+  // the city's name belongs to the flyover: it fades out while exploring (it would hang over every site)
+  useFrame(() => {
+    material.uniforms.uTexteForce.value = 1 - director.exploreBlend
+  }, FRAME_PRIORITY.details)
 
   useEffect(() => {
     const redraw = () => {

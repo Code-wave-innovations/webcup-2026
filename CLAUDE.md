@@ -85,12 +85,39 @@ Install: the repo carries Yarn PnP files (`.pnp.cjs`) and a `package-lock.json` 
 
 `tsconfig.app.json` enables `noUnusedLocals`/`noUnusedParameters`, `verbatimModuleSyntax` (use `import type` for type-only imports), and `erasableSyntaxOnly` (no enums, namespaces, or parameter properties).
 
+With the PnP install, `yarn <script>` and `yarn vitest run` also work. In a non-interactive shell, give vitest `< /dev/null`, otherwise it can wait on stdin. There is no Prettier config: the code uses single quotes, no semicolons and lines up to about 180 columns (`prettier --no-semi --single-quote --print-width 180` matches it). Prettier's defaults would rewrite whole files.
+
 Routes are declared in `src/app/App.tsx`:
-- `/` (airlock login) and `/ville` (citizen app) run inside `FilmLayout`, which mounts the persistent three.js scene.
-- `/equipe` is the team page.
+- `/` (airlock login), `/ville` (citizen app) and `/nova` (chat with Nova, lazy) run inside `FilmLayout`, which mounts the persistent three.js scene.
+- `/equipe` is the team page. `/dev/nova` (dev builds only) is Nova's test bench: gestures, postures, emotions, and a GLB dropped onto it is checked against the rig contract.
 - `/agent/*` and `/admin/*` lazy-load the staff back-office (`src/backoffice/`) outside the film layout.
 
 The citizen app ("NOVA") is styled with CSS Modules reading the design tokens of `src/styles/tokens.css` (`@theme static`, e.g. `--color-ice`, `--color-glass`, `--font-display`). The look is dark glass, cut corners via `clip-path` rather than border-radius, and a cyan "ice" light. Shared primitives live in `src/ui/`, feature widgets in `src/features/`, and state in zustand stores.
+
+### The film (`src/experience/`)
+
+The citizen routes play one continuous film in a single R3F `<Canvas>` that is never unmounted. The flow goes from the cockpit and login, through the atmospheric entry, to the city flyover driven by the scroll and the Observatory at night for the chat.
+- **Director** (`director/`): `director` (a `FilmDirector`) owns the phase (`approach` → `entry` → `descent` → `city`, plus `explore`), the scroll position, the entry timeline and the film controls read by the post-processing.
+  - `useDirectorStore` holds the low-frequency state for React.
+  - `frameState` and `frameBus` carry per-frame values (screen anchors, Nova's on-screen box) to the DOM without React renders.
+  - The entry is a paused GSAP timeline (`timelines/entryTimeline.ts`) that is seeked to the film clock, so "skip" and the debug jumps are just seeks.
+- **Frame order**: `useFrame` priorities come from `framePriority.ts`: director, then stage, then details, then the water reflection, then render (1). Any positive priority takes over rendering, so new per-frame work must pick one of these slots.
+- **Layers**: Nova and overlays (clouds, dust) live on `NOVA_LAYER`. The lake's mirror camera skips that layer, so Nova never appears in the reflection.
+- **Nova** (`nova/`): a GLB rig (`rig/`, `public/models/nova.glb`) with procedural gestures as fallbacks (`animation/poseLibrary.ts`), a shader-drawn face (`face/`), and placement per stage (`stage/`). The `novaBrain.ts` state machine is pure: gesture > posture > walk > talk.
+- **Features never import Nova.** They publish typed events: `LoginActivity`, the `ChatEvent` of `useNovaChat`, the reports… Each page translates them into `nova/behavior/scenes.ts` calls (`pages/*/useNova*Reactions.ts`). Keep that direction when adding a feature.
+- **Sound** (`audio/`): synthesized with WebAudio, no audio files. It is off by default; the `SoundToggle` (desktop only) turns it on and the choice is kept in `localStorage`.
+  - `sounds.ts` is the score as pure data, and `reactionSounds()` maps Nova's state changes to sounds. Nova's state of mind is therefore its voice: a new reaction needs no sound code.
+  - `SoundDirector` adds the interface clicks (DOM delegation) and the ambience beds driven by the director's cues.
+- **Quality** (`quality/`): `detectQuality` picks the light profile (phones, small GPUs). `ResolutionGovernor` lowers the pixel ratio at most twice when the city runs below 27 fps, but only if GPU timer queries show the GPU is the bottleneck (when they are available).
+- **Reduced motion**: `director.reducedMotion` gives instant camera moves, a short fade instead of the entry, and no shake, plasma or blur. `base.css` also kills CSS animations.
+
+Debug URL switches (`director/debugParams.ts`) frame a given moment for screenshots:
+- `?vue=0..5` lands at a city section and signs in with the demo resident; it works on `/ville` and `/nova`.
+- `?entree=<s>` jumps into the entry, `?arrivee=<0..1>` into the descent, and `?fige=1` freezes the entry.
+- `?heure=<0..1>` sets the time of day; `?qualite=<scale>`, `?ldr=1` and `?sansaa=1` override the quality.
+- In dev builds, `window.__nova` (`director`, `gl`, `profile`) and `window.__novaStore` are exposed for test drivers.
+
+Headless Chrome caps frames near 30 fps whatever the scene costs, so judge performance with GPU timer queries and `gl.info`, not with fps.
 
 ### Back-office (`src/backoffice/`)
 

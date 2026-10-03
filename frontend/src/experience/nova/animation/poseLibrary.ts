@@ -141,6 +141,43 @@ const bracePose = (shake: number): PoseKey['bones'] => ({
   Head: [-18, 0, 0],
 })
 
+// anticipation of the take-off: deep knee bend, torso forward, fists back and down, eyes on the sky ahead
+const crouchKey = (t: number, coil: number): PoseKey => ({
+  t,
+  hips: [0, -0.15 - 0.012 * coil, 0.01],
+  bones: {
+    LeftUpLeg: [-74, 0, 7], RightUpLeg: [-74, 0, -7], LeftLeg: [118, 0, 0], RightLeg: [118, 0, 0], LeftFoot: [-42, 0, 0], RightFoot: [-42, 0, 0],
+    Spine: [26 + 2 * coil, 0, 0], Chest: [10, 0, 0], Neck: [-10, 0, 0], Head: [-26, 0, 0],
+    LeftArm: [34, 0, 24], RightArm: [34, 0, -24], LeftForeArm: [-14, 0, 0], RightForeArm: [-14, 0, 0], LeftHand: [-40, 0, 0], RightHand: [-40, 0, 0],
+  },
+})
+
+// in the air (the body lies along the flight): legs together and straight, toes pointed, arms along the body with
+// the palms backwards (the repulsors), back arched and head raised to look ahead; the legs trail a little in the wind
+const flyKey = (t: number, wind: number): PoseKey => ({
+  t,
+  hips: [0, 0, 0],
+  bones: {
+    LeftUpLeg: [5 + wind, 0, 2], RightUpLeg: [5 - wind, 0, -2], LeftLeg: [7 - wind, 0, 0], RightLeg: [7 + wind, 0, 0], LeftFoot: [42, 0, 0], RightFoot: [42, 0, 0],
+    Spine: [-7, 0, 0], Chest: [-5, 0, 0], Neck: [-22, 0, 0], Head: [-34, 0, 0],
+    LeftArm: [14, 0, 13 + wind * 0.5], RightArm: [14, 0, -13 - wind * 0.5], LeftForeArm: [-4, 0, 0], RightForeArm: [-4, 0, 0], LeftHand: [62, 0, 0], RightHand: [62, 0, 0],
+  },
+})
+
+// the superhero landing: right knee and right fist on the ground, left foot planted ahead, left arm swept back,
+// head down at the impact, then looking up before standing
+const landKey = (t: number, sink: number, look: number): PoseKey => ({
+  t,
+  hips: [0, -0.23 - sink, -0.03],
+  bones: {
+    LeftUpLeg: [-84, 0, 8], LeftLeg: [100, 0, 0], LeftFoot: [-16, 0, 0],
+    RightUpLeg: [14, 0, -6], RightLeg: [104, 0, 0], RightFoot: [38, 0, 0],
+    Spine: [36 + 30 * sink, 0, 0], Chest: [16, -10, 0], Neck: [6 - 10 * look, 0, 0], Head: [26 - 46 * look, 8, 0],
+    RightArm: [-58, 0, -12], RightForeArm: [-8, 0, 0], RightHand: [10, 0, 0],
+    LeftArm: [44, 0, 52], LeftForeArm: [-12, 0, 0], LeftHand: [0, 0, 0],
+  },
+})
+
 /** Nova's gestures. A delivered model may bring its own; missing ones are generated from these. */
 export const POSE_LIBRARY: Record<ClipName, ClipDefinition> = {
   idle: {
@@ -262,6 +299,31 @@ export const POSE_LIBRARY: Record<ClipName, ClipDefinition> = {
       { t: 0.3, hips: [0, 0.045, 0], bones: { LeftUpLeg: [-4, 0, 0], RightUpLeg: [-4, 0, 0], LeftLeg: [8, 0, 0], RightLeg: [8, 0, 0], LeftFoot: [10, 0, 0], RightFoot: [10, 0, 0], LeftArm: [0, 0, 32], RightArm: [0, 0, -32], Head: [-8, 0, 0] } },
       { t: 0.45, hips: [0, -0.015, 0], bones: { LeftUpLeg: [-14, 0, 0], RightUpLeg: [-14, 0, 0], LeftLeg: [26, 0, 0], RightLeg: [26, 0, 0], LeftFoot: [-12, 0, 0], RightFoot: [-12, 0, 0], LeftArm: [0, 0, 12], RightArm: [0, 0, -12] } },
       { ...rest(0.6), bones: { ...rest(0.6).bones, LeftUpLeg: [0, 0, 0], RightUpLeg: [0, 0, 0], LeftLeg: [0, 0, 0], RightLeg: [0, 0, 0], LeftFoot: [0, 0, 0], RightFoot: [0, 0, 0] } },
+    ],
+  },
+  crouch: { duration: 0.6, loop: true, keys: [crouchKey(0, 0), crouchKey(0.3, 1), crouchKey(0.6, 0)] },
+  fly: { duration: 1.4, loop: true, keys: [flyKey(0, 0), flyKey(0.7, 4), flyKey(1.4, 0)] },
+  land: {
+    duration: 1.3,
+    loop: false,
+    keys: [
+      { ...landKey(0, 0.04, 0), hips: [0, -0.16, -0.03] },
+      landKey(0.09, 0.06, 0),
+      landKey(0.28, 0, 0),
+      landKey(0.62, 0, 1),
+      {
+        t: 1.0,
+        hips: [0, -0.08, 0],
+        bones: {
+          LeftUpLeg: [-40, 0, 4], LeftLeg: [56, 0, 0], LeftFoot: [-16, 0, 0], RightUpLeg: [-20, 0, -4], RightLeg: [48, 0, 0], RightFoot: [-20, 0, 0],
+          Spine: [12, 0, 0], Chest: [4, 0, 0], Neck: [0, 0, 0], Head: [-6, 0, 0],
+          RightArm: [-10, 0, -14], RightForeArm: [-20, 0, 0], RightHand: [0, 0, 0], LeftArm: [6, 0, 18], LeftForeArm: [-14, 0, 0],
+        },
+      },
+      {
+        ...rest(1.3),
+        bones: { ...rest(1.3).bones, LeftUpLeg: [0, 0, 0], RightUpLeg: [0, 0, 0], LeftLeg: [0, 0, 0], RightLeg: [0, 0, 0], LeftFoot: [0, 0, 0], RightFoot: [0, 0, 0], Spine: [0, 0, 0], Neck: [0, 0, 0], LeftHand: [0, 0, 0], RightHand: [0, 0, 0] },
+      },
     ],
   },
   poked: {
