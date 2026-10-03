@@ -11,6 +11,7 @@ export const publicUserSelect = {
   last_name: true,
   phone: true,
   address: true,
+  profile: true,
   district_id: true,
   role: true,
   locale: true,
@@ -29,6 +30,8 @@ const userModel = {
       prisma.user.count({ where }),
     ]),
   getById: (id: number) => prisma.user.findUnique({ where: { id }, select: publicUserSelect }),
+  existsByEmail: async (email: string) =>
+    !!(await prisma.user.findUnique({ where: { email }, select: { id: true } })),
   getByEmailWithPassword: (email: string) => prisma.user.findUnique({ where: { email } }),
   getPasswordHash: async (id: number) =>
     (await prisma.user.findUnique({ where: { id }, select: { password_hash: true } }))?.password_hash,

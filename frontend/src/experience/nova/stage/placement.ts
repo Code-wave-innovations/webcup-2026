@@ -39,14 +39,14 @@ export const screenHeightAt = (camera: PerspectiveCamera, fraction: number, dept
 
 /** Nova is shown 1 unit tall; the cockpit frame is about 1.9 units deep in front of the pilot. */
 const COCKPIT = {
-  /** on the glare shield, left of the hologram emitter (x is scaled with the cockpit's width) */
-  x: -0.025,
-  /** top of the glare shield at that depth (it tilts slightly towards the canopy) */
-  y: -0.28,
+  /** left of the hologram, sharing its vertical midline */
+  x: -0.16,
+  /** feet so Nova's mid-torso sits on the same line as the card centre (~50 % viewport) */
+  y: -0.2,
   z: -0.95,
-  scale: 0.25,
+  scale: 0.28,
   /** three-quarter view, turned towards the hologram */
-  yaw: 0.22,
+  yaw: 0.28,
 }
 
 /**

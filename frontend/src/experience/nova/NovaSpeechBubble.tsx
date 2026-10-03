@@ -4,13 +4,14 @@ import { speechProgress } from './behavior/novaBrain'
 import { novaNow, useNovaStore } from './behavior/novaStore'
 import styles from './NovaSpeechBubble.module.css'
 
-const TAIL_X = 26
-const GAP = 14
+/** horizontal gap between the head and the right edge of the bubble (always to Nova's left) */
+const SIDE_GAP = 18
+/** how far below the brow the bubble sits (positive = lower) */
+const DROP = 8
 const MARGIN = 12
 
 /**
- * What Nova says, typed in a bubble above its head. The letters appear on the same clock as the mouth
- * moves; screen readers get the whole sentence at once.
+ * What Nova says, typed in a bubble to the left of its head.
  */
 export function NovaSpeechBubble() {
   const speech = useNovaStore((s) => s.brain.speech)
@@ -32,10 +33,11 @@ export function NovaSpeechBubble() {
         if (!visible || !current) return
         const shown = current.text.slice(0, progress.shown)
         if (text.textContent !== shown) text.textContent = shown
-        // the bubble opens to the left of the head: Nova stands beside the interface, on its left in the
-        // cockpit (the hologram) and in the right corner of the city
-        const x = Math.min(Math.max(MARGIN, head.x + TAIL_X - bubble.offsetWidth), window.innerWidth - bubble.offsetWidth - MARGIN)
-        const y = Math.max(MARGIN, head.y - bubble.offsetHeight - GAP)
+
+        const width = bubble.offsetWidth
+        const height = bubble.offsetHeight
+        const x = Math.min(Math.max(MARGIN, head.x - SIDE_GAP - width), window.innerWidth - width - MARGIN)
+        const y = Math.min(Math.max(MARGIN, head.y - height * 0.35 + DROP), window.innerHeight - height - MARGIN)
         bubble.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`
       }),
     [],

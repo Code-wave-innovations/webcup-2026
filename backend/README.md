@@ -27,7 +27,7 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 
 | Method & path | Access | Feature |
 |---|---|---|
-| `POST /api/auth/register` · `POST /api/auth/login` | public | D01, D03 |
+| `POST /api/auth/register` (JSON or multipart; optional file `profile`) · `POST /api/auth/login` · `GET /api/auth/exists?email=` (`{ exists }`, no session) · `GET /api/auth/by-email?email=` (passwordless session, same payload as login) | public | D01, D03 |
 | `GET/PATCH /api/me` · `PATCH /api/me/password` · `POST /api/me/onboarding/complete` | logged in | D03, D12, D14, F23/F24 (`preferences`) |
 | `DELETE /api/me` body `{ password, confirm: true }` | citizen | F33 |
 | `GET /api/users` · `GET/PATCH/DELETE /api/users/:id` · `POST /api/users/:id/unlock-login` | staff (agents: citizens only, no email/password/role changes) | D08, D09, F34 |

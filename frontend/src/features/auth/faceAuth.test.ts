@@ -7,6 +7,7 @@ const httpError = (status: number) => new AxiosError('failed', 'ERR_BAD_RESPONSE
 describe('faceAuth', () => {
   it('maps a gallery identity to the demo account enrolled under it', () => {
     expect(accountForIdentity('miora')?.name).toBe('Miora')
+    expect(accountForIdentity('miora.at.terra-nova.city')?.name).toBe('Miora')
     expect(accountForIdentity('conseil')?.role).toBe('council')
     expect(accountForIdentity('someone-else')).toBeUndefined()
     expect(accountForIdentity(null)).toBeUndefined()

@@ -94,7 +94,7 @@ describe('cockpitFrame', () => {
     const narrowFrame = frame()
     cockpitFrame(camera, 1.0, narrowFrame, new Vector3())
     expect(wide).toBeGreaterThan(0)
-    expect(wideFrame.y).toBeCloseTo(-0.28)
+    expect(wideFrame.y).toBeCloseTo(-0.2)
     expect(Math.abs(narrowFrame.x)).toBeLessThan(Math.abs(wideFrame.x))
   })
 
