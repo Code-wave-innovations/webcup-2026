@@ -3,13 +3,14 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import type { FastifyInstance } from "fastify";
 import type { Config } from "./config.js";
+import type { RealtimeSessionDeps } from "./modules/realtime/session.js";
 import { authPlugin } from "./plugins/auth.js";
 import { healthRoutes } from "./routes/health.js";
 import { realtimeTokensRoutes } from "./routes/realtime-tokens.js";
 import { realtimeWsRoutes } from "./routes/realtime-ws.js";
 import { transcriptionRoutes, type TranscriptionRouteDeps } from "./routes/transcriptions.js";
 
-export type AppDeps = TranscriptionRouteDeps;
+export type AppDeps = TranscriptionRouteDeps & RealtimeSessionDeps;
 
 export async function buildApp(config: Config, deps: AppDeps = {}): Promise<FastifyInstance> {
     const app = Fastify({ logger: false });
@@ -27,7 +28,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
     await app.register(authPlugin(config));
     await app.register(transcriptionRoutes(config, deps));
     await app.register(realtimeTokensRoutes(config));
-    await app.register(realtimeWsRoutes(config));
+    await app.register(realtimeWsRoutes(config, deps));
 
     return app;
 }

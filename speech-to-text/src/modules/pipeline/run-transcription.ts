@@ -14,7 +14,12 @@ import {
   type RefineInput,
   type RefineResult,
 } from "../refiner/claude-refiner.js";
-import { createGptTranscribeProvider } from "../stt/providers/gpt-transcribe.js";
+import { shouldRefine } from "../refiner/should-refine.js";
+import { createOpenRouterSttProvider } from "../stt/providers/openrouter-stt.js";
+import {
+  dictionaryTermsForHints,
+  mergePromptContext,
+} from "../stt/terra-nova-glossary.js";
 import type { SttProvider, SttResult, TranscriptSegment } from "../stt/types.js";
 import { normalizeSegments } from "../timestamps/normalize.js";
 
@@ -41,7 +46,17 @@ export interface PipelineDb {
 
 export interface PipelineDeps {
   db?: PipelineDb;
-  config?: Pick<Config, "OPENAI_API_KEY" | "ANTHROPIC_API_KEY" | "MAX_AUDIO_DURATION_SEC" | "RETAIN_AUDIO_DEFAULT">;
+  config?: Pick<
+    Config,
+    | "OPENROUTER_API_KEY"
+    | "OPENROUTER_STT_MODEL"
+    | "OPENROUTER_BASE_URL"
+    | "ANTHROPIC_API_KEY"
+    | "CLAUDE_REFINER_MODEL"
+    | "MAX_AUDIO_DURATION_SEC"
+    | "RETAIN_AUDIO_DEFAULT"
+    | "CONFIDENCE_FALLBACK_THRESHOLD"
+  >;
   preprocess?: typeof preprocessAudio;
   toWav?: typeof pcmToWav;
   sttProvider?: SttProvider;
@@ -200,13 +215,18 @@ export async function runTranscriptionJob(
     );
     const wavPath = await toWav(pcmPath, path.join(workDir, "output.wav"));
 
-    const stt = deps.sttProvider ?? createGptTranscribeProvider(config.OPENAI_API_KEY);
+    const stt =
+      deps.sttProvider ??
+      createOpenRouterSttProvider(config.OPENROUTER_API_KEY, {
+        model: config.OPENROUTER_STT_MODEL,
+        baseUrl: config.OPENROUTER_BASE_URL,
+      });
     let sttResult: SttResult;
     try {
       sttResult = await stt.transcribe({
         audioPath: wavPath,
         languageHints,
-        promptContext: buildPromptContext(context),
+        promptContext: mergePromptContext(languageHints, buildPromptContext(context)),
         timestamps,
       });
     } catch (err) {
@@ -244,52 +264,66 @@ export async function runTranscriptionJob(
     let segments = sttResult.segments;
 
     if (job.mode !== "FAST") {
-      const refine =
-        deps.refine ??
-        createClaudeRefiner(config.ANTHROPIC_API_KEY).refineTranscript;
-      const refineStarted = Date.now();
-      try {
-        const refined = await refine({
-          text,
-          segments,
-          languageHints,
-          context: {
-            domain: typeof context.domain === "string" ? context.domain : undefined,
-            keywords: stringArray(context.keywords),
-          },
-        });
-        const latencyMs = Date.now() - refineStarted;
-        await db.providerCall.create({
-          data: {
+      const decision = shouldRefine({
+        text,
+        confidence: sttResult.confidence,
+        languageHints,
+        threshold: config.CONFIDENCE_FALLBACK_THRESHOLD,
+      });
+      if (!decision.refine) {
+        logMetric("refine.skipped", { jobId, reason: decision.reason });
+      } else {
+        const refine =
+          deps.refine ??
+          createClaudeRefiner(config.ANTHROPIC_API_KEY, {
+            model: config.CLAUDE_REFINER_MODEL,
+          }).refineTranscript;
+        const refineStarted = Date.now();
+        try {
+          const dictionaryTerms = dictionaryTermsForHints(languageHints);
+          const refined = await refine({
+            text,
+            segments,
+            languageHints,
+            context: {
+              domain: typeof context.domain === "string" ? context.domain : undefined,
+              keywords: stringArray(context.keywords),
+            },
+            ...(dictionaryTerms ? { dictionaryTerms } : {}),
+          });
+          const latencyMs = Date.now() - refineStarted;
+          await db.providerCall.create({
+            data: {
+              jobId,
+              provider: "claude-refiner",
+              operation: "refine",
+              latencyMs,
+              success: true,
+            },
+          });
+          logMetric("refine.completed", { jobId, provider: "claude-refiner", latencyMs });
+          text = refined.text;
+          segments = refined.segments;
+        } catch (err) {
+          const latencyMs = Date.now() - refineStarted;
+          await db.providerCall.create({
+            data: {
+              jobId,
+              provider: "claude-refiner",
+              operation: "refine",
+              latencyMs,
+              success: false,
+            },
+          });
+          logMetric("refine.failed", {
             jobId,
             provider: "claude-refiner",
-            operation: "refine",
             latencyMs,
-            success: true,
-          },
-        });
-        logMetric("refine.completed", { jobId, provider: "claude-refiner", latencyMs });
-        text = refined.text;
-        segments = refined.segments;
-      } catch (err) {
-        const latencyMs = Date.now() - refineStarted;
-        await db.providerCall.create({
-          data: {
-            jobId,
-            provider: "claude-refiner",
-            operation: "refine",
-            latencyMs,
-            success: false,
-          },
-        });
-        logMetric("refine.failed", {
-          jobId,
-          provider: "claude-refiner",
-          latencyMs,
-          error: errorDetail(err),
-        });
-        // Graceful degradation: keep the raw STT text/segments and still complete the job.
-        logMetric("refine.fallback", { jobId, provider: "claude-refiner" });
+            error: errorDetail(err),
+          });
+          // Graceful degradation: keep the raw STT text/segments and still complete the job.
+          logMetric("refine.fallback", { jobId, provider: "claude-refiner" });
+        }
       }
     }
 

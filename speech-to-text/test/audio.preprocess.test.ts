@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { test } from "node:test";
 import {
   AudioPreprocessError,
+  analyzeSpeechEnergy,
   preprocessAudio,
 } from "../src/modules/audio/preprocess.js";
 
@@ -74,4 +75,21 @@ test("preprocessAudio rejects duration above max with AUDIO_TOO_LARGE", async (t
   } finally {
     await fs.rm(workDir, { recursive: true, force: true });
   }
+});
+
+test("analyzeSpeechEnergy detects speech vs silence", () => {
+  const silence = Buffer.alloc(16000 * 2);
+  assert.deepEqual(analyzeSpeechEnergy(silence), { speechRatio: 0, longestSpeechMs: 0 });
+
+  const mixed = Buffer.alloc(16000 * 2);
+  for (let i = 0; i < 8000; i++) {
+    mixed.writeInt16LE(Math.round(Math.sin(i / 10) * 16000), i * 2);
+  }
+  const { speechRatio, longestSpeechMs } = analyzeSpeechEnergy(mixed);
+  assert.ok(speechRatio > 0.45 && speechRatio < 0.55, `speechRatio=${speechRatio}`);
+  assert.ok(longestSpeechMs >= 480, `longestSpeechMs=${longestSpeechMs}`);
+});
+
+test("analyzeSpeechEnergy returns zero for empty buffer", () => {
+  assert.deepEqual(analyzeSpeechEnergy(Buffer.alloc(0)), { speechRatio: 0, longestSpeechMs: 0 });
 });

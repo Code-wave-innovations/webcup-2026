@@ -1,0 +1,67 @@
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  background:
+    repeating-linear-gradient(0deg, var(--color-scanline) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at center, rgba(41, 196, 232, 0.12), var(--color-void) 60%);
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.logo {
+  width: 120px;
+  height: 120px;
+  filter: drop-shadow(0 0 18px var(--color-ice-halo));
+}
+
+.brand {
+  font: 600 15px/1 var(--font-display);
+  letter-spacing: 0.4em;
+  color: var(--color-ice-bright);
+}
+
+.line {
+  min-height: 20px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.caret {
+  display: inline-block;
+  width: 8px;
+  height: 15px;
+  margin-left: 3px;
+  vertical-align: -2px;
+  background: var(--color-ice);
+  animation: caret 0.8s steps(1) infinite;
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.bar {
+  width: 220px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-ice), var(--color-ice-bright));
+  transform-origin: 0 50%;
+  animation: load 1.3s var(--ease-out-soft) forwards;
+  box-shadow: 0 0 12px var(--color-ice);
+}
+
+@keyframes load {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

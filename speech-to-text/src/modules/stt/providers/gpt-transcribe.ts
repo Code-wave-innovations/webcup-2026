@@ -6,6 +6,7 @@ import type {
   TranscriptionVerbose,
 } from "openai/resources/audio/transcriptions.js";
 import type { SttInput, SttProvider, SttResult, TranscriptSegment } from "../types.js";
+import { buildLanguagePrompt, resolveApiLanguage } from "../language.js";
 
 export const GPT_TRANSCRIBE_PROVIDER_NAME = "gpt-transcribe";
 export const GPT_TRANSCRIBE_MODEL = "gpt-4o-transcribe";
@@ -116,7 +117,10 @@ export function createGptTranscribeProvider(
       const wantTimestamps = timestamps !== false;
       const started = Date.now();
 
-      const language = languageHints?.[0];
+      // Force the language only when a single OpenAI-recognized hint is given;
+      // unsupported codes (e.g. mg) and multi-hint lists use the prompt instead.
+      const language = resolveApiLanguage(languageHints);
+      const prompt = buildLanguagePrompt(languageHints, promptContext);
 
       if (wantTimestamps) {
         const raw = await client.audio.transcriptions.create({
@@ -125,7 +129,7 @@ export function createGptTranscribeProvider(
           response_format: "verbose_json",
           timestamp_granularities: ["segment"],
           ...(language ? { language } : {}),
-          ...(promptContext ? { prompt: promptContext } : {}),
+          ...(prompt ? { prompt } : {}),
         });
         return mapGptTranscriptionToSttResult(raw, Date.now() - started);
       }
@@ -135,7 +139,7 @@ export function createGptTranscribeProvider(
         model: GPT_TRANSCRIBE_MODEL,
         response_format: "json",
         ...(language ? { language } : {}),
-        ...(promptContext ? { prompt: promptContext } : {}),
+        ...(prompt ? { prompt } : {}),
       });
       return mapGptTranscriptionToSttResult(raw, Date.now() - started);
     },

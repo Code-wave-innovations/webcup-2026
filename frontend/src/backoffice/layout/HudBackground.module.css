@@ -1,0 +1,60 @@
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--color-void);
+}
+
+/* same palette as the citizen film's painted fallback, pushed into the dark */
+.sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 70% at 85% 115%, color-mix(in srgb, var(--color-sky-3) 45%, transparent), transparent 60%),
+    radial-gradient(90% 60% at 10% -10%, color-mix(in srgb, var(--color-sky-1) 80%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--color-void) 0%, color-mix(in srgb, var(--color-sky-1) 40%, var(--color-void)) 55%, color-mix(in srgb, var(--color-sky-2) 30%, var(--color-void)) 100%);
+  opacity: 0.85;
+}
+
+.grid {
+  position: absolute;
+  inset: -2px;
+  background-image:
+    linear-gradient(var(--color-beam-1) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-beam-1) 1px, transparent 1px),
+    linear-gradient(rgba(143, 233, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(143, 233, 255, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+  mask-image: radial-gradient(ellipse at 50% 40%, #000 30%, transparent 85%);
+  animation: drift 60s linear infinite;
+}
+
+@keyframes drift {
+  to {
+    background-position: 120px 120px, 120px 120px, 120px 120px, 120px 120px;
+  }
+}
+
+.beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 30vh;
+  top: -30vh;
+  background: linear-gradient(180deg, transparent, rgba(143, 233, 255, 0.045), transparent);
+  animation: scan 9s linear infinite;
+}
+
+@keyframes scan {
+  to {
+    transform: translateY(160vh);
+  }
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(2, 4, 10, 0.75) 100%);
+}

@@ -16,10 +16,14 @@ import type { SttProvider } from "../src/modules/stt/types.js";
 import { setMetricSink } from "../src/lib/metrics.js";
 
 const config = {
-  OPENAI_API_KEY: "x",
+  OPENROUTER_API_KEY: "or-x",
+  OPENROUTER_STT_MODEL: "openai/whisper-large-v3",
+  OPENROUTER_BASE_URL: "https://openrouter.test/api/v1",
   ANTHROPIC_API_KEY: "y",
+  CLAUDE_REFINER_MODEL: "claude-sonnet-4-5-20250929",
   MAX_AUDIO_DURATION_SEC: 7200,
   RETAIN_AUDIO_DEFAULT: false,
+  CONFIDENCE_FALLBACK_THRESHOLD: 0.55,
 };
 
 function makeHarness(jobOverrides: Partial<PipelineJobRecord> = {}) {
@@ -59,7 +63,7 @@ function makeHarness(jobOverrides: Partial<PipelineJobRecord> = {}) {
       return {
         text: "bonjour monde",
         language: "fr",
-        confidence: 0.9,
+        confidence: 0.4,
         latencyMs: 12,
         segments: [
           { startMs: 500, endMs: 900, text: "monde" },
@@ -266,7 +270,7 @@ test("refine failure falls back to raw STT text/segments and still completes", a
     assert.equal(final.text, "bonjour monde");
     assert.equal(final.errorCode, null);
     assert.equal(final.errorMessage, null);
-    assert.equal(final.confidence, 0.9);
+    assert.equal(final.confidence, 0.4);
     const created = (final.segments as { create: { text: string }[] }).create;
     assert.deepEqual(created.map((s) => s.text), ["bonjour", "monde"]);
     assert.equal(b.calls.at(-1)!.success, false);

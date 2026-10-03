@@ -1,0 +1,42 @@
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.text {
+  min-width: 0;
+  max-width: 72ch;
+}
+
+.codes {
+  font: 600 11.5px/1.2 var(--font-body);
+  letter-spacing: 0.18em;
+  color: var(--color-ice);
+  margin-bottom: 8px;
+}
+
+.title {
+  font: 600 clamp(24px, 2.6vw, 36px) / 1.1 var(--font-display);
+  letter-spacing: 0.01em;
+  background: linear-gradient(90deg, var(--color-text), var(--color-ice-bright) 60%, var(--color-ice));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  outline: none;
+}
+
+.lead {
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}

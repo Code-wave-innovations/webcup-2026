@@ -1,0 +1,78 @@
+.stack {
+  position: fixed;
+  top: 76px;
+  right: 16px;
+  z-index: 60;
+  display: grid;
+  gap: 8px;
+  width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.toast {
+  --tone: var(--color-ok);
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 14px;
+  background: var(--color-glass-dense);
+  border: 1px solid color-mix(in srgb, var(--tone) 50%, transparent);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--tone) 18%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  font-size: 14px;
+  pointer-events: auto;
+  overflow: hidden;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+
+.toast > svg {
+  color: var(--tone);
+}
+
+.ok {
+  --tone: var(--color-ok);
+}
+
+.info {
+  --tone: var(--color-ice);
+}
+
+.alert {
+  --tone: var(--color-alert);
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--color-text);
+}
+
+/* remaining-time bar */
+.timer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--tone);
+  transform-origin: 0 50%;
+  animation: drain 4.2s linear forwards;
+}
+
+@keyframes drain {
+  to {
+    transform: scaleX(0);
+  }
+}
