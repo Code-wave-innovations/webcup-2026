@@ -21,14 +21,33 @@ read_env() {
 DOMAIN="$(read_env DOMAIN)"
 LETSENCRYPT_EMAIL="$(read_env LETSENCRYPT_EMAIL)"
 FORCE_HTTP="$(read_env FORCE_HTTP)"
+HTTP_PORT="$(read_env HTTP_PORT)"
+HTTP_PORT="${HTTP_PORT:-80}"
 : "${DOMAIN:?DOMAIN missing in .env.prod}"
 : "${LETSENCRYPT_EMAIL:?LETSENCRYPT_EMAIL missing in .env.prod}"
 
-COMPOSE=(docker compose -f docker-compose.prod.yml --env-file .env.prod)
+# If Docker is not on :80, TLS must stay on the host — force HTTP-only in the container.
+if [[ -z "${FORCE_HTTP}" && "${HTTP_PORT}" != "80" ]]; then
+  FORCE_HTTP=1
+  echo "==> Auto-enabling FORCE_HTTP=1 (HTTP_PORT=${HTTP_PORT})"
+fi
+export FORCE_HTTP
+
+# Prefer sudo when the user cannot talk to the Docker socket.
+DOCKER=(docker)
+if ! docker info >/dev/null 2>&1; then
+  if sudo docker info >/dev/null 2>&1; then
+    DOCKER=(sudo docker)
+  else
+    echo "Cannot reach Docker daemon (try: sudo usermod -aG docker \$USER && newgrp docker)" >&2
+    exit 1
+  fi
+fi
+COMPOSE=("${DOCKER[@]}" compose -f docker-compose.prod.yml --env-file .env.prod)
 
 mkdir -p data/certbot-www data/letsencrypt
 
-echo "==> Starting duckdns + face-engine + nginx (HTTP bootstrap)"
+echo "==> Starting duckdns + face-engine + nginx (HTTP bootstrap) FORCE_HTTP=${FORCE_HTTP:-0}"
 "${COMPOSE[@]}" up -d duckdns face-engine nginx
 
 echo "==> Waiting for nginx..."
@@ -54,14 +73,34 @@ echo "==> Requesting Let's Encrypt certificate for ${DOMAIN}"
   --keep-until-expiring \
   --rsa-key-size 4096
 
+# Allow the nginx container to read cert files if it ever loads the SSL template.
+sudo chmod -R a+rX data/letsencrypt/live data/letsencrypt/archive 2>/dev/null || true
+
 if [[ "${FORCE_HTTP}" == "1" || "${FORCE_HTTP}" == "true" ]]; then
   echo "==> Switching host nginx to TLS (phase 2) — Docker stays FORCE_HTTP"
   sudo ./deploy/host-nginx/install-host-nginx.sh ssl
-  "${COMPOSE[@]}" up -d --force-recreate nginx
+  "${COMPOSE[@]}" up -d --force-recreate nginx face-engine
 else
   echo "==> Reloading Docker nginx with TLS config"
   "${COMPOSE[@]}" up -d --force-recreate nginx
   "${COMPOSE[@]}" exec nginx nginx -s reload 2>/dev/null || true
 fi
 
+echo "==> Checking Docker upstream on :${HTTP_PORT}"
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  if curl -fsS "http://127.0.0.1:${HTTP_PORT}/health" >/dev/null; then
+    echo "    OK (attempt ${i})"
+    break
+  fi
+  echo "    waiting for face stack… (${i}/10)"
+  sleep 3
+done
+
 echo "==> Done. Health: curl -fsS https://${DOMAIN}/health"
+curl -fsS "https://${DOMAIN}/health" || {
+  echo "Public HTTPS still failing. Debug:" >&2
+  echo "  ${DOCKER[*]} compose -f docker-compose.prod.yml --env-file .env.prod ps" >&2
+  echo "  ${DOCKER[*]} compose -f docker-compose.prod.yml --env-file .env.prod logs --tail=80 nginx face-engine" >&2
+  echo "  curl -v http://127.0.0.1:${HTTP_PORT}/health" >&2
+  exit 1
+}
