@@ -7,11 +7,12 @@ docker compose up -d
 cp .env.examle .env      # set DATABASE_URL, JWT_SECRET
 npm install
 npx prisma migrate dev
-npm run seed             # demo data + accounts (password NovaTerra2026! unless SEED_PASSWORD is set)
+npm run seed             # demo scenario (password NovaTerra2026! unless SEED_PASSWORD is set)
+SEED_RESET=1 npm run seed   # deletes the demo scenario (NT-DEMO-*, RDV-DEMO-*, seeded contents) and recreates it
 npm run dev
 ```
 
-Demo accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novaterra.local`, `senior@novaterra.local` (vulnerable citizen).
+Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; agents `agent@novaterra.local` (Alex), `hanta.agent@` and `tiana.agent@novaterra.local`; citizens `citoyen@novaterra.local` (Lucas, Quartier Sud) and `senior@novaterra.local` (Jean, vulnerable), plus eight `@mail.nt` citizens, among them `miora.haja@mail.nt`, locked for 15 minutes after each seed run (F37), and `fara.tsiry@mail.nt`, deactivated. The scenario (18 requests with their timeline, slots, 12 appointments, announcements, alerts, interruptions, login attempts) is laid out around the moment the seed runs.
 
 ### Conventions
 
@@ -60,6 +61,12 @@ Demo accounts: `admin@novaterra.local`, `agent@novaterra.local`, `citoyen@novate
 | `POST /api/appointments` · `GET /api/appointments` · `GET /:id` · `GET /:id/ics` · `POST /:id/cancel` · `PATCH /:id/reminder` | logged in (own) / staff | F39, F40 |
 | `PATCH /api/appointments/:id` (status, agent_notes) · `POST /api/appointments/reminders/run` | staff · admin | F39, F40 |
 | `GET /api/terra-nova/requests` | staff | D19 (needs `TERRA_NOVA_API_KEY`, sent as `X-Webcup-Api-Key`) |
+| `GET /api/settings/public` | public | D07, D08 (home blocks, registrations, maintenance, contacts, emergency numbers, default reminder) |
+| `GET /api/settings` · `PATCH /api/settings` (any subset of keys) | admin | D07, D08, F37 (`security` thresholds read-only, `updated` = who changed each key) |
+
+### Platform settings
+
+Keys, validation and defaults are defined in `src/lib/settings.ts`. When an admin turns on `maintenance_mode`, citizens get `503 MAINTENANCE` (with `maintenance_message`) when they create a request or book an appointment; staff are not affected. When `registration_open` is off, registration returns `403 REGISTRATION_CLOSED`. A booking without `reminder_offset_minutes` uses `reminder_default_minutes`. Set `CORS_ORIGINS` (comma-separated) to restrict the allowed front-end origins.
 
 ### Request types
 

@@ -12,6 +12,7 @@ import {
 } from "../lib/loginGuard";
 import { notifyUser } from "../lib/notify";
 import { clientIp } from "../lib/rateLimit";
+import { getSetting } from "../lib/settings";
 import { zBool, zId, zLocale } from "../lib/validation";
 import { generateToken } from "../services/services";
 
@@ -39,6 +40,10 @@ const loginSchema = z.object({
 const authController = {
   register: async (req: Request, res: Response) => {
     const { password, ...input } = registerSchema.parse(req.body);
+    // D08: admins can close registrations (PlatformSetting registration_open)
+    if (!(await getSetting("registration_open"))) {
+      throw new HttpError(403, "REGISTRATION_CLOSED", "Registrations are currently closed");
+    }
     const user = await userModel.create({
       ...input,
       password_hash: await hashPassword(password),

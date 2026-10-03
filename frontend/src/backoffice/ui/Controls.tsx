@@ -130,21 +130,40 @@ export function Toggle({
 export function Field({
   label,
   hint,
+  error,
+  required,
+  id: givenId,
   children,
 }: {
   label: string
   hint?: ReactNode
-  children: (id: string, describedBy?: string) => ReactNode
+  /** F42: shown under the control, linked to it by aria-describedby */
+  error?: string | null
+  required?: boolean
+  /** control id, when an ErrorSummary must link to it (useApiForm's fieldId) */
+  id?: string
+  children: (id: string, describedBy?: string, invalid?: boolean) => ReactNode
 }) {
-  const id = useId()
+  const autoId = useId()
+  const id = givenId ?? autoId
   const hintId = hint ? `${id}-hint` : undefined
+  const errorId = error ? `${id}-error` : undefined
+  const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined
   return (
     <div className={styles.field}>
-      <label htmlFor={id}>{label}</label>
-      {children(id, hintId)}
+      <label htmlFor={id}>
+        {label}
+        {required && <span className={styles.required}> (obligatoire)</span>}
+      </label>
+      {children(id, describedBy, !!error)}
       {hint && (
         <small id={hintId} className={styles.hint}>
           {hint}
+        </small>
+      )}
+      {error && (
+        <small id={errorId} className={styles.fieldError}>
+          <Icon name="alert" size={13} /> {error}
         </small>
       )}
     </div>

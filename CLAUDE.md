@@ -13,7 +13,7 @@ WebCup 2026 hackathon monorepo ("Terra Nova" brief: build the central digital pl
 | `speech-to-text/` | Fastify 5 + TS (ESM, NodeNext) + Prisma, worker via RabbitMQ | 9100 | Postgres 16 :5432, Redis :6379, RabbitMQ :5672 (docker) |
 | `face-recognitions/` | Python 3.10–3.11 Flask + InsightFace (SCRFD + ArcFace) | 9000 | `.npy` files under `data/` |
 
-Only `speech-to-text/` has tests. Design docs live in `docs/superpowers/specs/` and `speech-to-text/docs/` (SPEC.md is the source of truth for STT behavior; PLAN.md is the task checklist).
+Only `speech-to-text/` has tests. `project-plan/` holds the implementation plans that wire the features to the API, one per group of complementary Terra Nova codes, with a status table and the code→plan matrix in its `README.md`; extend those files rather than planning elsewhere. Design docs live in `docs/superpowers/specs/` and `speech-to-text/docs/` (SPEC.md is the source of truth for STT behavior; PLAN.md is the task checklist).
 
 ## Backend (`cd backend`)
 
@@ -25,7 +25,7 @@ npm run build                 # tsc -> dist/
 npm start                     # node dist/index.js
 npx prisma migrate dev        # apply schema.prisma changes (also regenerates the client)
 npx prisma generate           # regenerate @prisma/client only
-npm run seed                  # idempotent demo data + accounts (prisma/seed.ts)
+npm run seed                  # idempotent demo scenario (prisma/seed.ts + prisma/demoScenario.ts); SEED_RESET=1 recreates it
 npm run typecheck             # tsc --noEmit; the only automated check
 npm run generate:crud -- <table> <field>:<type>[:<modifier>] ...
 ```
@@ -47,6 +47,8 @@ The platform answers feature requests published by the hackathon's Terra Nova AP
 - Service availability (F38) is derived from `ServiceInterruption` rows by `lib/availability.ts`. Service responses expose `availability` (`withAvailability`) instead of the raw relation. `serviceListInclude()` is a function because its filter depends on the current time. Creating a request or booking on an unavailable service throws `409 SERVICE_UNAVAILABLE`.
 - `index.ts` calls `startScheduler()` (`lib/scheduler.ts`), which sends appointment reminders every minute (F40). Passenger stops idle apps, so production also runs `dist/src/jobs/sendReminders.js` from a cPanel Cron Job. Reminders are claimed atomically, so several runs or processes never send one twice. Timetables (`TransitDeparture.time` is "HH:MM" text) and slot labels use the process time zone (`TZ`).
 - Alert targeting (`audience` ALL / DISTRICTS / VULNERABLE plus optional districts) is defined once in `alert.model.ts` (`audienceUserWhere`, `concernsUser`). Notifications are fanned out with `notifyUsers(where, …)`.
+- Platform settings (D07/D08) live in `lib/settings.ts`: each key has a zod schema, a default and a `public` flag, stored as `PlatformSetting` rows (a key without a row uses its default, so a new key needs no migration). `getSetting()` caches for 30 s per process. `registration_open` is checked by `register`, `assertNotInMaintenance()` by request creation and booking (staff exempt), `reminder_default_minutes` by booking. `CORS_ORIGINS` (comma-separated) restricts CORS; unset allows every origin.
+- The seed's demo scenario (`prisma/demoScenario.ts`) mirrors the back-office mockups and is laid out relative to the time it runs. Its rows have natural keys (`NT-DEMO-*`, `RDV-DEMO-*`, titles, emails); without `SEED_RESET=1` existing rows are kept, so changes made while testing survive a re-run.
 - To add a feature: extend `schema.prisma`, add a migration, then add `model/`, `controller/` and `router/` files following an existing module (e.g. `district.*` for plain CRUD) and mount the router in `index.ts`.
 
 ### The CRUD generator
@@ -81,28 +83,39 @@ npm test          # vitest, src/**/*.test.ts
 npm run preview
 ```
 
-Install: the repo carries Yarn PnP files (`.pnp.cjs`) and a `package-lock.json` that npm 10.8 fails to resolve (`edgesOut` error). `npm install --no-package-lock --legacy-peer-deps` creates `node_modules` without touching tracked files.
+Install: `npm ci --legacy-peer-deps` (the `package-lock.json` was regenerated; the old `edgesOut` error came from an incomplete lockfile). Dependencies are also tracked in `yarn.lock` (yarn 1; add `--ignore-engines`, `camera-controls` declares Node ≥ 22). To add a dependency: `npm install --package-lock-only --legacy-peer-deps <pkg>`, then `git checkout yarn.lock && yarn add <pkg> --ignore-engines`, because npm also rewrites every resolved URL of an existing `yarn.lock`. The `.pnp.cjs` files are unused leftovers.
 
 `tsconfig.app.json` enables `noUnusedLocals`/`noUnusedParameters`, `verbatimModuleSyntax` (use `import type` for type-only imports), and `erasableSyntaxOnly` (no enums, namespaces, or parameter properties).
 
 Routes are declared in `src/app/App.tsx`:
-- `/` (airlock login) and `/ville` (citizen app) run inside `FilmLayout`, which mounts the persistent three.js scene.
+- `/` (airlock login) and `/ville` (citizen app) run inside `FilmLayout`, which mounts the persistent three.js scene. `/ville` itself is the scroll-driven flyover; every other `/ville/*` page renders inside `pages/Console/ConsoleLayout` (see below). `/ville/test` (dev only) checks the API chain.
 - `/equipe` is the team page.
 - `/agent/*` and `/admin/*` lazy-load the staff back-office (`src/backoffice/`) outside the film layout.
 
 The citizen app ("NOVA") is styled with CSS Modules reading the design tokens of `src/styles/tokens.css` (`@theme static`, e.g. `--color-ice`, `--color-glass`, `--font-display`). The look is dark glass, cut corners via `clip-path` rather than border-radius, and a cyan "ice" light. Shared primitives live in `src/ui/`, feature widgets in `src/features/`, and state in zustand stores.
 
+### Data layer (`src/api/`)
+
+Both spaces (citizen and back-office) reach the Express API only through `src/api/`; screens never call axios directly.
+- `client.ts` owns the axios instances (`http`, `fileHttp`; `hooks/useHttps.ts` re-exports them). They add `Authorization: Bearer` from the session and reject with an `ApiError` (`errors.ts`: `status`, stable `code`, `details`, `retryAfter`). Show `messageFor(error)` (French) to users and put `fieldErrors(error)` (zod details, translated) on form fields.
+- `session.ts`: one JWT session for all roles, persisted in `localStorage` (`nova-auth`). `signIn`/`signOut` reset the active queries and drop the others. Never use `queryClient.clear()` for this: it leaves the queries on screen pending forever. A `401 UNAUTHORIZED` ends the session and dispatches `nova:session-expired` (`onSessionExpired()`); a wrong password is `INVALID_CREDENTIALS`, not an expiry. The airlock still uses the demo `features/auth` session until PLAN-01.
+- Server state uses TanStack Query (`queryClient.ts`, refresh intervals in `REFRESH`). Add one file per domain with a `xxxKeys` factory, `useXxx` queries and `useXxx` mutations that invalidate their keys (`settings.ts` is the model). Hooks never toast; the screen decides.
+- Contracts live in `types.ts`, added domain by domain as plans bind them (`Paginated<T>` = `{ data, meta }`).
+- Forms (F42): `ui/Field` takes a render prop that receives `id`, `aria-describedby`, `aria-invalid` and `required`. `hooks/useApiForm` blocks double submits, maps API errors onto fields and focuses the `ErrorSummary` (`summaryId`) after a failure. The back-office has its own `Field`/`ErrorSummary` with the same contract.
+
+Console pages (`pages/Console/`): `ConsoleLayout` lays a reading surface over the dimmed city. Its `directorStore.console` flag hides the loading screen, and `Film`'s `FrameLoopGovernor` switches R3F to `frameloop="demand"` once the camera reaches the overview pose. Each page wraps its content in `ConsolePage`, which sets the document title, focuses its `h1` and renders the breadcrumbs from a `crumbs` prop. `useMatches()`/route handles are unavailable because `App.tsx` uses `<BrowserRouter>`. Guards live in `app/guards.tsx` (`RequireSession`, `RequireRole`). Call `rewindToCockpit()` (`app/airlock.ts`) before sending someone from the city to the airlock. `src/dev/DevLogin.tsx` signs in with the seed accounts in development until the real login screens exist.
+
 ### Back-office (`src/backoffice/`)
 
-The agent and admin dashboards are a separate area: don't import it from the citizen app, and don't modify client files for it. It is still design-only: every screen reads simulated zustand stores (`stores/`) seeded from `mocks/`, whose types in `mocks/types.ts` mirror the backend's Prisma models and API responses.
-- **Binding the API:** replace each store action (`changeStatus`, `assignRequest`, `createAlert`…) with the matching `/api` call, documented in `backend/README.md`. Every action also calls `recordAudit()`. The backend has no audit table yet (F47/F48): `AuditLog` in `mocks/types.ts` is the intended contract.
-- **Persona:** decided by the URL (`layout/persona.ts`): `/agent` acts as Alex (AGENT), `/admin` as Ada (ADMIN). The routes are not guarded yet.
+The agent and admin dashboards are a separate area: don't import it from the citizen app. It is being bound to the API plan by plan (`project-plan/`). `admin/pages/SettingsPage` is bound; the other screens still read simulated zustand stores (`stores/`) seeded from `mocks/`, whose types in `mocks/types.ts` mirror the backend's Prisma models and API responses.
+- **Binding the API:** replace each store action (`changeStatus`, `assignRequest`, `createAlert`…) with a hook from `src/api/`, documented in `backend/README.md`, and keep the screen's loading (`Skeleton`) and error states. A bound page reads no store. Delete a store and its mock once no page reads them. The simulated actions call `recordAudit()` client-side; the server audit table (F47/F48, PLAN-10) will replace it, with `AuditLog` in `mocks/types.ts` as the intended contract.
+- **Persona:** decided by the URL (`layout/persona.ts`): `/agent` acts as Alex (AGENT), `/admin` as Ada (ADMIN). The routes are not guarded yet (PLAN-01); bound screens show a sign-in state on 401/403.
 - **Structure:** `layout/` holds the shell (sidebar, top bar, ⌘K palette, boot sequence), `ui/` its own primitives (`Panel`, `DataTable`, `Drawer`/`Modal`, `StatTile`…), `charts/` hand-made SVG charts animated with `motion`, `shared/` business components used by both spaces, and `agent/pages`/`admin/pages` the screens. Navigation and each screen's Terra Nova request codes live in `nav.ts`.
 - **Lint constraints** (React Compiler rules): don't call `Date.now()` during render (use `useNow()` from `lib/useNow.ts`), and don't reassign variables inside render callbacks.
 - **Charts:** the categorical colors (`--series-1..3` in `charts/Charts.module.css`) were validated for colorblind safety on the dark surface. Every chart has a table view through `ChartFrame`.
 
 Service URLs come from `frontend/.env` (copy `.env.example`, typed in `src/vite-env.d.ts`, restart `npm run dev` after changes). Each service has its own client:
-- `src/hooks/useHttps.ts` → Express backend (`VITE_BASE_URL`, `VITE_API_URL`, `VITE_IMG_URL`). Returns module-level axios instances that are stable across renders: `http` (JSON) and `fileHttp` (multipart, for generated endpoints that have `file` fields).
+- `src/api/client.ts` (re-exported by `src/hooks/useHttps.ts`) → Express backend (`VITE_BASE_URL`, `VITE_API_URL`, `VITE_IMG_URL`). Module-level axios instances, stable across renders: `http` (JSON) and `fileHttp` (multipart, for endpoints with file fields).
 - `src/hooks/useFaceApi.ts` → face engine (`VITE_FACE_API_URL`, optional `VITE_FACE_API_KEY` sent as `X-API-Key`).
 - `src/hooks/useRealtimeTranscription.ts` → STT service (`VITE_STT_API_URL`), see the realtime flow below.
 - `src/hooks/useFaceDetection.ts` runs `@vladmandic/face-api`'s tiny face detector in a Web Worker (`src/workers/faceDetection.worker.ts`, model weights loaded from jsDelivr) for the live oval/bbox overlay only. Recognition itself is done server-side by `face-recognitions/`.

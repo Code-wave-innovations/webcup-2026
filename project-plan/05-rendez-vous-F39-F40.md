@@ -73,6 +73,7 @@ Rien n'existe encore.
 | Manque | Correctif |
 |---|---|
 | Fiche citoyen (F34) et agenda sur une période | Ajouter `citizen_id` (personnel uniquement), `from` et `to` à `listQuerySchema` |
+| Rappel par défaut | **Fait au PLAN-00** : sans `reminder_offset_minutes`, la réservation prend `reminder_default_minutes` (paramètre réglable dans la page Paramètres). |
 | Option « Pas de rappel » : `zReminder` impose au moins 15 min | Accepter `reminder_offset_minutes: null`, qui signifie « aucun rappel », et faire ignorer ces rendez-vous par le planificateur |
 | Le fichier `.ics` exige le JWT, alors qu'un simple lien `<a href>` n'envoie pas l'en-tête d'authentification | Côté front, télécharger avec `http.get(…, { responseType: 'blob' })` puis `URL.createObjectURL`. Autre option, côté backend : un jeton signé de courte durée dans `calendar_url` |
 

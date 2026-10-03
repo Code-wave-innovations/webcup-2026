@@ -12,6 +12,7 @@ import { badRequest, notFound } from "../lib/errors";
 import { notifyUser } from "../lib/notify";
 import { saveUpload } from "../lib/upload";
 import { assertServiceAvailable } from "../lib/availability";
+import { assertNotInMaintenance } from "../lib/settings";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zId, zJson } from "../lib/validation";
 import { isStaff } from "../middleware/auth";
 import { zEmail } from "./auth.controller";
@@ -103,6 +104,7 @@ const citizenRequestController = {
   create: async (req: Request, res: Response) => {
     const input = createSchema.parse(req.body);
     const user = req.user;
+    await assertNotInMaintenance(user);
 
     // D04: visitors without an account can only contact the city, and must leave a way to reply.
     if (!user) {
