@@ -11,8 +11,9 @@ import { useReportStore } from './reportStore'
 export function ReportPanel() {
   const report = useReportStore((s) => s.report)
   const syncStatus = useReportStore((s) => s.syncStatus)
-  const filmToken = useAuthStore((s) => s.session?.token)
   const citizenToken = useCitizenSessionStore((s) => s.token)
+  // Film JWT only if the citizen slot is empty (mirrored airlock login / legacy).
+  const filmToken = useAuthStore((s) => s.session?.token)
   const token = citizenToken ?? filmToken
   const live = useQuery({
     queryKey: [...requestKeys.detail(report?.id ?? 0), 'film'],

@@ -14,6 +14,11 @@ const ROLE_LABEL: Record<Role, string> = {
   ADMIN: 'Administration',
 }
 
+function signOutFilmAndCitizen() {
+  useAuthStore.getState().signOut()
+  signOutCitizen()
+}
+
 /** Top bar of the console pages: habitant JWT (not staff), plus Accueil / Contact / Mon espace. */
 export function ConsoleTopBar() {
   const citizen = useCitizenUser()
@@ -24,13 +29,13 @@ export function ConsoleTopBar() {
     ? {
         name: `${citizen.name} ${citizen.last_name}`.trim(),
         label: ROLE_LABEL[citizen.role],
-        onSignOut: signOutCitizen,
+        onSignOut: signOutFilmAndCitizen,
       }
     : citySession
       ? {
           name: citySession.name,
           label: citySession.roleLabel,
-          onSignOut: () => useAuthStore.getState().signOut(),
+          onSignOut: signOutFilmAndCitizen,
         }
       : null
 

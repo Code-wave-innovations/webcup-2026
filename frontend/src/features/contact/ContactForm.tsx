@@ -29,7 +29,7 @@ interface ContactFormProps {
   embedded?: boolean
 }
 
-/** D04: `nova-auth-citizen` JWT, else airlock session (staff lives in `nova-auth-staff`). */
+/** Prefill from `nova-auth-citizen`; demo airlock chrome (`authStore`) only when that slot is empty. */
 function useContactIdentity(): { name: string; email: string; asCitizen: boolean } | null {
   const citizen = useCitizenUser()
   const citySession = useAuthStore((s) => s.session)
@@ -42,6 +42,7 @@ function useContactIdentity(): { name: string; email: string; asCitizen: boolean
     }
   }
 
+  // Film-only demo login (no API JWT): still prefill the public contact form.
   if (citySession?.email) {
     return { name: citySession.name, email: citySession.email, asCitizen: false }
   }

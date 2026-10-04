@@ -27,7 +27,7 @@ const ASK_AFTER_MS = 1900
 export default function ChatPage() {
   const film = useAuthStore((s) => s.session)
   const citizen = useCitizenUser()
-  const session = film ?? (citizen ? filmSessionFromCitizen(citizen) : null)
+  const session = citizen ? filmSessionFromCitizen(citizen) : film
   const { search } = useLocation()
   // a debug jump (`?vue`) signs in by itself once the film has landed
   if (!session) return debugJump ? null : <Navigate to={{ pathname: '/', search }} replace />

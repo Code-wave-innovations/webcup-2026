@@ -38,7 +38,8 @@ const sectionIndex = (id: string) => CITY_SECTIONS.findIndex((s) => s.id === id)
 export function CityPage() {
   const film = useAuthStore((s) => s.session)
   const citizen = useCitizenUser()
-  const session = film ?? (citizen ? filmSessionFromCitizen(citizen) : null)
+  // Citizen JWT wins when both exist (API login mirrors into film + citizen).
+  const session = citizen ? filmSessionFromCitizen(citizen) : film
   const { search } = useLocation()
   // a debug jump signs in by itself once the film has landed
   if (!session) return debugJump ? null : <Navigate to={{ pathname: '/', search }} replace />

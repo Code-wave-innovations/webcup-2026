@@ -21,8 +21,8 @@ const MAX_TIMER_MS = 2_147_000_000
  * stays in the banner until it ends. A critical one turns the city red and keeps its chime.
  */
 export function AlertCenter() {
-  const film = useAuthStore((s) => s.session)
   const citizenToken = useCitizenSessionStore((s) => s.token)
+  const film = useAuthStore((s) => s.session)
   const token = citizenToken ?? film?.token
   const cinematic = useDirectorStore((s) => s.cinematic)
   const { pathname } = useLocation()

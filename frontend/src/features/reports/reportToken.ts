@@ -1,7 +1,10 @@
-import { useSessionStore } from '../../api/session'
+import { useCitizenSessionStore } from '../../api/session'
 import { useAuthStore } from '../auth/authStore'
 
-/** The JWT of this visit: the airlock stores it on the film session, the back-office on the API session. */
+/**
+ * JWT for citizen API calls from the film (reports, …).
+ * Prefer `nova-auth-citizen`; film session token is only a last resort (legacy / same login mirrored in authStore).
+ */
 export function reportToken(): string | null {
-  return useAuthStore.getState().session?.token ?? useSessionStore.getState().token
+  return useCitizenSessionStore.getState().token ?? useAuthStore.getState().session?.token ?? null
 }
