@@ -24,6 +24,7 @@ const MyAppointmentsPage = lazy(() => import('../pages/Console/MyAppointmentsPag
 const EspaceHubPage = lazy(() => import('../pages/Espace/EspaceHubPage'))
 const DemandesListPage = lazy(() => import('../pages/Espace/DemandesListPage'))
 const DemandeDetailPage = lazy(() => import('../pages/Espace/DemandeDetailPage'))
+const ComptePage = lazy(() => import('../pages/Espace/ComptePage'))
 
 function App() {
   return (
@@ -100,6 +101,16 @@ function App() {
                   <RequireSession>
                     <Suspense fallback={null}>
                       <DemandeDetailPage />
+                    </Suspense>
+                  </RequireSession>
+                }
+              />
+              <Route
+                path="espace/compte"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <ComptePage />
                     </Suspense>
                   </RequireSession>
                 }
