@@ -20,10 +20,14 @@ export default defineConfig({
           includeDependenciesRecursively: false,
           groups: [
             { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/, priority: 20 },
+            // zustand must NOT sit in `api`: i18n/locale (messages chunk) calls create() at init, while
+            // api/errors imports defineMessages — forcing zustand into api made messages→api→messages
+            // and crashed prod with "t is not a function" (create still undefined).
+            { name: 'zustand', test: /node_modules[\\/]zustand[\\/]/, priority: 15 },
             { name: 'three', test: /node_modules[\\/]three[\\/]/, priority: 10 },
             { name: 'r3f', test: /node_modules[\\/](postprocessing|@react-three|three-stdlib|three-mesh-bvh|troika-[\w-]+|camera-controls|maath)[\\/]/, priority: 10 },
             // without these two, the shared data layer and back-office primitives came as ~20 chunks of 1 kB each
-            { name: 'api', test: /src[\\/]api[\\/]|node_modules[\\/](@tanstack[\\/]query-core|@tanstack[\\/]react-query|axios|zustand)[\\/]/, priority: 5 },
+            { name: 'api', test: /src[\\/]api[\\/]|node_modules[\\/](@tanstack[\\/]query-core|@tanstack[\\/]react-query|axios)[\\/]/, priority: 5 },
             { name: 'bo-ui', test: /src[\\/]backoffice[\\/](ui|charts|shared|lib)[\\/]/, priority: 5 },
           ],
         },
