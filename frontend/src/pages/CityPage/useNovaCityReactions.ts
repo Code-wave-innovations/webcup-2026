@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { novaScenes } from '../../experience/nova/behavior/scenes'
 import { criticalAlertOf, useAlertFeed } from '../../features/announcements/alertFeedStore'
-import { STATUSES } from '../../features/reports/reportModel'
+import { signalForStatus } from '../../features/reports/reportModel'
 import { useReportStore } from '../../features/reports/reportStore'
 
 /**
@@ -14,8 +14,8 @@ export function useNovaCityReactions(): void {
       useReportStore.subscribe((state, previous) => {
         const report = state.report
         if (!report) return
-        if (!previous.report) novaScenes.reportSent(report.code)
-        else if (report.status !== previous.report.status) novaScenes.reportProgress(STATUSES[report.status].name)
+        if (!previous.report) novaScenes.reportSent(report.code, report.districtName)
+        else if (report.status !== previous.report.status) novaScenes.reportProgress(signalForStatus(report.status).name)
       }),
     [],
   )
