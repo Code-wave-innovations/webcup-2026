@@ -100,3 +100,16 @@ export const requireRole =
 
 export const requireStaff = requireRole(...STAFF_ROLES);
 export const requireAdmin = requireRole("ADMIN");
+
+/**
+ * D09: allow when the caller's role is in the effective grants for this permission key
+ * (defaults from lib/permissions.ts, overrides from lib/roleGrants.ts).
+ */
+export const requirePermission =
+  (key: string) =>
+  async (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) throw unauthorized();
+    const { userHasPermission } = await import("../lib/roleGrants");
+    if (!(await userHasPermission(req.user.role, key))) throw forbidden();
+    next();
+  };

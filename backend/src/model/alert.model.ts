@@ -16,13 +16,25 @@ const present = (alert: AlertRow) => ({
   districts: alert.districts.map((link) => link.district),
 });
 
-export const activeAlertWhere = (): Prisma.AlertWhereInput => {
-  const now = new Date();
-  return {
-    is_active: true,
-    starts_at: { lte: now },
-    OR: [{ ends_at: null }, { ends_at: { gt: now } }],
-  };
+export const activeAlertWhere = (now = new Date()): Prisma.AlertWhereInput => ({
+  is_active: true,
+  starts_at: { lte: now },
+  OR: [{ ends_at: null }, { ends_at: { gt: now } }],
+});
+
+// The next alert that is not on screen yet. `notifyOnly` is the one the scheduler must send.
+export const nextAlertStart = async (now = new Date(), notifyOnly = false): Promise<Date | null> => {
+  const row = await prisma.alert.findFirst({
+    where: {
+      is_active: true,
+      starts_at: { gt: now },
+      OR: [{ ends_at: null }, { ends_at: { gt: now } }],
+      ...(notifyOnly ? { notify: true, notified_at: null } : {}),
+    },
+    orderBy: { starts_at: "asc" },
+    select: { starts_at: true },
+  });
+  return row?.starts_at ?? null;
 };
 
 // Severity enum is declared INFO < WARNING < CRITICAL, so desc puts critical alerts first.
@@ -68,7 +80,7 @@ export const sendAlertNotifications = async (alert: NotifiableAlert, now = new D
   const recipients = await notifyUsers(audienceUserWhere(alert.audience, alert.districts.map((d) => d.id)), {
     type: "ALERT",
     title: alert.title,
-    body: alert.instructions ?? alert.message,
+    body: [alert.message, alert.instructions].filter(Boolean).join("\n"),
     link: `/alerts/${alert.id}`,
     data: { alert_id: alert.id, severity: alert.severity, category: alert.category },
   });

@@ -10,14 +10,18 @@ import { filmSessionFromCitizen, type Session } from '../../features/auth/authSe
 import { useAuthStore } from '../../features/auth/authStore'
 import { ChatPanel } from '../../features/chat/ChatPanel'
 import { scriptedChatService } from '../../features/chat/chatService'
-import { CHAT_SUGGESTIONS, scriptedReply } from '../../features/chat/chatScript'
+import { scriptedReply, useChatSuggestions } from '../../features/chat/chatScript'
 import { useNovaChat } from '../../features/chat/useNovaChat'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { useReducedMotion } from '../../hooks/useMediaQuery'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { Icon, NovaMark } from '../../ui/Icon'
+import { LanguageSwitch } from '../../ui/LanguageSwitch'
 import { CITY_SECTIONS } from '../CityPage/citySections'
 import { useNovaChatReactions } from './useNovaChatReactions'
 import styles from './ChatPage.module.css'
+
+const messages = defineMessages({ back: 'Retour à la ville' }, { back: 'Back to the city' })
 
 const OBSERVATORY_SECTION = CITY_SECTIONS.findIndex((s) => s.id === 'observatoire')
 /** a question asked from the city is sent once the camera has reached the balcony */
@@ -36,6 +40,9 @@ export default function ChatPage() {
 
 function Observatory({ session }: { session: Session }) {
   useBodyClass('is-locked')
+  const m = useMessages(messages)
+  const locale = useLocale()
+  const suggestions = useChatSuggestions()
   const status = useDirectorStore((s) => s.status)
   const phase = useDirectorStore((s) => s.phase)
   const arrived = phase === 'city'
@@ -65,8 +72,8 @@ function Observatory({ session }: { session: Session }) {
 
   // the answers to the suggestions are generated ahead, so that Nova says them as soon as they are written
   useEffect(() => {
-    novaVoice.warm(CHAT_SUGGESTIONS.map((suggestion) => scriptedReply(suggestion, { name: session.name }).text))
-  }, [session.name])
+    novaVoice.warm(suggestions.map((suggestion) => scriptedReply(suggestion, { name: session.name }, locale).text))
+  }, [suggestions, session.name, locale])
 
   // the welcome bubble is read aloud once Nova is on the balcony (the replies by the reactions)
   const welcome = chat.messages[0]?.role === 'nova' ? chat.messages[0].text : ''
@@ -91,11 +98,14 @@ function Observatory({ session }: { session: Session }) {
     <div className={styles.page} hidden={!arrived}>
       <header className={styles.bar}>
         <Link className={styles.back} to="/ville#observatoire">
-          <Icon name="back" /> <span>Retour à la ville</span>
+          <Icon name="back" /> <span>{m.back}</span>
         </Link>
-        <div className={styles.brand} aria-hidden="true">
-          <NovaMark />
-          <span>NOVA</span>
+        <div className={styles.end}>
+          <LanguageSwitch />
+          <div className={styles.brand} aria-hidden="true">
+            <NovaMark />
+            <span>NOVA</span>
+          </div>
         </div>
       </header>
       <main className={styles.stage}>

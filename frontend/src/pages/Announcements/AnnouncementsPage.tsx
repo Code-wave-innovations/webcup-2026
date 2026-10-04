@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { ANNOUNCEMENT_CATEGORIES, ANNOUNCEMENT_CATEGORY_LABEL, useAnnouncements } from '../../api/announcements'
+import { ANNOUNCEMENT_CATEGORIES, announcementCategoryLabel, useAnnouncements } from '../../api/announcements'
 import { messageFor } from '../../api/errors'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { formatPublished } from '../../lib/format'
 import { Pill } from '../../ui/Badges'
 import { Button, ButtonRouteLink } from '../../ui/Button'
@@ -14,6 +15,41 @@ import styles from './Announcements.module.css'
 
 const PAGE_SIZE = 10
 
+const messages = defineMessages(
+  {
+    title: 'Annonces municipales',
+    lead: 'Les publications de la ville : actualités, changements de service, informations pratiques et événements.',
+    search: 'Rechercher une annonce',
+    placeholder: 'Titre ou mot-clé',
+    category: 'Catégorie',
+    all: 'Toutes',
+    loading: 'Chargement des annonces…',
+    empty: 'Aucune annonce ne correspond à cette recherche.',
+    important: 'Importante',
+    pages: 'Pages',
+    previous: 'Précédente',
+    next: 'Suivante',
+    pageOf: (page: number, pages: number) => `Page ${page} sur ${pages}`,
+    back: 'Retour à l’accueil',
+  },
+  {
+    title: 'Municipal announcements',
+    lead: 'City publications: news, service changes, practical information and events.',
+    search: 'Search an announcement',
+    placeholder: 'Title or keyword',
+    category: 'Category',
+    all: 'All',
+    loading: 'Loading announcements…',
+    empty: 'No announcement matches this search.',
+    important: 'Important',
+    pages: 'Pages',
+    previous: 'Previous',
+    next: 'Next',
+    pageOf: (page, pages) => `Page ${page} of ${pages}`,
+    back: 'Back to home',
+  },
+)
+
 /** D06: every published announcement, filterable by category. */
 export default function AnnouncementsPage() {
   const [params, setParams] = useSearchParams()
@@ -21,6 +57,8 @@ export default function AnnouncementsPage() {
   const q = params.get('q') ?? ''
   const page = Math.max(1, Number(params.get('page')) || 1)
   const [search, setSearch] = useState(q)
+  const m = useMessages(messages)
+  const locale = useLocale()
 
   const update = (changes: Record<string, string | null>, keepPage = false) =>
     setParams(
@@ -49,34 +87,31 @@ export default function AnnouncementsPage() {
   const meta = list.data?.meta
 
   return (
-    <ConsolePage
-      title="Annonces municipales"
-      lead="Les publications de la ville : actualités, changements de service, informations pratiques et événements."
-    >
+    <ConsolePage title={m.title} lead={m.lead}>
       <div className={styles.toolbar}>
         <div className={styles.search}>
-          <Field label="Rechercher une annonce" htmlFor="annonce-q">
-            <input id="annonce-q" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Titre ou mot-clé" />
+          <Field label={m.search} htmlFor="annonce-q">
+            <input id="annonce-q" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={m.placeholder} />
           </Field>
         </div>
         <fieldset className={styles.chips}>
-          <legend className={text.note}>Catégorie</legend>
+          <legend className={text.note}>{m.category}</legend>
           <button type="button" aria-pressed={!category} onClick={() => update({ categorie: null })}>
-            Toutes
+            {m.all}
           </button>
           {ANNOUNCEMENT_CATEGORIES.map((value) => (
             <button key={value} type="button" aria-pressed={category === value} onClick={() => update({ categorie: value })}>
-              {ANNOUNCEMENT_CATEGORY_LABEL[value]}
+              {announcementCategoryLabel(value, locale)}
             </button>
           ))}
         </fieldset>
       </div>
 
       {list.isError && <p className={text.error}>{messageFor(list.error)}</p>}
-      {list.isPending && !list.data && <p className={text.note}>Chargement des annonces…</p>}
+      {list.isPending && !list.data && <p className={text.note}>{m.loading}</p>}
       {list.data && items.length === 0 && (
         <GlassPanel>
-          <p>Aucune annonce ne correspond à cette recherche.</p>
+          <p>{m.empty}</p>
         </GlassPanel>
       )}
       {items.length > 0 && (
@@ -86,35 +121,33 @@ export default function AnnouncementsPage() {
               <span className={styles.rowTitle}>
                 <span>
                   <small>
-                    {ANNOUNCEMENT_CATEGORY_LABEL[announcement.category]}
-                    {announcement.published_at ? ` · ${formatPublished(announcement.published_at)}` : ''}
+                    {announcementCategoryLabel(announcement.category, locale)}
+                    {announcement.published_at ? ` · ${formatPublished(announcement.published_at, locale)}` : ''}
                     {announcement.service ? ` · ${announcement.service.name}` : ''}
                   </small>
                   <strong>{announcement.title}</strong>
                   {announcement.summary && <small>{announcement.summary}</small>}
                 </span>
-                {announcement.is_important && <Pill tone="alert">Importante</Pill>}
+                {announcement.is_important && <Pill tone="alert">{m.important}</Pill>}
               </span>
             </RowLink>
           ))}
         </RowList>
       )}
       {meta && meta.pages > 1 && (
-        <nav className={styles.pages} aria-label="Pages">
+        <nav className={styles.pages} aria-label={m.pages}>
           <Button small disabled={page <= 1} onClick={() => update({ page: String(page - 1) }, true)}>
-            Précédente
+            {m.previous}
           </Button>
-          <span aria-current="page">
-            Page {meta.page} sur {meta.pages}
-          </span>
+          <span aria-current="page">{m.pageOf(meta.page, meta.pages)}</span>
           <Button small disabled={page >= meta.pages} onClick={() => update({ page: String(page + 1) }, true)}>
-            Suivante
+            {m.next}
           </Button>
         </nav>
       )}
       <div>
         <ButtonRouteLink to="/ville" variant="ghost" small>
-          Retour à l’accueil
+          {m.back}
         </ButtonRouteLink>
       </div>
     </ConsolePage>

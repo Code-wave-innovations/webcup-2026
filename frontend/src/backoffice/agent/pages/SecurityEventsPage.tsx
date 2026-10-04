@@ -58,7 +58,6 @@ export default function SecurityEventsPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Événements de sécurité"
-        codes={['F100']}
         lead="Ce qui s’est passé sur les connexions et la protection des comptes. Quand un habitant appelle parce qu’il ne peut plus entrer, le déblocage est ici."
       />
 

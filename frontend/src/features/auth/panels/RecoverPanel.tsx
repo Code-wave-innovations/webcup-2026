@@ -2,7 +2,41 @@ import { useState } from 'react'
 import { Button } from '../../../ui/Button'
 import { Field } from '../../../ui/Field'
 import { Icon } from '../../../ui/Icon'
+import { defineMessages, useMessages } from '../../../i18n'
 import styles from '../AccessHologram.module.css'
+
+const messages = defineMessages(
+  {
+    identifier: 'Identifiant',
+    noCodeYet: 'Pas encore de code ?',
+    howTo:
+      'Présentez-vous au guichet de la mairie avec une pièce d’identité, ou appelez-la : un agent vérifie que c’est bien vous et vous remet un code valable 30 minutes. Personne d’autre que vous ne connaîtra votre nouveau code d’accès.',
+    resetCode: 'Code remis par la mairie',
+    newCode: 'Nouveau code d’accès',
+    newCodeHint: '8 caractères au moins.',
+    hide: 'Masquer le code d’accès',
+    show: 'Afficher le code d’accès',
+    confirm: 'Confirmation',
+    checking: 'Vérification',
+    submit: 'Valider mon nouveau code',
+    back: 'Retour',
+  },
+  {
+    identifier: 'Identifier',
+    noCodeYet: 'No code yet?',
+    howTo:
+      'Go to the city hall counter with an ID, or call them: an agent checks that it is really you and gives you a code valid for 30 minutes. Nobody but you will ever know your new access code.',
+    resetCode: 'Code from the city hall',
+    newCode: 'New access code',
+    newCodeHint: 'At least 8 characters.',
+    hide: 'Hide the access code',
+    show: 'Show the access code',
+    confirm: 'Confirm',
+    checking: 'Checking',
+    submit: 'Confirm my new code',
+    back: 'Back',
+  },
+)
 
 interface RecoverPanelProps {
   identifier: string
@@ -23,13 +57,14 @@ interface RecoverPanelProps {
  * that nobody else ever sees. Their other devices are signed out.
  */
 export function RecoverPanel({ identifier, code, password, confirm, error, submitting, onCodeChange, onPasswordChange, onConfirmChange, onBack }: RecoverPanelProps) {
+  const m = useMessages(messages)
   const [revealed, setRevealed] = useState(false)
   const fieldError = (field: 'code' | 'password' | 'confirm') => (error?.field === field ? error.message : null)
 
   return (
     <div className={`${styles.panel} ${styles.panelEnter}`}>
       <div>
-        <span className={styles.identifierChip} aria-label="Identifiant">
+        <span className={styles.identifierChip} aria-label={m.identifier}>
           {identifier}
         </span>
       </div>
@@ -37,12 +72,11 @@ export function RecoverPanel({ identifier, code, password, confirm, error, submi
       <div className={styles.recoverInfo}>
         <Icon name="hex" size={16} />
         <p>
-          <strong>Pas encore de code ?</strong> Présentez-vous au guichet de la mairie avec une pièce d’identité, ou appelez-la : un agent vérifie que c’est bien vous et vous remet un
-          code valable 30 minutes. Personne d’autre que vous ne connaîtra votre nouveau code d’accès.
+          <strong>{m.noCodeYet}</strong> {m.howTo}
         </p>
       </div>
 
-      <Field label="Code remis par la mairie" htmlFor="recover-code" error={fieldError('code')}>
+      <Field label={m.resetCode} htmlFor="recover-code" error={fieldError('code')}>
         <span className={styles.sight}>
           <input
             id="recover-code"
@@ -58,7 +92,7 @@ export function RecoverPanel({ identifier, code, password, confirm, error, submi
           />
         </span>
       </Field>
-      <Field label="Nouveau code d’accès" htmlFor="recover-password" hint="8 caractères au moins." error={fieldError('password')}>
+      <Field label={m.newCode} htmlFor="recover-password" hint={m.newCodeHint} error={fieldError('password')}>
         <span className={styles.sight}>
           <input
             id="recover-password"
@@ -74,7 +108,7 @@ export function RecoverPanel({ identifier, code, password, confirm, error, submi
             className={styles.reveal}
             aria-controls="recover-password"
             aria-pressed={revealed}
-            aria-label={revealed ? 'Masquer le code d’accès' : 'Afficher le code d’accès'}
+            aria-label={revealed ? m.hide : m.show}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setRevealed((v) => !v)}
           >
@@ -82,7 +116,7 @@ export function RecoverPanel({ identifier, code, password, confirm, error, submi
           </button>
         </span>
       </Field>
-      <Field label="Confirmation" htmlFor="recover-confirm" error={fieldError('confirm')}>
+      <Field label={m.confirm} htmlFor="recover-confirm" error={fieldError('confirm')}>
         <span className={styles.sight}>
           <input
             id="recover-confirm"
@@ -106,14 +140,14 @@ export function RecoverPanel({ identifier, code, password, confirm, error, submi
         <Button type="submit" className={styles.submit} disabled={submitting} data-nova-look>
           {submitting ? (
             <>
-              <span className={styles.spinner} aria-hidden="true" /> Vérification
+              <span className={styles.spinner} aria-hidden="true" /> {m.checking}
             </>
           ) : (
-            'Valider mon nouveau code'
+            m.submit
           )}
         </Button>
         <Button type="button" variant="ghost" className={styles.back} disabled={submitting} onClick={onBack}>
-          Retour
+          {m.back}
         </Button>
       </div>
     </div>

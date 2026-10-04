@@ -8,7 +8,9 @@ authRouter.post("/register", rateLimit({ windowMs: 60 * 60 * 1000, max: 10 }), a
 authRouter.post("/login", rateLimit({ windowMs: 60 * 1000, max: 30 }), authController.login);
 // Airlock routing: does this e-mail already have an account? (no session)
 authRouter.get("/exists", rateLimit({ windowMs: 60 * 1000, max: 60 }), authController.exists);
-// D03: face sign-in, checked by the server against the face engine (same body as login)
+// Passwordless session after frontend face identify (same body as login)
+authRouter.get("/by-email", rateLimit({ windowMs: 60 * 1000, max: 30 }), authController.getByEmail);
+// D03: alternate face sign-in, checked by the server against the face engine
 authRouter.post("/face", rateLimit({ windowMs: 60 * 1000, max: 20 }), authController.face);
 // F34: new password with the one-time code an agent handed over
 authRouter.post("/recover", rateLimit({ windowMs: 60 * 1000, max: 10 }), authController.recover);

@@ -2,7 +2,27 @@ import { Link, useLocation } from 'react-router'
 import { barePath } from '../../a11y/scenePaths'
 import { useRequests } from '../../api/requests'
 import { useCitizenSignedIn } from '../../api/session'
+import { defineMessages, useMessages } from '../../i18n'
 import styles from './CitizenNav.module.css'
+
+const messages = defineMessages(
+  {
+    home: 'Accueil',
+    contact: 'Contact',
+    appointments: 'Mes rendez-vous',
+    espace: 'Mon espace',
+    espaceShort: 'Espace',
+    waiting: (n: number) => (n > 1 ? `${n} demandes à compléter` : `${n} demande à compléter`),
+  },
+  {
+    home: 'Home',
+    contact: 'Contact',
+    appointments: 'My appointments',
+    espace: 'My space',
+    espaceShort: 'My space',
+    waiting: (n) => (n === 1 ? '1 request needs your input' : `${n} requests need your input`),
+  },
+)
 
 const current = (active: boolean) => (active ? 'true' : undefined)
 
@@ -16,32 +36,33 @@ export function CitizenNav({ variant }: { variant: 'console' | 'flyover' }) {
   const onContact = path === '/ville/contact'
   const onAppointments = path.startsWith('/ville/rendez-vous')
   const flyover = variant === 'flyover'
+  const m = useMessages(messages)
 
   return (
     <>
       {variant === 'console' && (
         <Link to="/ville" aria-current={current(path === '/ville')}>
-          Accueil
+          {m.home}
         </Link>
       )}
       <Link to="/ville/contact" aria-current={current(onContact)}>
-        Contact
+        {m.contact}
       </Link>
       {/* F39 / F40: the resident's appointments (the flyover bar keeps its sections) */}
       {variant === 'console' && (
         <Link to="/ville/rendez-vous" aria-current={current(onAppointments)}>
-          Mes rendez-vous
+          {m.appointments}
         </Link>
       )}
       <Link
         to="/ville/espace"
         aria-current={current(onEspace)}
         className={styles.espaceLink}
-        title="Mon espace"
+        title={m.espace}
       >
-        {flyover ? 'Espace' : 'Mon espace'}
+        {flyover ? m.espaceShort : m.espace}
         {count > 0 && (
-          <span className={styles.badge} aria-label={`${count} demande(s) à compléter`}>
+          <span className={styles.badge} aria-label={m.waiting(count)}>
             {count}
           </span>
         )}

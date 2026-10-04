@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import Webcam from '../../components/Face/Webcam'
+import { defineMessages, useMessages } from '../../i18n'
 import { Button } from '../../ui/Button'
 import type { Inconclusive, SignInResult } from './authService'
 import type { LoginActivity } from './loginActivity'
@@ -40,16 +41,46 @@ function grab(video: HTMLVideoElement | null): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9))
 }
 
-const MESSAGES: Record<Exclude<Phase, 'searching'>, string> = {
-  starting: 'Ouverture de la caméra…',
-  analysing: 'Analyse biométrique…',
-  recognized: 'Visage reconnu',
-  unknown: 'Visage inconnu. Entrez une fois avec votre code : il sera associé à votre compte.',
-  mismatch: 'Ce visage ne correspond pas à l’identifiant saisi. Vérifiez l’e-mail, ou entrez avec votre code.',
-  unavailable: 'La reconnaissance faciale ne répond pas. Entrez avec votre code.',
-  disabled: 'Ce compte est suspendu par la mairie. Présentez-vous au guichet ou appelez la mairie.',
-  denied: 'Caméra refusée ou indisponible. Entrez avec votre code.',
-}
+const messages = defineMessages(
+  {
+    phase: {
+      starting: 'Ouverture de la caméra…',
+      analysing: 'Analyse biométrique…',
+      recognized: 'Visage reconnu',
+      unknown: 'Visage inconnu. Entrez une fois avec votre code : il sera associé à votre compte.',
+      mismatch: 'Ce visage ne correspond pas à l’identifiant saisi. Vérifiez l’e-mail, ou entrez avec votre code.',
+      unavailable: 'La reconnaissance faciale ne répond pas. Entrez avec votre code.',
+      disabled: 'Ce compte est suspendu par la mairie. Présentez-vous au guichet ou appelez la mairie.',
+      denied: 'Caméra refusée ou indisponible. Entrez avec votre code.',
+    },
+    holdStill: 'Ne bougez plus…',
+    blurry: 'Je ne vous vois pas bien : approchez-vous, face à la lumière.',
+    placeFace: 'Placez votre visage dans le cercle.',
+    withCode: 'Entrer avec mon code',
+    retry: 'Réessayer',
+    useCode: "Utiliser mon code d'accès",
+    privacy: "L'image est analysée par le service de reconnaissance de Terra Nova, sans être conservée, sauf si vous l'associez à votre compte.",
+  },
+  {
+    phase: {
+      starting: 'Opening the camera…',
+      analysing: 'Biometric analysis…',
+      recognized: 'Face recognised',
+      unknown: 'Unknown face. Sign in once with your code: it will be linked to your account.',
+      mismatch: 'This face does not match the identifier entered. Check the e-mail, or sign in with your code.',
+      unavailable: 'Face recognition is not responding. Sign in with your code.',
+      disabled: 'This account has been suspended by the city hall. Visit the counter or call the city hall.',
+      denied: 'Camera refused or unavailable. Sign in with your code.',
+    },
+    holdStill: 'Hold still…',
+    blurry: 'I cannot see you well: come closer, facing the light.',
+    placeFace: 'Place your face in the circle.',
+    withCode: 'Sign in with my code',
+    retry: 'Try again',
+    useCode: 'Use my access code',
+    privacy: "The image is analysed by Terra Nova's recognition service and is not kept, unless you link it to your account.",
+  },
+)
 
 /**
  * Face login: the camera in a lens ringed with ticks. The ring sweeps while it looks for a face, fills
@@ -57,6 +88,7 @@ const MESSAGES: Record<Exclude<Phase, 'searching'>, string> = {
  * it is recognised. An unknown face hands its frames over so the next code login can link it.
  */
 export function FaceScan({ identify, onUnknown, onUseCode, onActivity }: FaceScanProps) {
+  const m = useMessages(messages)
   const videoRef = useRef<HTMLVideoElement>(null)
   const lensRef = useRef<HTMLDivElement>(null)
   const [phase, setPhase] = useState<Phase>('starting')
@@ -113,7 +145,7 @@ export function FaceScan({ identify, onUnknown, onUseCode, onActivity }: FaceSca
     return () => clearTimeout(timer)
   }, [phase, present, scan])
 
-  const message = phase === 'searching' ? (aligned ? 'Ne bougez plus…' : blurry ? 'Je ne vous vois pas bien : approchez-vous, face à la lumière.' : 'Placez votre visage dans le cercle.') : MESSAGES[phase]
+  const message = phase === 'searching' ? (aligned ? m.holdStill : blurry ? m.blurry : m.placeFace) : m.phase[phase]
   const stopped = phase === 'unknown' || phase === 'mismatch' || phase === 'unavailable' || phase === 'disabled' || phase === 'denied'
 
   return (
@@ -143,22 +175,22 @@ export function FaceScan({ identify, onUnknown, onUseCode, onActivity }: FaceSca
       {stopped ? (
         <div className={styles.actions}>
           <Button className={styles.wide} onClick={onUseCode}>
-            Entrer avec mon code
+            {m.withCode}
           </Button>
           {phase !== 'denied' && (
             <Button variant="ghost" small onClick={() => setPhase('searching')}>
-              Réessayer
+              {m.retry}
             </Button>
           )}
         </div>
       ) : (
         phase !== 'recognized' && (
           <button type="button" className={styles.link} onClick={onUseCode}>
-            Utiliser mon code d'accès
+            {m.useCode}
           </button>
         )
       )}
-      <p className={styles.privacy}>L'image est analysée par le service de reconnaissance de Terra Nova, sans être conservée, sauf si vous l'associez à votre compte.</p>
+      <p className={styles.privacy}>{m.privacy}</p>
     </div>
   )
 }

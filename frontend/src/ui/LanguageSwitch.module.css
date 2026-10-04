@@ -1,0 +1,51 @@
+/* D14: FR / EN, a two-segment switch in the glass look */
+.switch {
+  display: inline-flex;
+  flex: none;
+  align-items: stretch;
+  border: 1px solid var(--color-line-thin);
+  background: var(--color-glass);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
+.switch[data-variant='floating'] {
+  position: fixed;
+  z-index: 7;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  right: var(--gutter);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.switch button {
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: 600 13px/1 var(--font-body);
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+
+.switch button + button {
+  border-left: 1px solid var(--color-line-thin);
+}
+
+.switch button:hover {
+  color: var(--color-ice-bright);
+}
+
+.switch button[aria-pressed='true'] {
+  color: var(--color-ice);
+  background: var(--color-glass-light);
+}
+
+.switch button:focus-visible {
+  outline: 2px solid var(--color-ice);
+  outline-offset: -2px;
+}

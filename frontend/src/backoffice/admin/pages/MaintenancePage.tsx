@@ -54,7 +54,6 @@ export default function MaintenancePage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Interruptions de service"
-        codes={['F38', 'F64']}
         lead="Annoncez une maintenance ou un incident : les habitants voient l’indisponibilité avant de commencer une démarche, quand revenir et quoi faire à la place."
         actions={
           <Button variant="primary" icon="plus" onClick={() => setEditing('new')}>

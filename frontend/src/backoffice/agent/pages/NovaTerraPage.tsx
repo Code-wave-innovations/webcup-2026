@@ -77,7 +77,6 @@ export default function NovaTerraPage() {
   const header = (
     <PageHeader
       title="API Nova Terra"
-      codes={['D19']}
       lead="Les besoins exprimés par les habitants et le Haut Conseil via l’API officielle. Mise en cache 60 s côté serveur."
       actions={
         <Button

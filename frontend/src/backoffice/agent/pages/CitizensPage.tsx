@@ -54,7 +54,6 @@ export default function CitizensPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Citoyens"
-        codes={['F34']}
         lead="Consultation des informations nécessaires au traitement. Les identifiants et mots de passe ne sont jamais accessibles aux agents."
       />
 

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { defineMessages, useMessages } from '../../i18n'
 import { Icon, NovaMark } from '../../ui/Icon'
 import type { ChatMessage } from './chatModel'
-import { CHAT_SUGGESTIONS } from './chatScript'
+import { useChatSuggestions } from './chatScript'
 import type { ChatStatus } from './useNovaChat'
 import styles from './ChatPanel.module.css'
 
@@ -15,7 +16,32 @@ interface ChatPanelProps {
   onKeystroke?: () => void
 }
 
-const STATUS_LABEL: Record<ChatStatus, string> = { idle: 'en ligne', thinking: 'réfléchit…', streaming: 'vous répond…' }
+const panelMessages = defineMessages(
+  {
+    status: { idle: 'en ligne', thinking: 'réfléchit…', streaming: 'vous répond…' },
+    place: 'Observatoire · nuit',
+    log: 'Conversation avec Nova',
+    you: 'Vous',
+    thinking: 'réfléchit…',
+    inputLabel: 'Votre message à Nova',
+    placeholder: 'Écrivez à Nova…',
+    stop: 'Interrompre Nova',
+    send: 'Envoyer',
+    note: 'Démonstration : les réponses de Nova sont simulées dans la page.',
+  },
+  {
+    status: { idle: 'online', thinking: 'thinking…', streaming: 'replying…' },
+    place: 'Observatory · night',
+    log: 'Conversation with Nova',
+    you: 'You',
+    thinking: 'thinking…',
+    inputLabel: 'Your message to Nova',
+    placeholder: 'Write to Nova…',
+    stop: 'Interrupt Nova',
+    send: 'Send',
+    note: "Demo: Nova's replies are simulated in the page.",
+  },
+)
 
 /**
  * The conversation with Nova on observatory glass: header with Nova's state, the messages (a log that
@@ -23,6 +49,8 @@ const STATUS_LABEL: Record<ChatStatus, string> = { idle: 'en ligne', thinking: '
  * (Enter sends, Shift+Enter breaks the line, Escape interrupts Nova).
  */
 export function ChatPanel({ messages, status, onSend, onStop, onComposing, onKeystroke }: ChatPanelProps) {
+  const m = useMessages(panelMessages)
+  const suggestions = useChatSuggestions()
   const [draft, setDraft] = useState('')
   const [focused, setFocused] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
@@ -83,17 +111,17 @@ export function ChatPanel({ messages, status, onSend, onStop, onComposing, onKey
             Nova
           </h1>
           <p className={styles.state} data-status={status}>
-            <i aria-hidden="true" /> {STATUS_LABEL[status]}
+            <i aria-hidden="true" /> {m.status[status]}
           </p>
         </div>
-        <span className={styles.place}>Observatoire · nuit</span>
+        <span className={styles.place}>{m.place}</span>
       </header>
 
-      <div ref={logRef} className={styles.log} role="log" aria-label="Conversation avec Nova" aria-busy={busy} aria-live="polite">
+      <div ref={logRef} className={styles.log} role="log" aria-label={m.log} aria-busy={busy} aria-live="polite">
         <ol className={styles.thread}>
           {messages.map((message) => (
             <li key={message.id} className={styles.message} data-role={message.role}>
-              <span className={styles.author}>{message.role === 'nova' ? 'Nova' : 'Vous'}</span>
+              <span className={styles.author}>{message.role === 'nova' ? 'Nova' : m.you}</span>
               <p>
                 {message.text}
                 {message === last && status === 'streaming' && <i className={styles.caret} aria-hidden="true" />}
@@ -103,7 +131,7 @@ export function ChatPanel({ messages, status, onSend, onStop, onComposing, onKey
           {status === 'thinking' && (
             <li className={styles.message} data-role="nova">
               <span className={styles.author}>Nova</span>
-              <span className={styles.srOnly}>réfléchit…</span>
+              <span className={styles.srOnly}>{m.thinking}</span>
               <span className={styles.dots} aria-hidden="true">
                 <i />
                 <i />
@@ -115,7 +143,7 @@ export function ChatPanel({ messages, status, onSend, onStop, onComposing, onKey
       </div>
 
       <div className={styles.suggestions}>
-        {CHAT_SUGGESTIONS.map((suggestion) => (
+        {suggestions.map((suggestion) => (
           <button key={suggestion} type="button" disabled={busy} onClick={() => submit(suggestion)}>
             {suggestion}
           </button>
@@ -124,14 +152,14 @@ export function ChatPanel({ messages, status, onSend, onStop, onComposing, onKey
 
       <form className={styles.composer} onSubmit={onSubmit}>
         <label className={styles.srOnly} htmlFor="chat-input">
-          Votre message à Nova
+          {m.inputLabel}
         </label>
         <textarea
           ref={inputRef}
           id="chat-input"
           rows={1}
           value={draft}
-          placeholder="Écrivez à Nova…"
+          placeholder={m.placeholder}
           enterKeyHint="send"
           onChange={(e) => {
             setDraft(e.target.value)
@@ -142,16 +170,16 @@ export function ChatPanel({ messages, status, onSend, onStop, onComposing, onKey
           onBlur={() => setFocused(false)}
         />
         {busy ? (
-          <button type="button" className={styles.send} onClick={onStop} aria-label="Interrompre Nova">
+          <button type="button" className={styles.send} onClick={onStop} aria-label={m.stop}>
             <Icon name="stop" />
           </button>
         ) : (
-          <button type="submit" className={styles.send} disabled={!draft.trim()} aria-label="Envoyer" data-nova-look>
+          <button type="submit" className={styles.send} disabled={!draft.trim()} aria-label={m.send} data-nova-look>
             <Icon name="send" />
           </button>
         )}
       </form>
-      <p className={styles.note}>Démonstration : les réponses de Nova sont simulées dans la page.</p>
+      <p className={styles.note}>{m.note}</p>
     </section>
   )
 }

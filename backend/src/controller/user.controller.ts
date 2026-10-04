@@ -10,13 +10,14 @@ import { RESET_CODE_MINUTES, hashResetCode, newResetCode } from "../lib/resetCod
 import { audit, diff } from "../lib/audit";
 import { lockState, lockedEmails, recordAttempt } from "../lib/loginGuard";
 import { notifyUser } from "../lib/notify";
+import { userHasPermission } from "../lib/roleGrants";
 import { deviceList, passkeyList } from "./meSecurity.controller";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zId, zLocale } from "../lib/validation";
 import { registerSchema, zEmail, zPassword } from "./auth.controller";
 
 // D08 / D09 user administration.
-// ADMIN: every account. AGENT (F34): citizen accounts only, and never their credentials
-// (email, password) or role, so an agent cannot take over a citizen's space.
+// With staff.manage: every account + credentials/role. Without (F34): citizens only, never
+// email / password / role — so an agent cannot take over a citizen's space.
 
 const listQuerySchema = paginationSchema.extend({
   role: z.nativeEnum(Role).optional(),
@@ -49,7 +50,7 @@ const adminUpdateSchema = z.object({
   role: z.nativeEnum(Role).optional(),
 });
 
-const isAdmin = (req: Request) => req.user!.role === "ADMIN";
+const canManageStaff = (req: Request) => userHasPermission(req.user!.role, "staff.manage");
 
 // F34: deactivating an account must say why (kept in the audit log)
 const zReason = z.string().trim().min(3).max(500);
@@ -90,10 +91,10 @@ type Listed = { email: string };
 // F37 / F34: the lock state the staff screens need next to each account
 export const withLock = async <T extends Listed>(user: T) => ({ ...user, ...(await lockState(user.email)) });
 
-// Agents only see citizens; anything else is reported as not found.
+// Without staff.manage, only citizen accounts are visible (F34); anything else is not found.
 const loadManageable = async (req: Request) => {
   const user = await userModel.getById(parseId(req.params.id));
-  if (!user || (!isAdmin(req) && user.role !== "CITIZEN")) throw notFound("User not found");
+  if (!user || (!(await canManageStaff(req)) && user.role !== "CITIZEN")) throw notFound("User not found");
   return user;
 };
 
@@ -101,7 +102,7 @@ const userController = {
   getAll: async (req: Request, res: Response) => {
     const { role, q, is_active, district_id, ...pagination } = listQuerySchema.parse(req.query);
     const where: Prisma.UserWhereInput = {
-      role: isAdmin(req) ? role : "CITIZEN",
+      role: (await canManageStaff(req)) ? role : "CITIZEN",
       is_active,
       district_id,
       ...(q ? { OR: [{ email: { contains: q } }, { name: { contains: q } }, { last_name: { contains: q } }] } : {}),
@@ -163,15 +164,16 @@ const userController = {
 
   update: async (req: Request, res: Response) => {
     const target = await loadManageable(req);
-    if (!isAdmin(req)) {
+    const staffAdmin = await canManageStaff(req);
+    if (!staffAdmin) {
       const forbiddenKeys = ["email", "password", "role"].filter((key) => key in (req.body ?? {}));
       if (forbiddenKeys.length) throw forbidden(`Agents cannot change ${forbiddenKeys.join(", ")}`);
     }
     const { reason, ...body } = (req.body ?? {}) as Record<string, unknown>;
-    const { password, ...input } = (isAdmin(req) ? adminUpdateSchema : agentUpdateSchema).parse(body) as z.infer<
+    const { password, ...input } = (staffAdmin ? adminUpdateSchema : agentUpdateSchema).parse(body) as z.infer<
       typeof adminUpdateSchema
     >;
-    // Prevent an admin from locking themselves out.
+    // Prevent locking yourself out of admin.
     if (target.id === req.user!.id && ((input.role && input.role !== "ADMIN") || input.is_active === false)) {
       throw badRequest("You cannot remove your own admin access");
     }

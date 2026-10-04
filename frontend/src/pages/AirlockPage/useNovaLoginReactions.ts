@@ -1,17 +1,33 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { defineMessages, messagesFor } from '../../i18n'
 import { nova } from '../../experience/nova/behavior/novaStore'
 import { novaScenes } from '../../experience/nova/behavior/scenes'
 import type { Inconclusive } from '../../features/auth/authService'
 import type { LoginActivity, LoginField } from '../../features/auth/loginActivity'
 
 /** What Nova says when the face engine cannot let the visitor in. */
-const FACE_UNDECIDED: Record<Inconclusive, string> = {
-  unknown: "Je ne connais pas encore ce visage. Entrez votre code, je m'en souviendrai.",
-  noFace: 'Je vous vois mal… approchez-vous, face à la lumière.',
-  unavailable: 'Mon module de reconnaissance ne répond pas. Passons par le code.',
-  mismatch: "Ce visage ne correspond pas à l'identifiant saisi. Vérifiez l'e-mail, ou entrez avec votre code.",
-  disabled: 'Ce compte est suspendu. La mairie pourra le réactiver : passez au guichet ou appelez-la.',
-}
+const messages = defineMessages(
+  {
+    faceUndecided: {
+      unknown: "Je ne connais pas encore ce visage. Entrez votre code, je m'en souviendrai.",
+      noFace: 'Je vous vois mal… approchez-vous, face à la lumière.',
+      unavailable: 'Mon module de reconnaissance ne répond pas. Passons par le code.',
+      mismatch: "Ce visage ne correspond pas à l'identifiant saisi. Vérifiez l'e-mail, ou entrez avec votre code.",
+      disabled: 'Ce compte est suspendu. La mairie pourra le réactiver : passez au guichet ou appelez-la.',
+    } satisfies Record<Inconclusive, string>,
+    faceLinked: (name: string) => `C'est noté, ${name} : la prochaine fois, un regard suffira.`,
+  },
+  {
+    faceUndecided: {
+      unknown: "I don't know this face yet. Enter your code and I'll remember it.",
+      noFace: "I can't see you well… come closer, facing the light.",
+      unavailable: "My recognition module isn't answering. Let's use the code.",
+      mismatch: "This face doesn't match the identifier entered. Check the e-mail, or sign in with your code.",
+      disabled: 'This account is suspended. The city hall can reactivate it: drop by the counter or give them a call.',
+    },
+    faceLinked: (name) => `Got it, ${name}: next time, one look will do.`,
+  },
+)
 
 /**
  * Translates what happens at the access control into Nova's reactions (the hologram itself does not know
@@ -76,10 +92,10 @@ export function useNovaLoginReactions(): (activity: LoginActivity) => void {
       case 'faceUndecided':
         nova.hold('think', false)
         if (activity.reason === 'noFace') nova.emote('surprised', 1.2)
-        nova.say(FACE_UNDECIDED[activity.reason], activity.reason === 'unavailable' ? 'sad' : 'surprised')
+        nova.say(messagesFor(messages).faceUndecided[activity.reason], activity.reason === 'unavailable' ? 'sad' : 'surprised')
         break
       case 'faceLinked':
-        nova.say(`C'est noté, ${activity.name} : la prochaine fois, un regard suffira.`, 'happy')
+        nova.say(messagesFor(messages).faceLinked(activity.name), 'happy')
         break
     }
   }, [])

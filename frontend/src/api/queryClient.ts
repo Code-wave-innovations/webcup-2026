@@ -8,7 +8,8 @@ import { isApiError } from './errors'
  */
 const BASE_REFRESH = {
   notifications: 30_000,
-  alerts: 60_000,
+  /** A new outage must reach the screen quickly; a programmed one also wakes at its start hour. */
+  alerts: 15_000,
   dashboard: 30_000,
   /** F95: daily trends and period summaries move slowly; every 30 s they cost the heaviest queries of the API */
   trends: 300_000,

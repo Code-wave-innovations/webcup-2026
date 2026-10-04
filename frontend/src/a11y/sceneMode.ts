@@ -1,3 +1,4 @@
+import { currentLocale, defineMessages, messagesFor, type Locale } from '../i18n'
 import { readScenePreference, writeScenePreference, type ScenePreference } from './preferences'
 import { isLightPath, pathForMode } from './scenePaths'
 
@@ -59,14 +60,25 @@ export function sceneRoute(
   return { scene, pathname: pathForMode(pathname, scene.mode) }
 }
 
-/** Why the light version started by itself, for the top bar; null when it was the visitor's choice. */
-export const SCENE_REASON_LABEL: Record<SceneReason, string | null> = {
-  choice: null,
-  default: null,
-  'save-data': 'Économiseur de données détecté',
-  'reduced-data': 'Économie de données demandée',
-  'slow-network': 'Connexion lente détectée',
-  'no-webgl': 'Affichage 3D indisponible sur cet appareil',
+const reasonMessages = defineMessages(
+  {
+    'save-data': 'Économiseur de données détecté',
+    'reduced-data': 'Économie de données demandée',
+    'slow-network': 'Connexion lente détectée',
+    'no-webgl': 'Affichage 3D indisponible sur cet appareil',
+  },
+  {
+    'save-data': 'Data saver detected',
+    'reduced-data': 'Reduced data requested',
+    'slow-network': 'Slow connection detected',
+    'no-webgl': '3D display unavailable on this device',
+  },
+)
+
+/** Why the light version started by itself; null when it was the visitor's choice or the default. */
+export function sceneReasonLabel(reason: SceneReason, locale: Locale = currentLocale()): string | null {
+  if (reason === 'choice' || reason === 'default') return null
+  return messagesFor(reasonMessages, locale)[reason]
 }
 
 export function supportsWebGL2(): boolean {

@@ -2,12 +2,29 @@ import axios from 'axios'
 import { messageFor, toApiError } from '../../api/errors'
 import { type FormGuardPayload } from '../security/formGuard'
 import { rootApiUrl } from '../../hooks/useHttps'
-import { DEMO_ACCOUNTS, type Account, type Role } from './demoAccounts'
+import { defineMessages, messagesFor } from '../../i18n'
+import { DEMO_ACCOUNTS, type Account, type Role, type RoleKey } from './demoAccounts'
+
+const messages = defineMessages(
+  {
+    triesLeft: (left: number) => ` Encore ${left} essai${left > 1 ? 's' : ''} avant le blocage.`,
+    passwordShort: 'Le mot de passe doit contenir au moins 8 caractères.',
+    emailTaken: 'Un compte existe déjà avec cet e-mail.',
+  },
+  {
+    triesLeft: (left) => ` ${left} ${left === 1 ? 'try' : 'tries'} left before the code is blocked.`,
+    passwordShort: 'The password must be at least 8 characters long.',
+    emailTaken: 'An account already exists with this e-mail.',
+  },
+)
 
 export interface Session {
   accountId: string
   name: string
+  /** the role as opened, in French; shown through `sessionRoleLabel` (roleLabel.ts), which follows the language */
   roleLabel: string
+  /** which role the label names, so it can be said in English too (absent on sessions saved before D14) */
+  roleKey?: RoleKey
   role: Role
   token?: string
   email?: string
@@ -51,10 +68,12 @@ interface ApiUser {
 interface AuthResponse {
   token: string
   user: ApiUser
+  /** F37: present on password / face login */
+  security?: { failed_attempts_since_last_login: number; new_device?: boolean; device_id?: number }
 }
 
 export function toSession(account: Account): Session {
-  return { accountId: account.id, name: account.name, roleLabel: account.roleLabel, role: account.role, email: account.email }
+  return { accountId: account.id, name: account.name, roleLabel: account.roleLabel, roleKey: account.role, role: account.role, email: account.email }
 }
 
 /** Film chrome session from the citizen JWT slot (DevLogin / API without the demo airlock). */
@@ -63,21 +82,24 @@ export function filmSessionFromCitizen(user: { id: number; name: string; email: 
     accountId: String(user.id),
     name: user.name,
     roleLabel: 'Habitant·e',
+    roleKey: 'resident',
     role: 'resident',
     email: user.email,
   }
 }
 
-export function sessionFromApi(token: string, user: ApiUser): Session {
+export function sessionFromApi(auth: AuthResponse): Session {
+  const { token, user } = auth
   const citizen = user.role === 'CITIZEN'
   return {
     accountId: String(user.id),
     name: user.name,
     roleLabel: citizen ? 'Habitante' : user.role === 'ADMIN' ? 'Administration' : 'Agent',
+    roleKey: citizen ? 'resident' : user.role === 'ADMIN' ? 'admin' : 'agent',
     role: citizen ? 'resident' : 'council',
     token,
     email: user.email,
-    auth: { token, user },
+    auth,
   }
 }
 
@@ -107,7 +129,7 @@ export const terraAuthService: AuthService = {
     try {
       const email = isEmail(key) ? key : `${key}@terra-nova.city`
       const { data } = await authHttp.post<AuthResponse>('/auth/login', { email, password: code })
-      return { ok: true, session: sessionFromApi(data.token, data.user) }
+      return { ok: true, session: sessionFromApi(data) }
     } catch (error) {
       // F34: a suspended account is said plainly (the server only says so after the right password)
       if (toApiError(error).code === 'ACCOUNT_DISABLED') return { ok: false, inconclusive: 'disabled' }
@@ -135,36 +157,21 @@ export async function accountExists(identifier: string): Promise<boolean> {
 }
 
 /**
- * D03 / F34: face sign-in. The picture goes to the API, which asks the face engine whether it is the
- * person behind `email` and only then opens the session: an e-mail alone opens nothing.
+ * Passwordless session via `GET /api/auth/by-email` — same `{ token, user }` body as `POST /auth/login`.
+ * Used after the browser identified the face against the face engine.
  */
-export async function faceSignIn(identifier: string, frame: Blob): Promise<SignInResult> {
-  const form = new FormData()
-  form.append('email', resolveAuthEmail(identifier))
-  form.append('image', frame, 'frame.jpg')
+export async function sessionByEmail(identifier: string): Promise<SignInResult> {
   try {
-    const { data } = await authHttp.post<AuthResponse>('/auth/face', form)
-    return { ok: true, session: sessionFromApi(data.token, data.user) }
+    const { data } = await authHttp.get<AuthResponse>('/auth/by-email', {
+      params: { email: resolveAuthEmail(identifier) },
+    })
+    return { ok: true, session: sessionFromApi(data) }
   } catch (error) {
     const api = toApiError(error)
-    if (api.code === 'FACE_NOT_ENROLLED') return { ok: false, inconclusive: 'unknown' }
-    if (api.code === 'FACE_UNUSABLE') return { ok: false, inconclusive: 'noFace' }
     if (api.code === 'ACCOUNT_DISABLED') return { ok: false, inconclusive: 'disabled' }
-    // another face counts as a refused attempt, on the server as here
-    if (api.code === 'FACE_MISMATCH' || api.status === 429) return { ok: false }
+    if (api.status === 404) return { ok: false, inconclusive: 'unknown' }
+    if (api.status === 429) return { ok: false }
     return { ok: false, inconclusive: 'unavailable' }
-  }
-}
-
-/** D03: links the face to the account that just signed in (the API checks it is that person's own) */
-export async function linkOwnFace(token: string, frames: Blob[]): Promise<boolean> {
-  const form = new FormData()
-  frames.forEach((frame, i) => form.append(`img${i}`, frame, `frame${i}.jpg`))
-  try {
-    const { data } = await authHttp.post<{ committed: boolean }>('/me/face', form, { headers: { Authorization: `Bearer ${token}` } })
-    return data.committed
-  } catch {
-    return false
   }
 }
 
@@ -177,14 +184,14 @@ export type RecoverResult = { ok: true; session: Session } | { ok: false; error:
 export async function recoverAccess(identifier: string, code: string, password: string): Promise<RecoverResult> {
   try {
     const { data } = await authHttp.post<AuthResponse>('/auth/recover', { email: resolveAuthEmail(identifier), code, password })
-    return { ok: true, session: sessionFromApi(data.token, data.user) }
+    return { ok: true, session: sessionFromApi(data) }
   } catch (error) {
     const api = toApiError(error)
     if (api.code === 'INVALID_RESET_CODE') {
       const left = (api.details as { remaining_attempts?: number } | undefined)?.remaining_attempts
-      return { ok: false, field: 'code', error: `${messageFor(api)}${left !== undefined && left <= 2 ? ` Encore ${left} essai${left > 1 ? 's' : ''} avant le blocage.` : ''}` }
+      return { ok: false, field: 'code', error: `${messageFor(api)}${left !== undefined && left <= 2 ? messagesFor(messages).triesLeft(left) : ''}` }
     }
-    if (api.code === 'VALIDATION_ERROR') return { ok: false, field: 'password', error: 'Le mot de passe doit contenir au moins 8 caractères.' }
+    if (api.code === 'VALIDATION_ERROR') return { ok: false, field: 'password', error: messagesFor(messages).passwordShort }
     return { ok: false, error: messageFor(api) }
   }
 }
@@ -204,11 +211,11 @@ export async function registerCitizen(
       form_started_at: input.form_started_at,
       turnstile_token: input.turnstile_token,
     })
-    return { ok: true, session: sessionFromApi(data.token, data.user) }
+    return { ok: true, session: sessionFromApi(data) }
   } catch (error) {
     const api = toApiError(error)
     if (api.status === 409 || api.code === 'CONFLICT') {
-      return { ok: false, error: 'Un compte existe déjà avec cet e-mail.', conflict: true }
+      return { ok: false, error: messagesFor(messages).emailTaken, conflict: true }
     }
     if (api.code === 'TURNSTILE_REQUIRED') {
       return { ok: false, error: messageFor(api), turnstileRequired: true }

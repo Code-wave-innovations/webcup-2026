@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type Keybo
 import { useDistricts } from '../../api/districts'
 import { useReducedMotion } from '../../hooks/useMediaQuery'
 import { Button } from '../../ui/Button'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { Icon, NovaMark } from '../../ui/Icon'
 import { hexBurst } from '../../ui/hexBurst'
 import {
@@ -38,6 +39,91 @@ interface AccessHologramProps {
   faceLogin?: boolean
 }
 
+const messages = defineMessages(
+  {
+    missingCode: "Saisissez votre code d'accès.",
+    refused: (left: number) => `Identifiant ou code refusé. ${left > 1 ? `Encore ${left} essais` : 'Dernier essai'} avant verrouillage.`,
+    locked: (seconds: number) => `Accès refusé cinq fois. Le sas est verrouillé, nouvel essai dans ${seconds} s.`,
+    errors: {
+      identifierEmpty: 'Saisissez votre e-mail ou identifiant.',
+      identifierEmail: 'Adresse e-mail invalide.',
+      suspended: 'Ce compte est suspendu par la mairie. Présentez-vous au guichet ou appelez la mairie pour le réactiver.',
+      resetCode: 'Saisissez les 8 caractères du code remis par la mairie.',
+      newCodeShort: 'Le code d’accès doit contenir au moins 8 caractères.',
+      newCodeMismatch: 'Les deux codes ne correspondent pas.',
+      names: 'Indiquez votre prénom et votre nom.',
+      district: 'Impossible de charger les quartiers.',
+      codeShort: 'Le code doit contenir au moins 8 caractères.',
+      codeMismatch: 'Les codes ne correspondent pas.',
+      turnstile: 'Validez la vérification anti-robot avant de continuer.',
+    },
+    kicker: 'Liaison sécurisée · Sas 01',
+    meta: ['Canal 7', 'Orbitale', 'Citoyen'],
+    openingReader: 'Ouverture du lecteur…',
+    citizen: 'citoyen',
+    guide: 'Guide à bâbord',
+    protocol: 'Protocole TN-A1',
+    granted: 'Accès autorisé',
+    welcome: (name: string) => `Bienvenue, ${name}. Couloir d'entrée verrouillé.`,
+    faceLinking: 'Association de votre visage…',
+    faceLinked: 'Visage associé : la prochaine fois, un regard suffira.',
+    faceLinkFailed: "Votre visage n'a pas pu être associé cette fois.",
+    creatingTitle: 'Création du compte',
+    creatingSubtitle: 'Terra Nova ouvre votre dossier citoyen.',
+    creating: 'Création de votre compte…',
+    createFailed: 'Le compte n’a pas pu être créé.',
+    ready: 'Votre compte est prêt.',
+    retry: 'Réessayer',
+    create: 'Créer mon compte',
+    back: 'Retour',
+  },
+  {
+    missingCode: 'Enter your access code.',
+    refused: (left) => `Identifier or code refused. ${left === 1 ? 'Last try' : `${left} tries left`} before the lock.`,
+    locked: (seconds) => `Access refused five times. The airlock is locked, try again in ${seconds} s.`,
+    errors: {
+      identifierEmpty: 'Enter your e-mail or identifier.',
+      identifierEmail: 'Invalid e-mail address.',
+      suspended: 'This account has been suspended by the city hall. Visit the counter or call the city hall to have it reactivated.',
+      resetCode: 'Enter the 8 characters of the code the city hall gave you.',
+      newCodeShort: 'The access code must be at least 8 characters long.',
+      newCodeMismatch: 'The two codes do not match.',
+      names: 'Enter your first name and last name.',
+      district: 'Unable to load the districts.',
+      codeShort: 'The code must be at least 8 characters long.',
+      codeMismatch: 'The codes do not match.',
+      turnstile: 'Complete the anti-robot check before continuing.',
+    },
+    kicker: 'Secure link · Airlock 01',
+    meta: ['Channel 7', 'Orbital', 'Citizen'],
+    openingReader: 'Opening the scanner…',
+    citizen: 'citizen',
+    guide: 'Guide to port',
+    protocol: 'Protocol TN-A1',
+    granted: 'Access granted',
+    welcome: (name) => `Welcome, ${name}. Entry corridor locked.`,
+    faceLinking: 'Linking your face…',
+    faceLinked: 'Face linked: next time, one look will do.',
+    faceLinkFailed: 'Your face could not be linked this time.',
+    creatingTitle: 'Creating the account',
+    creatingSubtitle: 'Terra Nova is opening your citizen record.',
+    creating: 'Creating your account…',
+    createFailed: 'The account could not be created.',
+    ready: 'Your account is ready.',
+    retry: 'Try again',
+    create: 'Create my account',
+    back: 'Back',
+  },
+)
+
+type Messages = (typeof messages)['fr']
+type ErrorKey = keyof Messages['errors']
+
+/** An error of the form: one of ours (said in the current language) or the API's text. */
+type FormError = { key: ErrorKey } | { text: string }
+
+const errorText = (m: Messages, error: FormError | null): string | null => (error ? ('key' in error ? m.errors[error.key] : error.text) : null)
+
 const FaceScan = lazy(() => import('./FaceScan').then((module) => ({ default: module.FaceScan })))
 /** F95: the face enrolment step (and its detection worker client) only loads when a registration reaches it */
 const RegisterFacePanel = lazy(() => import('./panels/RegisterFacePanel').then((module) => ({ default: module.RegisterFacePanel })))
@@ -49,16 +135,14 @@ type FaceLink = 'linking' | 'linked' | 'failed'
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-function loginErrorMessage(state: LoginState, secondsLeft: number): string | null {
+function loginErrorMessage(m: Messages, state: LoginState, secondsLeft: number): string | null {
   switch (state.error) {
     case 'missing':
-      return "Saisissez votre code d'accès."
-    case 'refused': {
-      const left = MAX_ATTEMPTS - state.strikes
-      return `Identifiant ou code refusé. ${left > 1 ? `Encore ${left} essais` : 'Dernier essai'} avant verrouillage.`
-    }
+      return m.missingCode
+    case 'refused':
+      return m.refused(MAX_ATTEMPTS - state.strikes)
     case 'locked':
-      return `Accès refusé cinq fois. Le sas est verrouillé, nouvel essai dans ${secondsLeft} s.`
+      return m.locked(secondsLeft)
     default:
       return null
   }
@@ -70,6 +154,8 @@ function loginErrorMessage(state: LoginState, secondsLeft: number): string | nul
  */
 export function AccessHologram({ collapsed, onGranted, onActivity, formRef, faceLogin = true }: AccessHologramProps) {
   const reduced = useReducedMotion()
+  const locale = useLocale()
+  const m = useMessages(messages)
   const [step, setStep] = useState<AccessStep>('identify')
   const [loginMode, setLoginMode] = useState<'code' | 'face'>('code')
   const [identifier, setIdentifier] = useState('')
@@ -79,7 +165,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
   const [districtId, setDistrictId] = useState<number | null>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [formError, setFormError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<FormError | null>(null)
   const [lookingUp, setLookingUp] = useState(false)
   const [registering, setRegistering] = useState(false)
   const [registerStartedAt, setRegisterStartedAt] = useState(() => Date.now())
@@ -94,7 +180,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
   const [resetCode, setResetCode] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newConfirm, setNewConfirm] = useState('')
-  const [recoverError, setRecoverError] = useState<{ field?: 'code' | 'password' | 'confirm'; message: string } | null>(null)
+  const [recoverError, setRecoverError] = useState<({ field?: 'code' | 'password' | 'confirm' } & FormError) | null>(null)
   const [recovering, setRecovering] = useState(false)
   const { data: districts = [], isLoading: districtsLoading, isError: districtsFailed } = useDistricts()
 
@@ -147,8 +233,8 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
 
   const onContinueIdentify = async () => {
     const v = validateIdentifier(identifier)
-    if (v === 'empty') return setFormError('Saisissez votre e-mail ou identifiant.')
-    if (v === 'email') return setFormError('Adresse e-mail invalide.')
+    if (v === 'empty') return setFormError({ key: 'identifierEmpty' })
+    if (v === 'email') return setFormError({ key: 'identifierEmail' })
     setFormError(null)
     setLookingUp(true)
     const route = await resolveAccessRoute(identifier)
@@ -169,14 +255,14 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
     }
     // F34: a suspended account is told why, and where to go (no attempt is counted)
     if (result && !result.ok && result.inconclusive === 'disabled') {
-      setFormError('Ce compte est suspendu par la mairie. Présentez-vous au guichet ou appelez la mairie pour le réactiver.')
+      setFormError({ key: 'suspended' })
       return
     }
     codeRef.current?.focus()
     codeRef.current?.select()
   }
 
-  /** Face identity must match the typed identifier, then `GET /api/auth/by-email`. */
+  /** Face identify on the face engine, then `GET /api/auth/by-email` when it matches the typed id. */
   const identifyFace = async (frame: Blob) => {
     const result = await access.attempt(() => faceAuthService.identify(frame, identifier))
     if (result?.ok) void admit(result.session)
@@ -191,30 +277,30 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
 
   const onRecoverSubmit = async () => {
     if (recovering || granted) return
-    if (resetCode.replace(/[^a-z0-9]/gi, '').length < 8) return setRecoverError({ field: 'code', message: 'Saisissez les 8 caractères du code remis par la mairie.' })
-    if (newPassword.length < 8) return setRecoverError({ field: 'password', message: 'Le code d’accès doit contenir au moins 8 caractères.' })
-    if (newPassword !== newConfirm) return setRecoverError({ field: 'confirm', message: 'Les deux codes ne correspondent pas.' })
+    if (resetCode.replace(/[^a-z0-9]/gi, '').length < 8) return setRecoverError({ field: 'code', key: 'resetCode' })
+    if (newPassword.length < 8) return setRecoverError({ field: 'password', key: 'newCodeShort' })
+    if (newPassword !== newConfirm) return setRecoverError({ field: 'confirm', key: 'newCodeMismatch' })
     setRecoverError(null)
     setRecovering(true)
     const result = await recoverAccess(identifier, resetCode, newPassword)
     setRecovering(false)
-    if (!result.ok) return setRecoverError({ field: result.field, message: result.error })
+    if (!result.ok) return setRecoverError({ field: result.field, text: result.error })
     publish.current?.({ type: 'granted', name: result.session.name })
     void admit(result.session)
   }
 
   const onRegisterNext = () => {
     const v = validateRegisterIdentity(name, lastName, districtId)
-    if (v === 'missing') return setFormError('Indiquez votre prénom et votre nom.')
-    if (v === 'district') return setFormError('Impossible de charger les quartiers.')
+    if (v === 'missing') return setFormError({ key: 'names' })
+    if (v === 'district') return setFormError({ key: 'district' })
     setFormError(null)
     setStep('register-2')
   }
 
   const onRegisterCreate = async () => {
     const v = validateRegisterSecrets(password, confirm)
-    if (v === 'short') return setFormError('Le code doit contenir au moins 8 caractères.')
-    if (v === 'mismatch') return setFormError('Les codes ne correspondent pas.')
+    if (v === 'short') return setFormError({ key: 'codeShort' })
+    if (v === 'mismatch') return setFormError({ key: 'codeMismatch' })
     setFormError(null)
     setStep('register-3')
     // without the face step, the account is created at once (register-3 still shows its progress and errors)
@@ -223,12 +309,12 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
 
   const registerOnBackend = async (frames: Blob[] | null = null) => {
     if (districtId == null) {
-      setFormError('Impossible de charger les quartiers.')
+      setFormError({ key: 'district' })
       setStep('register-1')
       return
     }
     if (turnstileNeeded && !turnstileToken) {
-      setFormError('Validez la vérification anti-robot avant de continuer.')
+      setFormError({ key: 'turnstile' })
       return
     }
     setRegistering(true)
@@ -243,7 +329,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
     })
     setRegistering(false)
     if (!result.ok) {
-      setFormError(result.error)
+      setFormError({ text: result.error })
       if (result.turnstileRequired) {
         setTurnstileNeeded(true)
         setTurnstileToken(null)
@@ -289,6 +375,8 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
 
   const readCapsLock = (event: KeyboardEvent<HTMLInputElement>) => setCapsLock(event.getModifierState('CapsLock'))
 
+  const formErrorText = errorText(m, formError)
+
   const backToIdentify = () => {
     setFormError(null)
     setLoginMode('code')
@@ -309,25 +397,25 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
       <i className={styles.scan} aria-hidden="true" />
       <i className={styles.corners} aria-hidden="true" />
       {granted ? (
-        <Granted session={granted} faceLink={faceLink} />
+        <Granted session={granted} faceLink={faceLink} m={m} />
       ) : (
         <>
           <div className={styles.header}>
             <NovaMark size={34} stroke={1.6} />
             <div>
               <p className={styles.kicker}>
-                <span className={styles.dot} aria-hidden="true" /> Liaison sécurisée · Sas 01
+                <span className={styles.dot} aria-hidden="true" /> {m.kicker}
               </p>
               <h1 className={styles.title} id="airlock-title">
-                {faceLogin || step !== 'register-3' ? stepTitle(step) : 'Création du compte'}
+                {faceLogin || step !== 'register-3' ? stepTitle(step, locale) : m.creatingTitle}
               </h1>
               <p className={styles.subtitle}>
-                {faceLogin || step !== 'register-3' ? stepSubtitle(step, { face: scanning }) : 'Terra Nova ouvre votre dossier citoyen.'}
+                {faceLogin || step !== 'register-3' ? stepSubtitle(step, { face: scanning }, locale) : m.creatingSubtitle}
               </p>
               <div className={styles.meta} aria-hidden="true">
-                <span>Canal 7</span>
-                <span>Orbitale</span>
-                <span>Citoyen</span>
+                {m.meta.map((label) => (
+                  <span key={label}>{label}</span>
+                ))}
               </div>
             </div>
           </div>
@@ -338,7 +426,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
             {step === 'identify' && (
               <IdentifyPanel
                 identifier={identifier}
-                error={formError}
+                error={formErrorText}
                 checking={lookingUp}
                 identifierRef={identifierRef}
                 onChange={(value) => {
@@ -348,7 +436,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
               />
             )}
             {step === 'login' && scanning && (
-              <Suspense fallback={<p className={styles.statusText}>Ouverture du lecteur…</p>}>
+              <Suspense fallback={<p className={styles.statusText}>{m.openingReader}</p>}>
                 <FaceScan
                   identify={identifyFace}
                   onUnknown={setFaceFrames}
@@ -363,7 +451,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
                 code={code}
                 state={state}
                 secondsLeft={secondsLeft}
-                error={formError ?? loginErrorMessage(state, secondsLeft)}
+                error={formErrorText ?? loginErrorMessage(m, state, secondsLeft)}
                 codeRef={codeRef}
                 codeSightRef={codeSightRef}
                 capsLock={capsLock}
@@ -386,7 +474,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
                 code={resetCode}
                 password={newPassword}
                 confirm={newConfirm}
-                error={recoverError}
+                error={recoverError && { field: recoverError.field, message: errorText(m, recoverError) ?? '' }}
                 submitting={recovering}
                 onCodeChange={(value) => {
                   setRecoverError(null)
@@ -414,7 +502,8 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
                 districts={districts}
                 districtsLoading={districtsLoading}
                 districtsFailed={districtsFailed}
-                error={formError}
+                error={formErrorText}
+                districtError={!!formError && 'key' in formError && formError.key === 'district'}
                 reminder={identifier.trim()}
                 onNameChange={(value) => {
                   clearError()
@@ -435,7 +524,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
               <RegisterSecretsPanel
                 password={password}
                 confirm={confirm}
-                error={formError}
+                error={formErrorText}
                 reminder={identifier.trim()}
                 submitting={registering}
                 onPasswordChange={(value) => {
@@ -455,9 +544,9 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
             {step === 'register-3' && (
               <>
                 {faceLogin ? (
-                  <Suspense fallback={<p className={styles.statusText}>Ouverture du lecteur…</p>}>
+                  <Suspense fallback={<p className={styles.statusText}>{m.openingReader}</p>}>
                     <RegisterFacePanel
-                      name={name.trim() || 'citoyen'}
+                      name={name.trim() || m.citizen}
                       busy={registering}
                       onEnrolled={(frames) => {
                         setFaceFrames(frames)
@@ -470,13 +559,13 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
                 ) : (
                   <div className={styles.plainRegister}>
                     <p className={styles.statusText} role="status">
-                      {registering ? 'Création de votre compte…' : formError ? 'Le compte n’a pas pu être créé.' : 'Votre compte est prêt.'}
+                      {registering ? m.creating : formError ? m.createFailed : m.ready}
                     </p>
                     <Button type="button" disabled={registering} onClick={() => void registerOnBackend()}>
-                      {formError ? 'Réessayer' : 'Créer mon compte'}
+                      {formError ? m.retry : m.create}
                     </Button>
                     <Button type="button" variant="ghost" disabled={registering} onClick={() => setStep('register-2')}>
-                      Retour
+                      {m.back}
                     </Button>
                   </div>
                 )}
@@ -500,7 +589,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
                           })
                           setRegistering(false)
                           if (!retry.ok) {
-                            setFormError(retry.error)
+                            setFormError({ text: retry.error })
                             if (retry.turnstileRequired) setTurnstileToken(null)
                             return
                           }
@@ -514,17 +603,17 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
             )}
           </div>
 
-          {formError && step === 'register-3' && (
+          {formErrorText && step === 'register-3' && (
             <p className={styles.error} role="alert">
-              {formError}
+              {formErrorText}
             </p>
           )}
 
           <p className={styles.footer}>
             <span>
-              Guide à bâbord · <b>Nova</b>
+              {m.guide} · <b>Nova</b>
             </span>
-            <span>Protocole TN-A1</span>
+            <span>{m.protocol}</span>
           </p>
         </>
       )}
@@ -532,7 +621,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
   )
 }
 
-function Granted({ session, faceLink }: { session: Session; faceLink: FaceLink | null }) {
+function Granted({ session, faceLink, m }: { session: Session; faceLink: FaceLink | null; m: Messages }) {
   const sealRef = useRef<HTMLSpanElement>(null)
   useEffect(() => {
     const rect = sealRef.current?.getBoundingClientRect()
@@ -546,16 +635,12 @@ function Granted({ session, faceLink }: { session: Session; faceLink: FaceLink |
           <path className={styles.sealCheck} pathLength={1} d="m8.5 12 2.5 2.5 4.5-5" />
         </svg>
       </span>
-      <b>Accès autorisé</b>
-      <p>Bienvenue, {session.name}. Couloir d'entrée verrouillé.</p>
+      <b>{m.granted}</b>
+      <p>{m.welcome(session.name)}</p>
       {faceLink && (
         <p className={styles.faceLink} data-state={faceLink}>
           <Icon name="face" size={16} />{' '}
-          {faceLink === 'linking'
-            ? 'Association de votre visage…'
-            : faceLink === 'linked'
-              ? 'Visage associé : la prochaine fois, un regard suffira.'
-              : "Votre visage n'a pas pu être associé cette fois."}
+          {faceLink === 'linking' ? m.faceLinking : faceLink === 'linked' ? m.faceLinked : m.faceLinkFailed}
         </p>
       )}
     </div>

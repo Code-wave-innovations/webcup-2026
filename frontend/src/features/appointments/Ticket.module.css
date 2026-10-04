@@ -39,7 +39,8 @@
 /* the cancelled and honoured tickets carry a stamp */
 .ticket[data-status='CANCELLED']::after,
 .ticket[data-status='COMPLETED']::after {
-  content: 'ANNULÉ';
+  /* the status' name in the visitor's language */
+  content: attr(data-stamp);
   position: absolute;
   top: 18px;
   right: 22px;
@@ -51,10 +52,6 @@
   transform: rotate(-8deg);
   opacity: 0.85;
   pointer-events: none;
-}
-
-.ticket[data-status='COMPLETED']::after {
-  content: 'HONORÉ';
 }
 
 /* a fresh ticket comes out of the printer: it slides down, a beam reads it */

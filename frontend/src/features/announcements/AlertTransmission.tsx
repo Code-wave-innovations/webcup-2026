@@ -4,14 +4,42 @@ import type { ActiveAlert } from '../../api/types'
 import { holdSmoothScroll } from '../../app/smoothScroll'
 import { useNow } from '../../hooks/useNow'
 import { useReducedMotion } from '../../hooks/useMediaQuery'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { Icon } from '../../ui/Icon'
 import { useTypewriter } from '../../ui/useTypewriter'
-import { formatWhen, periodOf, recommendationsOf, SEVERITY, SEVERITY_ICON, stepsOf, zoneLabel } from './alertModel'
+import { formatWhen, periodOf, recommendationsOf, SEVERITY_ICON, severityLabel, stepsOf, zoneLabel } from './alertModel'
 import styles from './AlertTransmission.module.css'
 
 /** The card leaves before the next one comes in; the whole transmission folds after the last one */
 const CARD_OUT_MS = 380
 const FOLD_MS = 520
+
+const messages = defineMessages(
+  {
+    council: 'Haut Conseil de la Ville',
+    priority: 'Transmission prioritaire',
+    issuedAt: (moment: string) => `Émis à ${moment}`,
+    concerned: 'Vous êtes concerné·e',
+    todo: 'Ce que vous devez faire',
+    recommendations: 'Recommandations',
+    waiting: (n: number) => (n === 1 ? '1 autre message en attente' : `${n} autres messages en attente`),
+    close: 'Fermer',
+    gotItNext: "J'ai compris · suivant",
+    gotIt: "J'ai compris",
+  },
+  {
+    council: 'City High Council',
+    priority: 'Priority transmission',
+    issuedAt: (moment) => `Issued at ${moment}`,
+    concerned: 'This concerns you',
+    todo: 'What you must do',
+    recommendations: 'Recommendations',
+    waiting: (n) => (n === 1 ? '1 more message waiting' : `${n} more messages waiting`),
+    close: 'Close',
+    gotItNext: 'Understood · next',
+    gotIt: 'Understood',
+  },
+)
 
 /**
  * D18: a message of the High Council takes over the screen the moment it concerns the resident. The
@@ -92,13 +120,15 @@ function TransmissionCard({
   onAcknowledge: () => void
 }) {
   const now = useNow()
+  const m = useMessages(messages)
+  const locale = useLocale()
   const title = useTypewriter(alert.title)
   const steps = stepsOf(alert.instructions)
   const recommendations = recommendationsOf(alert)
   const titleId = `transmission-${alert.id}-title`
   const todoId = `transmission-${alert.id}-todo`
   const targeted = alert.audience !== 'ALL' && alert.concerns_me
-  const source = alert.source ?? 'Haut Conseil de la Ville'
+  const source = alert.source ?? m.council
   const label = useId()
 
   return (
@@ -115,10 +145,10 @@ function TransmissionCard({
         </span>
         <span className={styles.channel}>
           <Icon name="broadcast" size={16} />
-          Transmission prioritaire
+          {m.priority}
           <b>{source}</b>
         </span>
-        <span className={styles.stamp}>Émis à {formatWhen(alert.starts_at, now)}</span>
+        <span className={styles.stamp}>{m.issuedAt(formatWhen(alert.starts_at, now, locale))}</span>
       </header>
 
       <div className={styles.head}>
@@ -131,13 +161,13 @@ function TransmissionCard({
           <p className={styles.tags}>
             <span className={styles.level}>
               <Icon name={SEVERITY_ICON[alert.severity]} size={15} />
-              {SEVERITY[alert.severity].label}
+              {severityLabel(alert.severity, locale)}
             </span>
             <span className={styles.zone}>
               <Icon name="pin" size={14} />
-              {zoneLabel(alert)}
+              {zoneLabel(alert, locale)}
             </span>
-            {targeted && <span className={styles.me}>Vous êtes concerné·e</span>}
+            {targeted && <span className={styles.me}>{m.concerned}</span>}
           </p>
           <h2 id={titleId} className={styles.title} aria-label={alert.title}>
             <span aria-hidden="true">{title}</span>
@@ -150,7 +180,7 @@ function TransmissionCard({
       <div className={styles.body}>
         {steps.length > 0 ? (
           <section className={styles.todo} id={todoId} aria-labelledby={`${label}-todo`}>
-            <h3 id={`${label}-todo`}>Ce que vous devez faire</h3>
+            <h3 id={`${label}-todo`}>{m.todo}</h3>
             <ol>
               {steps.map((step, i) => (
                 <li key={step} style={{ '--i': i } as CSSProperties}>
@@ -171,7 +201,7 @@ function TransmissionCard({
 
         {recommendations.length > 0 && (
           <section className={styles.recos} aria-labelledby={`${label}-recos`}>
-            <h3 id={`${label}-recos`}>Recommandations</h3>
+            <h3 id={`${label}-recos`}>{m.recommendations}</h3>
             <ul>
               {recommendations.map((r, i) => (
                 <li key={`${r.title}-${r.text}`} style={{ '--i': i } as CSSProperties}>
@@ -187,16 +217,14 @@ function TransmissionCard({
       <footer className={styles.foot}>
         <p className={styles.period}>
           <Icon name="clock" size={15} />
-          {periodOf(alert, now)}
+          {periodOf(alert, now, locale)}
         </p>
         {waiting > 0 && (
-          <p className={styles.queue}>
-            {waiting === 1 ? '1 autre message en attente' : `${waiting} autres messages en attente`}
-          </p>
+          <p className={styles.queue}>{m.waiting(waiting)}</p>
         )}
         <button type="button" className={styles.ack} onClick={onAcknowledge} autoFocus>
           <Icon name="check" size={18} />
-          {review ? 'Fermer' : waiting > 0 ? "J'ai compris · suivant" : "J'ai compris"}
+          {review ? m.close : waiting > 0 ? m.gotItNext : m.gotIt}
         </button>
       </footer>
     </article>

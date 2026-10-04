@@ -29,8 +29,68 @@ import { CitySection } from './CitySection'
 import { CITY_SECTIONS } from './citySections'
 import { useCityScroll } from './useCityScroll'
 import { useHeroReveal } from './useHeroReveal'
+import { defineMessages, useMessages } from '../../i18n'
 import { useNovaCityReactions } from './useNovaCityReactions'
 import styles from './CityPage.module.css'
+
+const messages = defineMessages(
+  {
+    welcome: (name: string) => `Bienvenue, ${name}.`,
+    headline: 'Le cœur numérique de\u00a0Terra\u00a0Nova',
+    leadPaused: 'L’envoi de demandes est suspendu. Les services, les annonces, les consignes et les coordonnées restent consultables.',
+    lead: 'Signalez un problème, suivez sa résolution, accédez aux services de la ville. Faites défiler\u00a0: vous survolez Terra Nova pendant que le soleil se couche.',
+    browseServices: 'Consulter les services',
+    announcements: 'Annonces et consignes',
+    report: 'Signaler un problème',
+    writeTownHall: 'Écrire à la mairie',
+    scroll: 'Faites défiler',
+    servicesTitle: 'Tous les services, sous un même dôme',
+    servicesLead: "Les services prioritaires d'abord, leur état en direct. Ouvrez un guichet pour voir ses horaires, ses contacts et ses démarches.",
+    reportTitlePaused: 'Signalement en pause',
+    reportTitle: 'Un problème\u00a0? Dites‑le en une phrase',
+    reportLeadPaused: 'Pendant l’incident, un nouveau signalement ne part pas. Les consignes et les coordonnées sont à l’arrivée, et les annonces à la Tour du Conseil.',
+    reportLead: "Votre demande part au Haut Conseil. Un faisceau s'allume au-dessus du secteur concerné.",
+    statusTitle: 'La ville respire, vous le voyez',
+    statusLead: "Air, eau, énergie\u00a0: les réserves de Terra Nova, lisibles d'un coup d'œil par tous les habitants.",
+    councilTitlePaused: 'Annonces et consignes',
+    councilTitle: 'Le Haut Conseil parle à toute la ville',
+    councilLeadPaused: 'Le message à la mairie est en pause. Les annonces et les alertes restent affichées ici.',
+    councilLead: 'Annonces, consignes, alertes\u00a0: un seul canal, visible sur tous les écrans.',
+    novaTitle: 'Parlez à Nova, sous les étoiles',
+    novaLead: 'Une question sur la ville, une démarche, votre demande en cours : Nova vous répond, de jour comme de nuit.',
+    registryTitle: 'Chaque demande, une preuve',
+    registryLead: 'Le registre relie chaque demande reçue à la fonctionnalité livrée. Le jury vérifie en un clic.',
+    footer: 'NOVA, plateforme de Terra Nova. Maquette de démonstration, données simulées.',
+  },
+  {
+    welcome: (name) => `Welcome, ${name}.`,
+    headline: 'The digital heart of\u00a0Terra\u00a0Nova',
+    leadPaused: 'Sending requests is suspended. Services, announcements, instructions and contact details remain available.',
+    lead: 'Report a problem, follow its resolution, reach the city’s services. Scroll down: you are flying over Terra Nova as the sun sets.',
+    browseServices: 'Browse the services',
+    announcements: 'Announcements and instructions',
+    report: 'Report a problem',
+    writeTownHall: 'Write to the city hall',
+    scroll: 'Scroll down',
+    servicesTitle: 'Every service, under one dome',
+    servicesLead: 'Priority services first, with their live status. Open a counter to see its opening hours, contacts and procedures.',
+    reportTitlePaused: 'Reporting paused',
+    reportTitle: 'A problem? Tell us in one sentence',
+    reportLeadPaused: 'During the incident, new reports cannot be sent. Instructions and contact details are at the arrival, and announcements at the Council Tower.',
+    reportLead: 'Your request goes to the High Council. A beam lights up above the district concerned.',
+    statusTitle: 'The city breathes, and you can see it',
+    statusLead: 'Air, water, energy: Terra Nova’s reserves, readable at a glance by every resident.',
+    councilTitlePaused: 'Announcements and instructions',
+    councilTitle: 'The High Council speaks to the whole city',
+    councilLeadPaused: 'Messages to the city hall are paused. Announcements and alerts are still shown here.',
+    councilLead: 'Announcements, instructions, alerts: one channel, visible on every screen.',
+    novaTitle: 'Talk to Nova, under the stars',
+    novaLead: 'A question about the city, a procedure, your request in progress: Nova answers, day and night.',
+    registryTitle: 'Every request, a proof',
+    registryLead: 'The registry links every request received to the feature delivered. The jury checks in one click.',
+    footer: 'NOVA, the Terra Nova platform. Demonstration mock-up, simulated data.',
+  },
+)
 
 /** Nova's wave goodbye, before the fade to black */
 const LEAVE_MS = 1300
@@ -51,6 +111,7 @@ export function CityPage() {
 
 function CityView({ session }: { session: Session }) {
   const readOnly = useMaintenanceMode()
+  const m = useMessages(messages)
   const status = useDirectorStore((s) => s.status)
   const phase = useDirectorStore((s) => s.phase)
   const alert = useDirectorStore((s) => s.alert)
@@ -147,34 +208,32 @@ function CityView({ session }: { session: Session }) {
           <div className={styles.frame}>
             <div className={styles.column} data-column>
               <p className={styles.greeting} data-reveal="rest">
-                Bienvenue, {session.name}.
+                {m.welcome(session.name)}
               </p>
               <h1 ref={headingRef} className={styles.headline} id="arrival-title" tabIndex={-1} data-reveal="headline">
-                Le cœur numérique de&nbsp;Terra&nbsp;Nova
+                {m.headline}
               </h1>
               {readOnly && <PlatformIncident />}
               <p className={styles.lead} data-reveal="rest">
-                {readOnly
-                  ? 'L’envoi de demandes est suspendu. Les services, les annonces, les consignes et les coordonnées restent consultables.'
-                  : 'Signalez un problème, suivez sa résolution, accédez aux services de la ville. Faites défiler\u00a0: vous survolez Terra Nova pendant que le soleil se couche.'}
+                {readOnly ? m.leadPaused : m.lead}
               </p>
               <div className={styles.actions} data-reveal="rest">
                 {readOnly ? (
                   <>
                     <ButtonLink href={`#${SERVICES.id}`} magnetic data-nova-look>
-                      Consulter les services
+                      {m.browseServices}
                     </ButtonLink>
                     <ButtonLink variant="ghost" href={`#${COUNCIL.id}`} magnetic data-nova-look>
-                      Annonces et consignes
+                      {m.announcements}
                     </ButtonLink>
                   </>
                 ) : (
                   <>
                     <ButtonLink href={`#${REPORT.id}`} magnetic data-nova-look>
-                      Signaler un problème
+                      {m.report}
                     </ButtonLink>
                     <ButtonRouteLink variant="ghost" to="/ville/contact" data-nova-look>
-                      Écrire à la mairie
+                      {m.writeTownHall}
                     </ButtonRouteLink>
                   </>
                 )}
@@ -183,7 +242,7 @@ function CityView({ session }: { session: Session }) {
               <NextAppointment />
             </div>
             <div className={styles.scrollHint} data-scroll-hint aria-hidden="true">
-              <span>Faites défiler</span>
+              <span>{m.scroll}</span>
               <i />
             </div>
           </div>
@@ -192,8 +251,8 @@ function CityView({ session }: { session: Session }) {
         <CitySection
           info={SERVICES}
           side="right"
-          title="Tous les services, sous un même dôme"
-          lead={"Les services prioritaires d'abord, leur état en direct. Ouvrez un guichet pour voir ses horaires, ses contacts et ses démarches."}
+          title={m.servicesTitle}
+          lead={m.servicesLead}
         >
           <ServiceShowcase />
         </CitySection>
@@ -202,12 +261,8 @@ function CityView({ session }: { session: Session }) {
           info={REPORT}
           side="left"
           compact
-          title={readOnly ? 'Signalement en pause' : <>Un problème&nbsp;? Dites‑le en une phrase</>}
-          lead={
-            readOnly
-              ? 'Pendant l’incident, un nouveau signalement ne part pas. Les consignes et les coordonnées sont à l’arrivée, et les annonces à la Tour du Conseil.'
-              : "Votre demande part au Haut Conseil. Un faisceau s'allume au-dessus du secteur concerné."
-          }
+          title={readOnly ? m.reportTitlePaused : m.reportTitle}
+          lead={readOnly ? m.reportLeadPaused : m.reportLead}
         >
           <ReportPanel />
         </CitySection>
@@ -215,8 +270,8 @@ function CityView({ session }: { session: Session }) {
         <CitySection
           info={STATUS}
           side="right"
-          title="La ville respire, vous le voyez"
-          lead={"Air, eau, énergie\u00a0: les réserves de Terra Nova, lisibles d'un coup d'œil par tous les habitants."}
+          title={m.statusTitle}
+          lead={m.statusLead}
         >
           <CityGauges visible={active === sectionIndex(STATUS.id)} />
           <TransitGlance />
@@ -225,12 +280,8 @@ function CityView({ session }: { session: Session }) {
         <CitySection
           info={COUNCIL}
           side="left"
-          title={readOnly ? 'Annonces et consignes' : 'Le Haut Conseil parle à toute la ville'}
-          lead={
-            readOnly
-              ? 'Le message à la mairie est en pause. Les annonces et les alertes restent affichées ici.'
-              : 'Annonces, consignes, alertes\u00a0: un seul canal, visible sur tous les écrans.'
-          }
+          title={readOnly ? m.councilTitlePaused : m.councilTitle}
+          lead={readOnly ? m.councilLeadPaused : m.councilLead}
         >
           <AnnouncementList />
         </CitySection>
@@ -238,8 +289,8 @@ function CityView({ session }: { session: Session }) {
         <CitySection
           info={OBSERVATORY}
           side="right"
-          title="Parlez à Nova, sous les étoiles"
-          lead="Une question sur la ville, une démarche, votre demande en cours : Nova vous répond, de jour comme de nuit."
+          title={m.novaTitle}
+          lead={m.novaLead}
         >
           <NovaInvite />
         </CitySection>
@@ -247,15 +298,15 @@ function CityView({ session }: { session: Session }) {
         <CitySection
           info={REGISTRY}
           side="right"
-          title="Chaque demande, une preuve"
-          lead="Le registre relie chaque demande reçue à la fonctionnalité livrée. Le jury vérifie en un clic."
+          title={m.registryTitle}
+          lead={m.registryLead}
         >
           <RegistryPanel visible={active === sectionIndex(REGISTRY.id)} />
         </CitySection>
       </main>
 
       <footer className={styles.footer}>
-        <span>NOVA, plateforme de Terra Nova. Maquette de démonstration, données simulées.</span>
+        <span>{m.footer}</span>
         <span>24H by Webcup 2026</span>
       </footer>
     </div>

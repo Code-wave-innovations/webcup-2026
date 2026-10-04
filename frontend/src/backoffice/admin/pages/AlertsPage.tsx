@@ -46,10 +46,13 @@ interface Template {
   category: string
   severity: AlertSeverity
   audience: AlertAudience
+  /** District codes to select with the template (NORD, SUD…). */
+  districtCodes?: string[]
   title: string
   message: string
   instructions: string
   recommendations: AlertRecommendation[]
+  source?: string
 }
 
 const TEMPLATES: Template[] = [
@@ -62,6 +65,18 @@ const TEMPLATES: Template[] = [
     message: '',
     instructions: '',
     recommendations: [],
+  },
+  {
+    label: 'Panne électrique',
+    category: 'OUTAGE',
+    severity: 'CRITICAL',
+    audience: 'DISTRICTS',
+    districtCodes: ['NORD'],
+    title: 'Panne électrique dans le Quartier Nord',
+    message: 'Une panne électrique touche le Quartier Nord. Le courant est coupé dans ce secteur.',
+    instructions: 'Restez chez vous si vous le pouvez.\nDébranchez les appareils sensibles.\nN’utilisez pas de bougie : préférez une lampe de poche.\nSi vous dépendez d’un appareil médical, contactez le centre de santé.',
+    recommendations: [],
+    source: 'Service de l’énergie',
   },
   {
     label: 'Inondation',
@@ -110,7 +125,6 @@ export default function AlertsPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Alertes & communications"
-        codes={['D18', 'F29', 'F31']}
         lead="Diffusez un message à toute la ville, à des quartiers ou aux personnes vulnérables : il s’affiche en plein écran chez les habitants concernés, au moment choisi, avec ce qu’ils doivent faire."
       />
 
@@ -241,7 +255,7 @@ function CloseAlertModal({ alert, scheduled, onClose }: { alert: CityAlert; sche
         « {alert.title} »{' '}
         {scheduled
           ? 'ne sera pas diffusée et personne ne sera notifié.'
-          : 'disparaît du bandeau et de l’écran des habitants dans la minute. Elle reste dans l’historique.'}
+          : 'disparaît de l’écran des habitants concernés dans quelques secondes. Elle reste dans l’historique.'}
       </p>
     </Modal>
   )
@@ -286,6 +300,10 @@ function AlertComposer() {
     setStartsAt('')
     setDuration('none')
     setEndsAt('')
+    setSource('Haut Conseil de la Ville')
+    setCategory('GENERAL')
+    setSeverity('WARNING')
+    setAudience('ALL')
   }
 
   const applyTemplate = (t: Template) => {
@@ -296,6 +314,9 @@ function AlertComposer() {
     setMessage(t.message)
     setInstructions(t.instructions)
     setRecommendations(t.recommendations)
+    setSource(t.source ?? 'Haut Conseil de la Ville')
+    const codes = t.districtCodes ?? []
+    setDistrictIds(districtList.filter((district) => codes.includes(district.code)).map((district) => district.id))
   }
 
   /** start and end as the server expects them; computed when sending, so "now" is the moment of the click */
@@ -312,6 +333,7 @@ function AlertComposer() {
       const errors: Record<string, string> = {}
       if (!title.trim()) errors.title = 'Donnez un titre court : c’est ce que les habitants lisent en premier.'
       if (!message.trim()) errors.message = 'Dites ce qui se passe.'
+      if (!instructions.trim()) errors.instructions = 'Indiquez ce que les habitants doivent faire, une action par ligne.'
       if (audience === 'DISTRICTS' && districtIds.length === 0) errors.district_ids = 'Choisissez au moins un quartier.'
       if (when === 'later' && (!startsAt || Date.parse(startsAt) <= Date.now())) errors.starts_at = 'Choisissez un moment à venir.'
       if (duration === 'custom') {
@@ -388,7 +410,7 @@ function AlertComposer() {
         <Field id={form.fieldId('message')} label="Ce qui se passe" required error={form.errors.message}>
           {(id, d, invalid) => <TextArea id={id} aria-describedby={d} aria-invalid={invalid} value={message} onChange={(e) => setMessage(e.target.value)} />}
         </Field>
-        <Field id={form.fieldId('instructions')} label="Ce que les habitants doivent faire" hint="Une action par ligne : chacune devient une étape numérotée à l’écran." error={form.errors.instructions}>
+        <Field id={form.fieldId('instructions')} label="Ce que les habitants doivent faire" hint="Une action par ligne : chacune devient une étape numérotée à l’écran." required error={form.errors.instructions}>
           {(id, d, invalid) => <TextArea id={id} aria-describedby={d} aria-invalid={invalid} value={instructions} onChange={(e) => setInstructions(e.target.value)} />}
         </Field>
 

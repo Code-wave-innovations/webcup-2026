@@ -1,6 +1,18 @@
 import type { MouseEvent } from 'react'
 import type { SummaryError } from '../hooks/useApiForm'
+import { defineMessages, useMessages } from '../i18n'
 import styles from './ErrorSummary.module.css'
+
+const messages = defineMessages(
+  {
+    title: (n: number) => (n > 1 ? `${n} informations sont à corriger :` : 'Une information est à corriger :'),
+    line: (label: string, message: string) => `${label} : ${message}`,
+  },
+  {
+    title: (n) => (n === 1 ? 'One thing needs fixing:' : `${n} things need fixing:`),
+    line: (label, message) => `${label}: ${message}`,
+  },
+)
 
 interface ErrorSummaryProps {
   errors: SummaryError[]
@@ -15,6 +27,7 @@ interface ErrorSummaryProps {
  * It receives the focus (see `useApiForm`) so screen readers announce it right away.
  */
 export function ErrorSummary({ errors, formError, id }: ErrorSummaryProps) {
+  const m = useMessages(messages)
   if (!errors.length && !formError) return null
 
   const goTo = (event: MouseEvent<HTMLAnchorElement>, fieldId: string) => {
@@ -29,14 +42,12 @@ export function ErrorSummary({ errors, formError, id }: ErrorSummaryProps) {
     <div className={styles.summary} id={id} tabIndex={-1} role="alert">
       {errors.length > 0 ? (
         <>
-          <p className={styles.title}>
-            {errors.length === 1 ? 'Une information est à corriger :' : `${errors.length} informations sont à corriger :`}
-          </p>
+          <p className={styles.title}>{m.title(errors.length)}</p>
           <ul>
             {errors.map((error) => (
               <li key={error.id}>
                 <a href={`#${error.id}`} onClick={(event) => goTo(event, error.id)}>
-                  {error.label} : {error.message}
+                  {m.line(error.label, error.message)}
                 </a>
               </li>
             ))}

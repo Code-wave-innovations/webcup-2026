@@ -150,10 +150,48 @@ function storeForRole(role: Role) {
   return role === 'CITIZEN' ? useCitizenSessionStore : useStaffSessionStore
 }
 
+/** F37: failed login attempts since last success — shown once on Mon espace after a real API login. */
+const FAILED_LOGIN_NOTICE_KEY = 'nova-failed-login-notice'
+
+function rememberFailedLoginNotice(auth: AuthResponse): void {
+  if (typeof window === 'undefined') return
+  const n = auth.security?.failed_attempts_since_last_login ?? 0
+  if (auth.user.role === 'CITIZEN' && n > 0) {
+    try {
+      sessionStorage.setItem(FAILED_LOGIN_NOTICE_KEY, String(n))
+    } catch {
+      /* private mode */
+    }
+  }
+}
+
+/** Number of failed attempts reported at the last citizen login, or null if none / already dismissed. */
+export function readFailedLoginNotice(): number | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(FAILED_LOGIN_NOTICE_KEY)
+    if (!raw) return null
+    const n = Number(raw)
+    return Number.isFinite(n) && n > 0 ? n : null
+  } catch {
+    return null
+  }
+}
+
+export function dismissFailedLoginNotice(): void {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.removeItem(FAILED_LOGIN_NOTICE_KEY)
+  } catch {
+    /* private mode */
+  }
+}
+
 /** Opens the matching slot; the other space’s session is left untouched. */
 export function signIn(auth: AuthResponse): void {
   if (auth.user.role === 'CITIZEN') {
     useCitizenSessionStore.getState().setSession(auth.token, auth.user)
+    rememberFailedLoginNotice(auth)
   } else if (isStaffRole(auth.user.role)) {
     useStaffSessionStore.getState().setSession(auth.token, auth.user)
   } else {
@@ -163,6 +201,7 @@ export function signIn(auth: AuthResponse): void {
 }
 
 export function signOutCitizen(): void {
+  dismissFailedLoginNotice()
   useCitizenSessionStore.getState().clear()
   dropAccountCache()
 }
@@ -175,6 +214,7 @@ export function signOutStaff(): void {
 /** Signs out the current URL space (or both when `all`). */
 export function signOut(scope: 'space' | 'all' = 'space'): void {
   if (scope === 'all') {
+    dismissFailedLoginNotice()
     useCitizenSessionStore.getState().clear()
     useStaffSessionStore.getState().clear()
     dropAccountCache()

@@ -1,9 +1,53 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import Webcam from '../../../components/Face/Webcam'
 import { Button } from '../../../ui/Button'
+import { defineMessages, useMessages } from '../../../i18n'
 import { useFacePresence } from '../useFacePresence'
 import faceStyles from '../FaceScan.module.css'
 import styles from '../AccessHologram.module.css'
+
+const messages = defineMessages(
+  {
+    starting: 'Ouverture de la caméra…',
+    closer: 'Approchez-vous : votre visage doit remplir le cercle.',
+    holdStill: 'Ne bougez plus…',
+    placeFace: 'Placez votre visage dans le cercle, face à la lumière.',
+    capture: (n: number, total: number) => `Capture ${n} / ${total}`,
+    sealed: (n: number, total: number) => `Empreinte ${n} / ${total} enregistrée…`,
+    enrolled: (name: string) => `Visage de ${name} ancré. Création du compte…`,
+    captureFailed: 'La capture a échoué. Réessayez ou continuez sans visage.',
+    enrolFailed: 'Échec de l’enrollement.',
+    denied: 'Caméra indisponible. Vous pouvez continuer sans visage.',
+    step: 'Étape 3 sur 3',
+    samples: (done: number, total: number) => `${done} échantillon${done > 1 ? 's' : ''} sur ${total}`,
+    creating: 'Création du compte Terra Nova…',
+    retry: 'Réessayer le scan',
+    withoutFace: 'Continuer sans visage',
+    skip: 'Passer pour l’instant',
+    back: 'Retour',
+    hint: 'Rapprochez-vous et restez immobile : chaque photo est vérifiée avant d’être gardée.',
+  },
+  {
+    starting: 'Opening the camera…',
+    closer: 'Come closer: your face should fill the circle.',
+    holdStill: 'Hold still…',
+    placeFace: 'Place your face in the circle, facing the light.',
+    capture: (n, total) => `Capture ${n} / ${total}`,
+    sealed: (n, total) => `Print ${n} / ${total} saved…`,
+    enrolled: (name) => `${name}'s face anchored. Creating the account…`,
+    captureFailed: 'The capture failed. Try again or continue without your face.',
+    enrolFailed: 'Enrolment failed.',
+    denied: 'Camera unavailable. You can continue without your face.',
+    step: 'Step 3 of 3',
+    samples: (done, total) => `${done} of ${total} samples`,
+    creating: 'Creating the Terra Nova account…',
+    retry: 'Scan again',
+    withoutFace: 'Continue without my face',
+    skip: 'Skip for now',
+    back: 'Back',
+    hint: 'Come closer and stay still: each photo is checked before it is kept.',
+  },
+)
 
 const TICKS = 72
 const SAMPLES = 3
@@ -43,15 +87,15 @@ function grab(video: HTMLVideoElement | null): Promise<Blob | null> {
 }
 
 /**
- * Live face capture: one sharp frame at a time (presence + hold). The frames are only linked once the
- * account exists, by the API and with its session (`POST /api/me/face`): nobody can enrol a face under
- * an e-mail that is not theirs.
+ * Live face capture: one sharp frame at a time (presence + hold). The frames are enrolled on the face
+ * engine from the browser once the account exists (`enrollFrames` → gallery name from the e-mail).
  */
 export function RegisterFacePanel({ name, onEnrolled, onSkip, onBack, busy }: RegisterFacePanelProps) {
+  const m = useMessages(messages)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [phase, setPhase] = useState<Phase>('starting')
   const [sample, setSample] = useState(0)
-  const [error, setError] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
   const capturing = useRef(false)
   const frames = useRef<Blob[]>([])
 
@@ -62,7 +106,7 @@ export function RegisterFacePanel({ name, onEnrolled, onSkip, onBack, busy }: Re
     if (capturing.current) return
     capturing.current = true
     setPhase('capturing')
-    setError(null)
+    setFailed(false)
     try {
       await wait(80)
       const blob = await grab(videoRef.current)
@@ -83,7 +127,7 @@ export function RegisterFacePanel({ name, onEnrolled, onSkip, onBack, busy }: Re
       await wait(BETWEEN_MS)
       setPhase('searching')
     } catch {
-      setError('La capture a échoué. Réessayez ou continuez sans visage.')
+      setFailed(true)
       setPhase('failed')
     } finally {
       capturing.current = false
@@ -98,7 +142,7 @@ export function RegisterFacePanel({ name, onEnrolled, onSkip, onBack, busy }: Re
   }, [phase, present, captureOne])
 
   const retry = () => {
-    setError(null)
+    setFailed(false)
     frames.current = []
     setSample(0)
     setPhase('searching')
@@ -106,22 +150,24 @@ export function RegisterFacePanel({ name, onEnrolled, onSkip, onBack, busy }: Re
 
   const message =
     phase === 'starting'
-      ? 'Ouverture de la caméra…'
+      ? m.starting
       : phase === 'searching'
         ? present === false
-          ? 'Approchez-vous : votre visage doit remplir le cercle.'
+          ? m.closer
           : aligned
-            ? 'Ne bougez plus…'
-            : 'Placez votre visage dans le cercle, face à la lumière.'
+            ? m.holdStill
+            : m.placeFace
         : phase === 'capturing'
-          ? `Capture ${Math.min(sample + 1, SAMPLES)} / ${SAMPLES}`
+          ? m.capture(Math.min(sample + 1, SAMPLES), SAMPLES)
           : phase === 'sealing'
-            ? `Empreinte ${Math.min(sample + 1, SAMPLES)} / ${SAMPLES} enregistrée…`
+            ? m.sealed(Math.min(sample + 1, SAMPLES), SAMPLES)
             : phase === 'enrolled'
-              ? `Visage de ${name} ancré. Création du compte…`
+              ? m.enrolled(name)
               : phase === 'failed'
-                ? error || 'Échec de l’enrollement.'
-                : 'Caméra indisponible. Vous pouvez continuer sans visage.'
+                ? failed
+                  ? m.captureFailed
+                  : m.enrolFailed
+                : m.denied
 
   const lensPhase =
     phase === 'enrolled'
@@ -136,7 +182,7 @@ export function RegisterFacePanel({ name, onEnrolled, onSkip, onBack, busy }: Re
 
   return (
     <div className={`${styles.panel} ${styles.panelEnter} ${styles.facePanel}`}>
-      <div className={styles.dots} aria-label="Étape 3 sur 3">
+      <div className={styles.dots} aria-label={m.step}>
         <i data-active="false" />
         <i data-active="false" />
         <i data-active="true" />
@@ -161,14 +207,14 @@ export function RegisterFacePanel({ name, onEnrolled, onSkip, onBack, busy }: Re
           </div>
         </div>
 
-        <div className={styles.enrollPips} role="img" aria-label={`${sample} échantillons sur ${SAMPLES}`}>
+        <div className={styles.enrollPips} role="img" aria-label={m.samples(sample, SAMPLES)}>
           {Array.from({ length: SAMPLES }, (_, i) => (
             <i key={i} data-done={i < sample || phase === 'enrolled'} />
           ))}
         </div>
 
         <p className={faceStyles.message} role="status" aria-live="polite">
-          {busy ? 'Création du compte Terra Nova…' : message}
+          {busy ? m.creating : message}
         </p>
       </div>
 
@@ -177,26 +223,26 @@ export function RegisterFacePanel({ name, onEnrolled, onSkip, onBack, busy }: Re
           <>
             {phase === 'failed' && (
               <Button type="button" className={styles.submit} onClick={retry} disabled={busy} data-nova-look>
-                Réessayer le scan
+                {m.retry}
               </Button>
             )}
             <Button type="button" variant="ghost" className={styles.back} onClick={onSkip} disabled={busy}>
-              Continuer sans visage
+              {m.withoutFace}
             </Button>
           </>
         ) : phase === 'enrolled' || phase === 'sealing' || phase === 'capturing' ? null : (
           <Button type="button" variant="ghost" className={styles.back} onClick={onSkip} disabled={busy}>
-            Passer pour l’instant
+            {m.skip}
           </Button>
         )}
         {phase !== 'enrolled' && phase !== 'sealing' && phase !== 'capturing' && (
           <Button type="button" variant="ghost" className={styles.back} onClick={onBack} disabled={busy}>
-            Retour
+            {m.back}
           </Button>
         )}
       </div>
 
-      <p className={styles.hint}>Rapprochez-vous et restez immobile : chaque photo est vérifiée avant d’être gardée.</p>
+      <p className={styles.hint}>{m.hint}</p>
     </div>
   )
 }

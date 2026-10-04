@@ -315,3 +315,4 @@ Peut attendre :
 - **Dépendances :** `otplib@12`, `qrcode`, `@simplewebauthn/server@14` (Node ≥ 20) côté backend, `@simplewebauthn/browser` côté front.
 - **Pas fait :** `must_change_password`, chiffrement du secret TOTP.
 - **Vérifié dans Chrome :** critères 1 à 4 (D02 avec l'authentificateur virtuel de Chrome).
+- **F37 côté citoyen (4 oct. 2026) :** après un login API qui rapporte `failed_attempts_since_last_login > 0`, `/ville/espace` affiche une bannière dismissible (PLAN-01 / spec protection admin).

@@ -69,6 +69,45 @@
   background: var(--color-glass-light);
 }
 
+/* D14: the language switch shares the end of the bar with the account; the name gives way first
+   (element + class so these win over CityChrome's rules whatever the stylesheet order) */
+div.end {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+div.account {
+  min-width: 0;
+  max-width: 280px;
+}
+
+div.account > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 480px) {
+  a.signIn {
+    padding: 0 12px;
+  }
+}
+
+/* phones: the mark alone stands for NOVA (its name stays for screen readers), the account sits behind the sign-out button */
+@media (max-width: 420px) {
+  a.brand span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  div.account {
+    display: none;
+  }
+}
+
 /* ConsolePage */
 .header {
   display: flex;

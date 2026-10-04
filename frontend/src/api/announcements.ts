@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { messagesFor, defineMessages, type Locale } from '../i18n'
 import { readEssential, restored } from './essentialCache'
 import { http } from './client'
 import { REFRESH } from './queryClient'
@@ -6,14 +7,15 @@ import type { Announcement, AnnouncementCategory, Paginated } from './types'
 
 // D06: municipal publications (GET /api/announcements), public list only
 
-export const ANNOUNCEMENT_CATEGORY_LABEL: Record<AnnouncementCategory, string> = {
-  NEWS: 'Actualité',
-  SERVICE_CHANGE: 'Changement de service',
-  PRACTICAL_INFO: 'Information pratique',
-  EVENT: 'Événement',
-}
+const categoryMessages = defineMessages(
+  { NEWS: 'Actualité', SERVICE_CHANGE: 'Changement de service', PRACTICAL_INFO: 'Information pratique', EVENT: 'Événement' },
+  { NEWS: 'News', SERVICE_CHANGE: 'Service change', PRACTICAL_INFO: 'Practical information', EVENT: 'Event' },
+)
 
-export const ANNOUNCEMENT_CATEGORIES = Object.keys(ANNOUNCEMENT_CATEGORY_LABEL) as AnnouncementCategory[]
+/** The category's name in the visitor's language (call it while rendering, so it follows a switch). */
+export const announcementCategoryLabel = (category: AnnouncementCategory, locale?: Locale) => messagesFor(categoryMessages, locale)[category]
+
+export const ANNOUNCEMENT_CATEGORIES = Object.keys(categoryMessages.fr) as AnnouncementCategory[]
 
 export interface AnnouncementFilters {
   category?: AnnouncementCategory

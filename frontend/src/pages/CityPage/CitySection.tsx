@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { GlassPanel } from '../../ui/GlassPanel'
 import { NovaMark } from '../../ui/Icon'
-import type { CitySectionInfo } from './citySections'
+import { useCitySectionLabels, type CitySectionInfo } from './citySections'
 import styles from './CityPage.module.css'
 
 interface CitySectionProps {
@@ -18,6 +18,7 @@ interface CitySectionProps {
 /** One district of the flyover: place, title, lead, and the feature on a glass panel. */
 export function CitySection({ info, side, title, lead, compact, children }: CitySectionProps) {
   const titleId = `${info.id}-title`
+  const labels = useCitySectionLabels()
   return (
     <section
       className={[styles.section, compact && styles.compact].filter(Boolean).join(' ')}
@@ -30,7 +31,7 @@ export function CitySection({ info, side, title, lead, compact, children }: City
           <div className={styles.block}>
             <p className={styles.place}>
               <NovaMark filled size={14} />
-              {info.rail}
+              {labels[info.id].rail}
             </p>
             <h2 className={styles.heading} id={titleId}>
               {title}

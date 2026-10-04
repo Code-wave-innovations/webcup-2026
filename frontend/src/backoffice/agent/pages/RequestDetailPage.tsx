@@ -135,7 +135,6 @@ function RequestWorkspace({ request, base }: { request: RequestDetail; base: str
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title={request.subject}
-        codes={['D11', 'F22', 'F49', request.type === 'INCIDENT' ? 'F25' : request.type === 'CONTACT' ? 'D04' : 'F26']}
         lead={
           <span className={layout.row}>
             <Ref>{request.reference}</Ref>

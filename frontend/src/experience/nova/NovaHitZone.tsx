@@ -1,8 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useDirectorStore } from '../director/directorStore'
 import { frameBus, frameState } from '../director/frameState'
+import { defineMessages, useMessages } from '../../i18n'
 import { nova, novaSignals } from './behavior/novaStore'
 import styles from './NovaHitZone.module.css'
+
+const messages = defineMessages({ label: 'Nova, votre guide. Lui dire bonjour' }, { label: 'Nova, your guide. Say hello' })
 
 const setCurious = (on: boolean) => () => {
   novaSignals.curious = on
@@ -15,6 +18,7 @@ const setCurious = (on: boolean) => () => {
 export function NovaHitZone() {
   const ref = useRef<HTMLButtonElement>(null)
   const consoleOpen = useDirectorStore((s) => s.console)
+  const m = useMessages(messages)
 
   useEffect(() => {
     const unsubscribe = frameBus.subscribe(() => {
@@ -49,7 +53,7 @@ export function NovaHitZone() {
       type="button"
       className={styles.zone}
       data-visible="false"
-      aria-label="Nova, votre guide. Lui dire bonjour"
+      aria-label={m.label}
       onPointerEnter={setCurious(true)}
       onPointerLeave={setCurious(false)}
       onFocus={setCurious(true)}

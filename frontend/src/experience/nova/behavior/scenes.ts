@@ -1,7 +1,55 @@
-import type { District } from '../../city/districts'
+import { defineMessages, messagesFor } from '../../../i18n'
+import { districtIntro, type District } from '../../city/districts'
 import type { Emotion } from '../face/faceState'
 import { CITY_ENTRANCE_SECONDS } from '../stage/placement'
 import { nova, novaNow, novaSignals } from './novaStore'
+
+/** D14: Nova's lines, read in the language of the moment they are said. */
+const lines = defineMessages(
+  {
+    greetAgain: 'Vous revoilà ! Je vous attendais. Identifiez-vous quand vous voulez.',
+    greetFirst: 'Bonjour ! Je suis Nova. Identifiez-vous, je vous emmène à Terra Nova.',
+    atmosphere: 'Accrochez-vous, on entre dans l’atmosphère !',
+    farewell: (name: string) => `À bientôt, ${name} !`,
+    welcomeToCity: (name: string) => `Bienvenue à Terra Nova, ${name}. Je suis Nova, votre guide. Faites défiler, je vous fais visiter.`,
+    enterStreets: (site: string) => `Accrochez-vous, on décolle ! Destination : ${site}.`,
+    leaveStreets: 'On remonte !',
+    flyToPoi: (site: string) => `On décolle ! Destination : ${site}.`,
+    nudge: 'On continue ? Faites défiler, je vous montre la suite.',
+    reportSentAt: (code: string, place: string) => `Demande ${code} envoyée ! Le faisceau au-dessus de ${place}, c'est elle.`,
+    reportSent: (code: string) => `Demande ${code} envoyée !`,
+    reportProgress: (status: string) => `Votre demande avance : ${status.toLowerCase()}.`,
+    alertOver: "Fin d'alerte. Tout est rentré dans l'ordre.",
+    capsLock: 'Attention, les majuscules sont activées.',
+    refused: (left: number) => (left > 1 ? `Ce code ne passe pas. Encore ${left} essais.` : 'Refusé… Attention, dernier essai.'),
+    locked: (seconds: number) => `Sas verrouillé pendant ${seconds} secondes. On attend ensemble…`,
+    unlocked: 'Le sas est rouvert. On réessaie ?',
+    granted: (name: string) => `Accès autorisé ! En route, ${name}.`,
+  },
+  {
+    greetAgain: 'There you are again! I was waiting for you. Sign in whenever you like.',
+    greetFirst: 'Hello! I’m Nova. Sign in and I’ll take you to Terra Nova.',
+    atmosphere: 'Hold on tight, we’re entering the atmosphere!',
+    farewell: (name) => `See you soon, ${name}!`,
+    welcomeToCity: (name) => `Welcome to Terra Nova, ${name}. I’m Nova, your guide. Scroll down and I’ll show you around.`,
+    enterStreets: (site) => `Hold on tight, we’re taking off! Next stop: ${site}.`,
+    leaveStreets: 'Back up we go!',
+    flyToPoi: (site) => `Taking off! Next stop: ${site}.`,
+    nudge: 'Shall we go on? Scroll down, I’ll show you what’s next.',
+    reportSentAt: (code, place) => `Request ${code} sent! See the beam above ${place}? That’s it.`,
+    reportSent: (code) => `Request ${code} sent!`,
+    reportProgress: (status) => `Your request is moving: ${status.toLowerCase()}.`,
+    alertOver: 'All clear. Everything is back to normal.',
+    capsLock: 'Careful, caps lock is on.',
+    refused: (left) => (left > 1 ? `That code doesn’t work. ${left} tries left.` : 'Refused… Careful, last try.'),
+    locked: (seconds) => `Airlock locked for ${seconds} seconds. Let’s wait together…`,
+    unlocked: 'The airlock is open again. Shall we try again?',
+    granted: (name) => `Access granted! Off we go, ${name}.`,
+  },
+)
+
+/** Nova's lines in the current language (always read when the line is said, never kept). */
+const line = () => messagesFor(lines)
 
 /** Runs `action` after `seconds`; returns the cancel (for an effect's cleanup). */
 function after(seconds: number, action: () => void): () => void {
@@ -34,7 +82,7 @@ export const novaScenes = {
     nova.silence()
     const cancel = after(COCKPIT_GREETING_DELAY, () => {
       nova.gesture('wave')
-      nova.say(greeted ? 'Vous revoilà ! Je vous attendais. Identifiez-vous quand vous voulez.' : 'Bonjour ! Je suis Nova. Identifiez-vous, je vous emmène à Terra Nova.', 'happy')
+      nova.say(greeted ? line().greetAgain : line().greetFirst, 'happy')
       greeted = true
     })
     return () => {
@@ -47,7 +95,7 @@ export const novaScenes = {
   enterAtmosphere(reducedMotion: boolean): () => void {
     if (reducedMotion) return () => {}
     nova.hold('brace', true)
-    nova.say('Accrochez-vous, on entre dans l’atmosphère !', 'focused')
+    nova.say(line().atmosphere, 'focused')
     return () => {
       nova.hold('brace', false)
       nova.silence()
@@ -57,7 +105,7 @@ export const novaScenes = {
   /** the visitor logs out: Nova waves goodbye before the fade */
   farewell(name: string): void {
     nova.gesture('wave')
-    nova.say(`À bientôt, ${name} !`, 'happy')
+    nova.say(line().farewell(name), 'happy')
   },
 
   /** the city interface has arrived: Nova walks into the frame, then welcomes the resident */
@@ -65,28 +113,29 @@ export const novaScenes = {
     nova.silence()
     return after(reducedMotion ? 0.3 : CITY_ENTRANCE_SECONDS + 0.15, () => {
       nova.gesture('wave')
-      nova.say(`Bienvenue à Terra Nova, ${name}. Je suis Nova, votre guide. Faites défiler, je vous fais visiter.`, 'happy')
+      nova.say(line().welcomeToCity(name), 'happy')
     })
   },
 
   /** the camera reached a district: Nova presents it, and introduces it the first time */
   presentDistrict(district: District, firstVisit: boolean): void {
-    if (firstVisit && district.intro) nova.say(district.intro, district.mood)
+    const intro = firstVisit ? districtIntro(district) : undefined
+    if (intro) nova.say(intro, district.mood)
   },
 
   /** the visitor asks to explore: Nova takes off with them towards the first site */
   enterStreets(siteName: string): void {
-    nova.say(`Accrochez-vous, on décolle ! Destination : ${siteName}.`, 'focused')
+    nova.say(line().enterStreets(siteName), 'focused')
   },
 
   /** back to the flyover: Nova shoots up into the sky */
   leaveStreets(): void {
-    nova.say('On remonte !', 'happy')
+    nova.say(line().leaveStreets, 'happy')
   },
 
   /** Nova takes off from a site towards another one */
   flyToPoi(name: string): void {
-    nova.say(`On décolle ! Destination : ${name}.`, 'focused')
+    nova.say(line().flyToPoi(name), 'focused')
   },
 
   /** Nova has landed on a site: it introduces it */
@@ -97,26 +146,26 @@ export const novaScenes = {
   /** the visitor stopped scrolling halfway between two districts */
   nudge(): void {
     nova.gesture('wave')
-    nova.say('On continue ? Faites défiler, je vous montre la suite.', 'happy')
+    nova.say(line().nudge, 'happy')
   },
 
   /** a report was sent to the High Council. `place` is the district the beam rises over. */
   reportSent(code: string, place?: string): void {
     nova.gesture('celebrate')
-    nova.say(place ? `Demande ${code} envoyée ! Le faisceau au-dessus de ${place}, c'est elle.` : `Demande ${code} envoyée !`, 'happy')
+    nova.say(place ? line().reportSentAt(code, place) : line().reportSent(code), 'happy')
   },
 
   /** the report's status moved on */
   reportProgress(status: string): void {
     nova.gesture('hop')
-    nova.say(`Votre demande avance : ${status.toLowerCase()}.`, 'happy')
+    nova.say(line().reportProgress(status), 'happy')
   },
 
   /** the High Council raised (or lifted) an alert */
   alert(on: boolean, instruction: string): void {
     nova.alert(on)
     if (on) nova.say(instruction, 'alarmed')
-    else nova.say("Fin d'alerte. Tout est rentré dans l'ordre.", 'happy')
+    else nova.say(line().alertOver, 'happy')
   },
   /** the visitor types their identifier: Nova steps closer and follows the caret letter by letter */
   watchTyping(caret: { x: number; y: number } | null): void {
@@ -158,7 +207,7 @@ export const novaScenes = {
   capsLock(hint: { x: number; y: number } | null): void {
     if (hint) novaSignals.glance = { x: hint.x, y: hint.y, until: novaNow() + 1.4 }
     nova.emote('surprised', 1.2)
-    nova.say('Attention, les majuscules sont activées.', 'surprised')
+    nova.say(line().capsLock, 'surprised')
   },
 
   /** the code is being checked: Nova looks up, thinking (eyes uncovered) */
@@ -174,7 +223,7 @@ export const novaScenes = {
     nova.hold('think', false)
     nova.gesture('refuse')
     nova.spotlight(1.6)
-    nova.say(left > 1 ? `Ce code ne passe pas. Encore ${left} essais.` : 'Refusé… Attention, dernier essai.', 'denied')
+    nova.say(line().refused(left), 'denied')
     then(1.2, () => nova.emote('sad', 2.4))
   },
 
@@ -183,7 +232,7 @@ export const novaScenes = {
     nova.hold('think', false)
     nova.gesture('refuse')
     nova.spotlight(1.8)
-    nova.say(`Sas verrouillé pendant ${seconds} secondes. On attend ensemble…`, 'sad')
+    nova.say(line().locked(seconds), 'sad')
     then(1.1, () => nova.hold('sulk', true))
   },
 
@@ -191,7 +240,7 @@ export const novaScenes = {
     pending?.()
     nova.hold('sulk', false)
     nova.emote('happy', 1.5)
-    nova.say('Le sas est rouvert. On réessaie ?', 'happy')
+    nova.say(line().unlocked, 'happy')
   },
 
   /** access granted: Nova jumps for joy */
@@ -202,7 +251,7 @@ export const novaScenes = {
     nova.hold('sulk', false)
     nova.gesture('celebrate')
     nova.spotlight(1.5)
-    nova.say(`Accès autorisé ! En route, ${name}.`, 'happy')
+    nova.say(line().granted(name), 'happy')
   },
 
   /** leaving the airlock: nothing held any more */

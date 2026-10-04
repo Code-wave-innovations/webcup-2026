@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ActiveAlert } from '../../api/types'
-import { pendingTransmissions, periodOf, recommendationsOf, sortAlerts, stepsOf, zoneLabel } from './alertModel'
+import { alertWakeMs, pendingTransmissions, periodOf, recommendationsOf, sortAlerts, stepsOf, zoneLabel } from './alertModel'
 
 const alert = (patch: Partial<ActiveAlert>): ActiveAlert =>
   ({
@@ -55,6 +55,15 @@ describe('recommendationsOf', () => {
       { text: 'Buvez' },
       { title: 'Enfants', text: 'Restez au frais' },
     ])
+  })
+})
+
+describe('alertWakeMs', () => {
+  it('wakes when the outage starts or ends, and waits when nothing is ahead', () => {
+    const now = Date.parse('2026-10-04T18:00:00.000Z')
+    expect(alertWakeMs(now, [now - 1000])).toBeNull()
+    expect(alertWakeMs(now, [])).toBeNull()
+    expect(alertWakeMs(now, [now + 10_000, now + 60_000])).toBe(10_500)
   })
 })
 

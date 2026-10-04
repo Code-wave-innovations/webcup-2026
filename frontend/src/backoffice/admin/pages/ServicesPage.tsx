@@ -22,6 +22,7 @@ import { rise, stagger } from '../../ui/motion'
 import layout from '../../ui/layout.module.css'
 import styles from './admin.module.css'
 import { ServiceProcedures } from './ServiceProcedures'
+import { ServiceUsage } from './ServiceUsage'
 
 type DrawerTab = 'infos' | 'demarches' | 'etat' | 'apercu' | 'historique'
 
@@ -88,7 +89,6 @@ export default function ServicesPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Catalogue des services"
-        codes={['D05', 'F28', 'F63', 'F64']}
         lead="Décrivez et mettez en avant les services municipaux. « Couper » rend un service défectueux indisponible tout en le laissant visible, avec le motif et l’alternative."
         actions={
           <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
@@ -179,7 +179,9 @@ export default function ServicesPage() {
           )}
         </div>
 
-        <Panel kicker="F28 · Aperçu" title="Ordre sur la page d’accueil" accent="ember">
+        <div className={layout.stack}>
+          {services.data && <ServiceUsage services={all} />}
+          <Panel kicker="Aperçu" title="Ordre sur la page d’accueil" accent="ember">
           {home.data ? (
             <ol className={styles.sectionList}>
               {home.data.featured_services.map((s, i) => (
@@ -194,8 +196,9 @@ export default function ServicesPage() {
           ) : (
             <Skeleton lines={6} />
           )}
-          <p className={[layout.muted, layout.small].join(' ')}>Exactement ce que l’habitant voit sur l’accueil : mis en avant d’abord, puis par priorité, puis par consultations.</p>
-        </Panel>
+            <p className={[layout.muted, layout.small].join(' ')}>Exactement ce que l’habitant voit sur l’accueil : mis en avant d’abord, puis par priorité, puis par consultations.</p>
+          </Panel>
+        </div>
       </div>
 
       <Drawer open={open !== null} onClose={() => openService(null)} kicker="D05 · Service" title={open?.name ?? ''}>

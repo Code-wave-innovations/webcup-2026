@@ -1,11 +1,13 @@
 import express from "express";
 import securityController from "../controller/security.controller";
-import { authenticate, requireAdmin, requireStaff } from "../middleware/auth";
+import { authenticate, requirePermission } from "../middleware/auth";
+
 const securityRouter = express.Router();
 
 securityRouter.use(authenticate);
-securityRouter.get("/events", requireStaff, securityController.events);
-securityRouter.use(requireAdmin);
+// F100: agents read the event feed (no IP). The overview stays on security.read (admin).
+securityRouter.get("/events", requirePermission("security.events"), securityController.events);
+securityRouter.use(requirePermission("security.read"));
 securityRouter.get("/overview", securityController.overview);
 securityRouter.get("/login-attempts", securityController.attempts);
 securityRouter.get("/client-ip", securityController.clientIp);

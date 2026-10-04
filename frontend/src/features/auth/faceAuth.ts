@@ -1,14 +1,14 @@
 import axios from 'axios'
 import { enrollFrames, identifyFrame } from '../../hooks/useFaceApi'
-import { faceSignIn, linkOwnFace, resolveAuthEmail, toSession, type Inconclusive, type Session, type SignInResult } from './authService'
+import { resolveAuthEmail, sessionByEmail, toSession, type Inconclusive, type Session, type SignInResult } from './authService'
 import { DEMO_ACCOUNTS, type Account } from './demoAccounts'
 import { emailFromFaceIdentity, faceIdentityFromEmail } from './faceIdentity'
 
-/** Face sign-in, checked by the API (`POST /api/auth/face`); demo accounts stay in the page. */
+/** Recognises a face against the gallery, then opens a session via `GET /api/auth/by-email`. */
 export interface FaceAuthService {
   /** `expectedIdentifier` is the e-mail / short id the visitor typed on the login step. */
   identify(frame: Blob, expectedIdentifier: string): Promise<SignInResult>
-  /** Links the frames to the account that just signed in (its own face only). */
+  /** Links the frames to the account that just signed in (gallery name from its e-mail). */
   link(session: Session, frames: Blob[]): Promise<boolean>
 }
 
@@ -56,32 +56,35 @@ const demoAccount = (identifier: string) => {
 }
 
 /**
- * Face login (D03, F34):
- * - a real account: the frame goes to `POST /api/auth/face` with the typed e-mail; the API asks the
- *   face engine whether it is that person and opens the session. The browser never decides.
- * - a demo account (miora, conseil): recognised in the page against the demo gallery; its session
- *   is local and opens nothing on the API.
+ * Face login (D03):
+ * 1. `POST /identify` on the face engine (browser → Python)
+ * 2. gallery identity must match the typed identifier
+ * 3. demo accounts stay local; real accounts open a session via `GET /api/auth/by-email`
  */
 export const faceAuthService: FaceAuthService = {
   async identify(frame, expectedIdentifier) {
-    if (!demoAccount(expectedIdentifier)) return faceSignIn(expectedIdentifier, frame)
     try {
       const identity = (await identifyFrame(frame)).identity
       if (!identity) return { ok: false, inconclusive: 'unknown' }
       if (!identityMatchesIdentifier(identity, expectedIdentifier)) return { ok: false, inconclusive: 'mismatch' }
+
       const demo = accountForIdentity(identity)
-      return demo ? { ok: true, session: toSession(demo) } : { ok: false, inconclusive: 'mismatch' }
+      if (demo) return { ok: true, session: toSession(demo) }
+
+      const email = emailFromFaceIdentity(identity) ?? resolveAuthEmail(expectedIdentifier)
+      return sessionByEmail(email)
     } catch (error) {
       return { ok: false, inconclusive: faceFailure(error) }
     }
   },
   async link(session, frames) {
-    // a real account links its own face through the API, with its session
-    if (session.token) return linkOwnFace(session.token, frames)
-    const demo = demoAccount(session.email ?? session.accountId)
-    if (!demo) return false
     try {
-      return !!(await enrollFrames(faceIdentityFromEmail(demo.email), frames)).committed
+      const key = normalizeKey(session.email ?? session.accountId)
+      const demo = demoAccount(key)
+      const name = demo
+        ? faceIdentityFromEmail(demo.email)
+        : faceIdentityFromEmail(key.includes('@') ? key : resolveAuthEmail(key))
+      return !!(await enrollFrames(name, frames)).committed
     } catch {
       return false
     }

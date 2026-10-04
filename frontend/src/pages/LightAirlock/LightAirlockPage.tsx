@@ -8,7 +8,19 @@ import { AccessHologram } from '../../features/auth/AccessHologram'
 import type { Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
+import { defineMessages, useMessages } from '../../i18n'
 import styles from './LightAirlock.module.css'
+
+const messages = defineMessages(
+  {
+    title: 'Connexion',
+    complete: 'Version complète, avec la 3D',
+  },
+  {
+    title: 'Sign in',
+    complete: 'Full version, with 3D',
+  },
+)
 
 /** Where the airlock sends a signed-in visitor: `?retour=` when it points inside the city, else its home. */
 function destination(back: string | null): string {
@@ -24,7 +36,8 @@ function destination(back: string | null): string {
  * without the orbit, Nova or the camera, and straight into the city's home once signed in.
  */
 export default function LightAirlockPage() {
-  useDocumentTitle('Connexion')
+  const m = useMessages(messages)
+  useDocumentTitle(m.title)
   const session = useAuthStore((s) => s.session)
   const signIn = useAuthStore((s) => s.signIn)
   const navigate = useNavigate()
@@ -49,7 +62,7 @@ export default function LightAirlockPage() {
       </p>
       <AccessHologram collapsed={false} faceLogin={false} onGranted={onGranted} />
       <button type="button" className={styles.complete} onClick={() => switchScene('complete')}>
-        Version complète, avec la 3D
+        {m.complete}
       </button>
     </main>
   )

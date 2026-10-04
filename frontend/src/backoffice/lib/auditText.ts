@@ -32,6 +32,7 @@ const ACTIONS: Record<string, string> = {
   'security.passkey_revoked': 'a révoqué une clé d’accès de',
   'security.device_forgotten': 'a oublié un appareil de',
   'security.password_changed': 'a changé le mot de passe de',
+  'permissions.updated': 'a modifié les droits de',
   'service.created': 'a créé le service',
   'service.updated': 'a modifié le service',
   'service.featured': 'a changé la mise en avant du service',

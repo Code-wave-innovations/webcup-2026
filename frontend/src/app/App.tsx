@@ -4,6 +4,7 @@ import { isLightScene, SCENE_REDIRECTING } from '../a11y/sceneMode'
 import { isLightPath } from '../a11y/scenePaths'
 import { ConsoleLayout } from '../pages/Console/ConsoleLayout'
 import { NotFoundPage } from '../pages/Console/NotFoundPage'
+import { LocaleSync } from '../i18n/LocaleSync'
 import { FilmLoadingScreen } from './FilmLoadingScreen'
 import { LightLayout } from './LightLayout'
 import { SceneRouter } from './SceneRouter'
@@ -114,6 +115,7 @@ function App() {
   if (SCENE_REDIRECTING) return null
   return (
     <SceneRouter>
+      <LocaleSync />
       <Routes>
         {/* F96: `/leger` is the light version; `/`, `/ville` and `/nova` are the complete film */}
         {citizenRoutes('light')}

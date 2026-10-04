@@ -1,3 +1,5 @@
+import { defineMessages, messagesFor, useMessages, type Locale } from '../../i18n'
+
 /** Fixed geography of Terra Nova: everything else (towers, trees, blocks) is generated from a seed around it. */
 
 export const CITY_CENTER = { x: 0, z: -4 } as const
@@ -77,9 +79,6 @@ export type PoiId = 'golf' | 'stade' | 'village-est' | 'village-nord'
 
 export interface POI {
   id: PoiId
-  name: string
-  /** one line shown when Nova lands there */
-  blurb: string
   icon: 'golf' | 'stadium' | 'village'
   x: number
   z: number
@@ -94,10 +93,41 @@ export interface POI {
  * course sit in the gap towards the setting sun (the flattest land); the villages follow their hillsides.
  */
 export const POIS: readonly POI[] = [
-  { id: 'golf', name: 'Golf de la Trouée', blurb: 'Neuf hectares de fairways face au soleil couchant.', icon: 'golf', x: 72, z: -120, radius: 34, flatten: 0.6 },
-  { id: 'stade', name: 'Stade Nova', blurb: 'Vingt mille places, et la pelouse est arrosée par la pluie du dôme.', icon: 'stadium', x: 45, z: -60, radius: 27, flatten: 1 },
-  { id: 'village-est', name: "Village de l'Est", blurb: 'Murs blancs, tuiles rouges et une fontaine sur la place.', icon: 'village', x: 78, z: -24, radius: 20, flatten: 0.45 },
-  { id: 'village-nord', name: 'Village du Nord', blurb: 'Des chalets accrochés à la pente, au pied des crêtes.', icon: 'village', x: -20, z: -70, radius: 20, flatten: 0.45 },
+  { id: 'golf', icon: 'golf', x: 72, z: -120, radius: 34, flatten: 0.6 },
+  { id: 'stade', icon: 'stadium', x: 45, z: -60, radius: 27, flatten: 1 },
+  { id: 'village-est', icon: 'village', x: 78, z: -24, radius: 20, flatten: 0.45 },
+  { id: 'village-nord', icon: 'village', x: -20, z: -70, radius: 20, flatten: 0.45 },
 ]
 
-export const poiById = (id: PoiId): POI => POIS.find((p) => p.id === id)!
+export const poiById = (id: PoiId): POI => {
+  const poi = POIS.find((p) => p.id === id)
+  if (!poi) throw new Error(`Unknown city site: ${id}`)
+  return poi
+}
+
+/** D14: each site's name and the line shown when Nova lands there. */
+const poiTexts = defineMessages(
+  {
+    golf: { name: 'Golf de la Trouée', blurb: 'Neuf hectares de fairways face au soleil couchant.' },
+    stade: { name: 'Stade Nova', blurb: 'Vingt mille places, et la pelouse est arrosée par la pluie du dôme.' },
+    'village-est': { name: "Village de l'Est", blurb: 'Murs blancs, tuiles rouges et une fontaine sur la place.' },
+    'village-nord': { name: 'Village du Nord', blurb: 'Des chalets accrochés à la pente, au pied des crêtes.' },
+  },
+  {
+    golf: { name: 'La Trouée Golf Course', blurb: 'Nine hectares of fairways facing the setting sun.' },
+    stade: { name: 'Nova Stadium', blurb: 'Twenty thousand seats, and the pitch is watered by the dome’s rain.' },
+    'village-est': { name: 'East Village', blurb: 'White walls, red tiles and a fountain on the square.' },
+    'village-nord': { name: 'North Village', blurb: 'Chalets clinging to the slope, at the foot of the ridges.' },
+  },
+)
+
+export interface PoiText {
+  name: string
+  blurb: string
+}
+
+/** A site's name and blurb in `locale` (the current language by default), outside React. */
+export const poiText = (id: PoiId, locale?: Locale): PoiText => messagesFor(poiTexts, locale)[id]
+
+/** Every site's name and blurb in the visitor's language (re-renders on a language switch). */
+export const usePoiTexts = (): Readonly<Record<PoiId, PoiText>> => useMessages(poiTexts)

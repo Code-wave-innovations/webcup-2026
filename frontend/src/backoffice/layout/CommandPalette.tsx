@@ -47,7 +47,7 @@ export function CommandPalette({ persona, open, onClose }: { persona: Persona; o
     const screens = flatNav(persona).map((item) => ({
       id: item.path,
       label: item.label,
-      hint: item.codes.join(' · '),
+      hint: '',
       icon: item.icon,
       group: 'Écrans',
       to: item.path,
@@ -81,7 +81,7 @@ export function CommandPalette({ persona, open, onClose }: { persona: Persona; o
             .map((s) => ({
               id: `cut-${s.id}`,
               label: `Couper « ${s.name} »`,
-              hint: 'F63 · couper un service',
+              hint: 'Rendre indisponible',
               icon: 'power' as const,
               group: 'Actions',
               to: `/admin/services?couper=${s.id}`,

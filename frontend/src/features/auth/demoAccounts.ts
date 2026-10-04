@@ -1,5 +1,8 @@
 export type Role = 'resident' | 'council'
 
+/** What the role label says, whatever the language (D14): the label itself is translated where it is shown. */
+export type RoleKey = Role | 'admin' | 'agent'
+
 export interface Account {
   /** short identifier, still accepted at the airlock */
   id: string

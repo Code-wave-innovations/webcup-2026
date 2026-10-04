@@ -1,9 +1,10 @@
 import type { Role } from "@prisma/client";
 
 /*
-  D08 / D09: who can do what, as the server applies it. This matrix DESCRIBES the guards
-  (requireStaff, requireAdmin in the routers) and the rules of the controllers; it changes nothing.
-  `npm run check:permissions` fails when a guarded route is missing here or its guard differs.
+  D08 / D09: permission catalog (keys, labels, default roles, routes).
+  Effective roles can be overridden via lib/roleGrants.ts (admin matrix editor).
+  Routers use requirePermission(key); `npm run check:permissions` checks route ↔ key alignment.
+  Default `guard` on each route matches the default roles (staff if AGENT is included, else admin).
 */
 
 export type RouteGuard = "authenticated" | "staff" | "admin";
@@ -126,6 +127,7 @@ export const PERMISSIONS: Permission[] = [
     group: "Services",
     sensitive: false,
     roles: STAFF,
+    rule: "GET /api/service-interruptions?scope=all (historique) est réservé au personnel ; current / upcoming / active restent publics.",
     routes: [
       r("POST", "/api/service-interruptions", "staff"),
       r("PATCH", "/api/service-interruptions/:id", "staff"),
@@ -299,5 +301,15 @@ export const PERMISSIONS: Permission[] = [
     sensitive: false,
     roles: STAFF,
     routes: [r("GET", "/api/permissions", "staff")],
+  },
+  {
+    key: "permissions.manage",
+    label: "Modifier la matrice des droits",
+    description: "Accorder ou retirer une permission à un agent ou un administrateur.",
+    group: "Plateforme",
+    sensitive: true,
+    roles: ADMIN,
+    rule: "La colonne Citoyen est verrouillée. Un admin ne peut pas se retirer permissions.manage ni staff.manage.",
+    routes: [r("PATCH", "/api/permissions/:key", "admin")],
   },
 ];

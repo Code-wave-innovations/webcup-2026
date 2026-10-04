@@ -58,7 +58,6 @@ export default function TransportsPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Transports"
-        codes={['F36']}
         lead="Signalez une perturbation en une action : les habitants la voient en moins d’une minute sur l’accueil et l’écran Transports, et ceux des quartiers desservis peuvent être prévenus."
         actions={
           admin && (

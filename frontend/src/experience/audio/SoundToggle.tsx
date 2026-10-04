@@ -1,11 +1,15 @@
 import { unlockSpeech } from '../../hooks/useSpeakMessage'
+import { defineMessages, useMessages } from '../../i18n'
 import { useSoundStore } from './soundStore'
 import styles from './SoundToggle.module.css'
+
+const messages = defineMessages({ sound: 'Son' }, { sound: 'Sound' })
 
 /** Turns the film's sound on or off. Sound plays by default; the click that turns it on also unlocks Nova's voice. */
 export function SoundToggle() {
   const enabled = useSoundStore((s) => s.enabled)
   const toggle = useSoundStore((s) => s.toggle)
+  const m = useMessages(messages)
   const onClick = () => {
     // the click is the gesture that allows Nova's voice to speak later on its own
     if (!enabled) unlockSpeech()
@@ -19,7 +23,7 @@ export function SoundToggle() {
         <i />
         <i />
       </span>
-      Son
+      {m.sound}
     </button>
   )
 }

@@ -1,24 +1,25 @@
 import { PERMISSIONS } from "../src/lib/permissions";
 import { listRoutes } from "./routes";
 
-// D09: fails when the roles matrix (src/lib/permissions.ts) no longer describes the routers.
-// Every route guarded by requireStaff or requireAdmin must be declared, with the same guard.
+// D09: every requirePermission("key") route must be declared on that permission;
+// every matrix route must appear on a router with that key.
 
-const declared = new Map(PERMISSIONS.flatMap((permission) => permission.routes.map((route) => [`${route.method} ${route.path}`, { route, permission }] as const)));
+const byRoute = new Map(PERMISSIONS.flatMap((permission) => permission.routes.map((route) => [`${route.method} ${route.path}`, permission.key] as const)));
 const problems: string[] = [];
 
 for (const route of listRoutes()) {
-  if (route.guard !== "staff" && route.guard !== "admin") continue;
+  if (!route.permission) continue;
   const key = `${route.method} ${route.path}`;
-  const entry = declared.get(key);
-  if (!entry) problems.push(`missing: ${key} (${route.guard}) is not in any permission`);
-  else if (entry.route.guard !== route.guard) problems.push(`guard: ${key} is ${route.guard} in the router, ${entry.route.guard} in ${entry.permission.key}`);
-  declared.delete(key);
+  const declared = byRoute.get(key);
+  if (!declared) problems.push(`missing: ${key} uses requirePermission("${route.permission}") but is not in the matrix`);
+  else if (declared !== route.permission) {
+    problems.push(`key: ${key} is under "${declared}" in the matrix but requirePermission("${route.permission}") in the router`);
+  }
+  byRoute.delete(key);
 }
-for (const [key, { permission }] of declared) problems.push(`stale: ${key} (${permission.key}) has no staff/admin route`);
-for (const permission of PERMISSIONS) {
-  const adminOnly = permission.routes.every((route) => route.guard === "admin");
-  if (adminOnly && permission.roles.some((role) => role !== "ADMIN")) problems.push(`roles: ${permission.key} only has admin routes but lists ${permission.roles.join(", ")}`);
+
+for (const [key, permissionKey] of byRoute) {
+  problems.push(`stale: ${key} (${permissionKey}) has no requirePermission("${permissionKey}") route`);
 }
 
 if (problems.length) {

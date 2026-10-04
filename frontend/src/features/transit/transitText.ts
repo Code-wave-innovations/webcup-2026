@@ -1,5 +1,6 @@
 import type { Tone } from '../../ui/Badges'
 import type { TransitDeparture, TransitLineDetail, TransitLineStatus, TransitLineSummary } from '../../api/types'
+import { currentLocale, defineMessages, messagesFor, type Locale } from '../../i18n'
 
 // F36: how transport data is worded for residents (pure, tested)
 
@@ -12,11 +13,25 @@ export const STATUS_TONE: Record<TransitLineStatus, Tone> = {
   INTERRUPTED: 'alert',
 }
 
-/** 0 → "à l'instant", 4 → "dans 4 min", 65 → "dans 1 h 05" */
-export function waitLabel(minutes: number): string {
-  if (minutes <= 0) return 'à l’instant'
-  if (minutes < 60) return `dans ${minutes} min`
-  return `dans ${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`
+const waitMessages = defineMessages(
+  {
+    now: 'à l’instant',
+    minutes: (n: number) => `dans ${n} min`,
+    hours: (h: number, mm: string) => `dans ${h} h ${mm}`,
+  },
+  {
+    now: 'now',
+    minutes: (n) => `in ${n} min`,
+    hours: (h, mm) => `in ${h} h ${mm}`,
+  },
+)
+
+/** 0 → "à l'instant" / "now", 4 → "dans 4 min" / "in 4 min", 65 → "dans 1 h 05" */
+export function waitLabel(minutes: number, locale: Locale = currentLocale()): string {
+  const m = messagesFor(waitMessages, locale)
+  if (minutes <= 0) return m.now
+  if (minutes < 60) return m.minutes(minutes)
+  return m.hours(Math.floor(minutes / 60), String(minutes % 60).padStart(2, '0'))
 }
 
 export interface DepartureGroup {

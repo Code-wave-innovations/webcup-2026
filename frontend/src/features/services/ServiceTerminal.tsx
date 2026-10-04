@@ -8,14 +8,116 @@ import { useProcedures } from '../../api/procedures'
 import { useCatalogue, useService, useServiceCategories } from '../../api/services'
 import type { CityService, Procedure, ServiceDetail } from '../../api/types'
 import { holdSmoothScroll } from '../../app/smoothScroll'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { useReducedMotion } from '../../hooks/useMediaQuery'
 import { Plate } from '../../ui/Badges'
 import { Icon, NovaMark, type IconName } from '../../ui/Icon'
 import { useTypewriter } from '../../ui/useTypewriter'
-import { availabilityView, formatDelay, formatMoment, plural } from './availability'
+import { availabilityView, formatDelay, formatMoment } from './availability'
 import { ServiceGlyph } from './ServiceGlyph'
 import styles from './ServiceTerminal.module.css'
+
+const messages = defineMessages(
+  {
+    terminal: 'Terminal des services',
+    closeTerminal: 'Fermer le terminal',
+    crumbs: "Fil d'Ariane du catalogue",
+    services: 'Services',
+    categories: 'Catégories',
+    allServices: 'Tous les services',
+    category: 'Catégorie',
+    catalogue: 'Catalogue de Terra Nova',
+    search: 'Rechercher un service',
+    searchPlaceholder: 'Médecin, papiers, bus, déchets…',
+    searching: 'Recherche en cours…',
+    count: (n: number) => (n > 1 ? `${n} services` : `${n} service`),
+    countFor: (n: number, q: string) => `${n > 1 ? `${n} services` : `${n} service`} pour « ${q} »`,
+    lastKnownCatalogue: 'Dernier catalogue connu. Il se mettra à jour au retour du réseau.',
+    noMatchQuery: (q: string) => `Aucun service ne correspond à « ${q} ».`,
+    noMatchCategory: 'Aucun service ne correspond à cette catégorie.',
+    seeAll: 'Voir tous les services',
+    featured: 'À la une',
+    procedures: (n: number) => (n > 1 ? `${n} démarches` : `${n} démarche`),
+    hours: 'Horaires',
+    address: 'Adresse',
+    phone: 'Téléphone',
+    email: 'E-mail',
+    website: 'Site web',
+    serviceUnavailable: 'Service indisponible',
+    serviceDisrupted: 'Service perturbé',
+    expectedBack: 'Retour prévu :',
+    untilFurtherNotice: "jusqu'à nouvel ordre",
+    meanwhile: 'En attendant :',
+    presentation: 'Présentation',
+    onlineProcedures: 'Démarches en ligne',
+    proceduresFailed: 'Les démarches n’ont pas pu être chargées. Les horaires et les coordonnées ci-dessus restent valables.',
+    noProcedures: 'Ce service ne propose pas encore de démarche en ligne : contactez-le directement.',
+    suspendedUntil: (moment: string) => `Les démarches de ce service sont suspendues jusqu'au ${moment}.`,
+    suspended: "Les démarches de ce service sont suspendues jusqu'à nouvel ordre.",
+    plannedInterruptions: 'Interruptions prévues',
+    meanwhileInline: (alternative: string) => `En attendant : ${alternative}`,
+    sameCategory: 'Dans la même catégorie',
+    otherServices: 'Autres services',
+    appointment: 'Rendez-vous',
+    appointmentTitle: 'Rendez-vous avec un agent',
+    nextSlot: (day: string, time: string, n: number) => `Prochain créneau libre : ${day} à ${time} · ${n} créneau${n > 1 ? 'x' : ''} sur 14 jours`,
+    slotsRefused: 'Le service est interrompu : les créneaux pendant l’interruption seront refusés.',
+    book: 'Prendre rendez-vous',
+    delay: (delay: string) => `Délai ${delay}`,
+    documents: 'Pièces à fournir',
+    noDocuments: "Aucune pièce particulière n'est demandée.",
+  },
+  {
+    terminal: 'Services terminal',
+    closeTerminal: 'Close the terminal',
+    crumbs: 'Catalogue breadcrumb',
+    services: 'Services',
+    categories: 'Categories',
+    allServices: 'All services',
+    category: 'Category',
+    catalogue: 'Terra Nova catalogue',
+    search: 'Search for a service',
+    searchPlaceholder: 'Doctor, papers, bus, waste…',
+    searching: 'Searching…',
+    count: (n) => (n === 1 ? '1 service' : `${n} services`),
+    countFor: (n, q) => `${n === 1 ? '1 service' : `${n} services`} for “${q}”`,
+    lastKnownCatalogue: 'Last known catalogue. It will update when the network is back.',
+    noMatchQuery: (q) => `No service matches “${q}”.`,
+    noMatchCategory: 'No service matches this category.',
+    seeAll: 'See all services',
+    featured: 'Featured',
+    procedures: (n) => (n === 1 ? '1 procedure' : `${n} procedures`),
+    hours: 'Opening hours',
+    address: 'Address',
+    phone: 'Phone',
+    email: 'E-mail',
+    website: 'Website',
+    serviceUnavailable: 'Service unavailable',
+    serviceDisrupted: 'Service disrupted',
+    expectedBack: 'Expected back:',
+    untilFurtherNotice: 'until further notice',
+    meanwhile: 'In the meantime:',
+    presentation: 'About',
+    onlineProcedures: 'Online procedures',
+    proceduresFailed: 'The procedures could not be loaded. The opening hours and contact details above still apply.',
+    noProcedures: 'This service does not offer any online procedure yet: contact it directly.',
+    suspendedUntil: (moment) => `This service's procedures are suspended until ${moment}.`,
+    suspended: "This service's procedures are suspended until further notice.",
+    plannedInterruptions: 'Planned interruptions',
+    meanwhileInline: (alternative) => `In the meantime: ${alternative}`,
+    sameCategory: 'In the same category',
+    otherServices: 'Other services',
+    appointment: 'Appointment',
+    appointmentTitle: 'Appointment with an agent',
+    nextSlot: (day, time, n) => `Next free slot: ${day} at ${time} · ${n === 1 ? '1 slot' : `${n} slots`} over 14 days`,
+    slotsRefused: 'The service is interrupted: slots during the interruption will be refused.',
+    book: 'Book an appointment',
+    delay: (delay) => `Processing time: ${delay}`,
+    documents: 'Documents to provide',
+    noDocuments: 'No particular document is required.',
+  },
+)
 
 export interface TerminalTarget {
   /** category slug of the catalogue view; null: every category */
@@ -46,6 +148,8 @@ export function ServiceTerminal({ target, onClose }: { target: TerminalTarget; o
   const [closing, setClosing] = useState(false)
   const reduced = useReducedMotion()
   const titleId = useId()
+  const m = useMessages(messages)
+  const locale = useLocale()
   useBodyClass('is-locked')
 
   // the button that opened the terminal gets the focus back (read before the dialog takes it)
@@ -90,7 +194,7 @@ export function ServiceTerminal({ target, onClose }: { target: TerminalTarget; o
     if (event.target === event.currentTarget) close()
   }
 
-  const accent = view.service ? availabilityView(view.service.availability).status : 'AVAILABLE'
+  const accent = view.service ? availabilityView(view.service.availability, locale).status : 'AVAILABLE'
   const style = { '--ox': `${target.origin.x}px`, '--oy': `${target.origin.y}px` } as CSSProperties
 
   return createPortal(
@@ -116,11 +220,11 @@ export function ServiceTerminal({ target, onClose }: { target: TerminalTarget; o
           <header className={styles.bar}>
             <span className={styles.signal}>
               <NovaMark size={16} />
-              Terminal des services
+              {m.terminal}
               <i aria-hidden="true" />
             </span>
             <Crumbs view={view} onGo={go} />
-            <button type="button" className={styles.close} onClick={close} aria-label="Fermer le terminal">
+            <button type="button" className={styles.close} onClick={close} aria-label={m.closeTerminal}>
               <Icon name="close" />
             </button>
           </header>
@@ -155,18 +259,19 @@ export function ServiceTerminal({ target, onClose }: { target: TerminalTarget; o
 /* ─── breadcrumb (D15) ──────────────────────────────────────────────────── */
 
 function Crumbs({ view, onGo }: { view: View; onGo: (view: View) => void }) {
+  const m = useMessages(messages)
   const categories = useServiceCategories()
   const category = view.service ? view.service.category : (categories.data?.find((c) => c.slug === view.category) ?? null)
   return (
-    <nav className={styles.crumbs} aria-label="Fil d'Ariane du catalogue">
+    <nav className={styles.crumbs} aria-label={m.crumbs}>
       <ol>
         <li>
           {view.service || category ? (
             <button type="button" onClick={() => onGo({ category: null, service: null })}>
-              Services
+              {m.services}
             </button>
           ) : (
-            <span aria-current="page">Services</span>
+            <span aria-current="page">{m.services}</span>
           )}
         </li>
         {category && (
@@ -209,22 +314,23 @@ interface ViewProps {
 }
 
 function Catalogue({ category, titleId, headingRef, onCategory, onService }: ViewProps & { category: string | null }) {
+  const m = useMessages(messages)
   const [query, setQuery] = useState('')
   const q = useDebounced(query.trim(), 250)
   const categories = useServiceCategories()
   const services = useCatalogue({ category, q, limit: 100 })
   const active = categories.data?.find((c) => c.slug === category)
-  const count = services.data ? `${plural(services.data.meta.total, 'service', 'services')}${q ? ` pour « ${q} »` : ''}` : 'Recherche en cours…'
+  const count = services.data ? (q ? m.countFor(services.data.meta.total, q) : m.count(services.data.meta.total)) : m.searching
 
   return (
     <div className={styles.catalogue}>
-      <aside className={styles.rail} aria-label="Catégories">
-        <p className={styles.kicker}>Catégories</p>
+      <aside className={styles.rail} aria-label={m.categories}>
+        <p className={styles.kicker}>{m.categories}</p>
         <ul>
           <li>
             <button type="button" aria-pressed={category === null} onClick={() => onCategory(null)}>
               <ServiceGlyph name="grid" size={18} />
-              <span>Tous les services</span>
+              <span>{m.allServices}</span>
             </button>
           </li>
           {categories.data?.map((c) => (
@@ -241,15 +347,15 @@ function Catalogue({ category, titleId, headingRef, onCategory, onService }: Vie
 
       <section className={styles.results}>
         <header className={styles.resultsHead}>
-          <p className={styles.kicker}>{active ? 'Catégorie' : 'Catalogue de Terra Nova'}</p>
+          <p className={styles.kicker}>{active ? m.category : m.catalogue}</p>
           <h2 id={titleId} ref={headingRef} tabIndex={-1} className={styles.title}>
-            {active?.name ?? 'Tous les services'}
+            {active?.name ?? m.allServices}
           </h2>
           {active?.description && <p className={styles.lead}>{active.description}</p>}
           <label className={styles.search}>
             <Icon name="search" />
-            <span className={styles.srOnly}>Rechercher un service</span>
-            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Médecin, papiers, bus, déchets…" autoComplete="off" />
+            <span className={styles.srOnly}>{m.search}</span>
+            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={m.searchPlaceholder} autoComplete="off" />
           </label>
           <p className={styles.count} aria-live="polite">
             {count}
@@ -270,7 +376,7 @@ function Catalogue({ category, titleId, headingRef, onCategory, onService }: Vie
           <>
             {services.isError &&
               (isNetworkFailure(services.error) ? (
-                <p className={styles.muted}>Dernier catalogue connu. Il se mettra à jour au retour du réseau.</p>
+                <p className={styles.muted}>{m.lastKnownCatalogue}</p>
               ) : (
                 <p className={styles.error} role="alert">
                   <Icon name="alert" /> {messageFor(services.error)}
@@ -278,7 +384,7 @@ function Catalogue({ category, titleId, headingRef, onCategory, onService }: Vie
               ))}
             {services.data.data.length === 0 ? (
               <div className={styles.none}>
-                <p>Aucun service ne correspond{q ? ` à « ${q} »` : ' à cette catégorie'}.</p>
+                <p>{q ? m.noMatchQuery(q) : m.noMatchCategory}</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -286,7 +392,7 @@ function Catalogue({ category, titleId, headingRef, onCategory, onService }: Vie
                     onCategory(null)
                   }}
                 >
-                  Voir tous les services
+                  {m.seeAll}
                 </button>
               </div>
             ) : (
@@ -306,7 +412,8 @@ function Catalogue({ category, titleId, headingRef, onCategory, onService }: Vie
 }
 
 function ServiceCard({ service, onOpen }: { service: CityService; onOpen: () => void }) {
-  const view = availabilityView(service.availability)
+  const m = useMessages(messages)
+  const view = availabilityView(service.availability, useLocale())
   const procedures = service._count?.procedures ?? 0
   return (
     <button type="button" className={styles.card} data-status={view.status} onClick={onOpen}>
@@ -316,7 +423,8 @@ function ServiceCard({ service, onOpen }: { service: CityService; onOpen: () => 
         </span>
         {service.is_featured && (
           <span className={styles.featured}>
-            <ServiceGlyph name="star" size={12} stroke={2} />À la une
+            <ServiceGlyph name="star" size={12} stroke={2} />
+            {m.featured}
           </span>
         )}
       </span>
@@ -327,7 +435,7 @@ function ServiceCard({ service, onOpen }: { service: CityService; onOpen: () => 
           <i aria-hidden="true" />
           {view.label}
         </span>
-        {procedures > 0 && <span>{plural(procedures, 'démarche', 'démarches')}</span>}
+        {procedures > 0 && <span>{m.procedures(procedures)}</span>}
       </span>
     </button>
   )
@@ -354,18 +462,20 @@ function ServiceSheet({ preview, titleId, headingRef, onCategory, onService }: V
   const procedures = useProcedures(service.id)
   const related = useCatalogue({ category: service.category?.slug ?? null, limit: 50 })
   const name = useTypewriter(service.name)
-  const view = availabilityView(service.availability)
+  const m = useMessages(messages)
+  const locale = useLocale()
+  const view = availabilityView(service.availability, locale)
   const { current, upcoming } = service.availability
 
   const steps: ProcedureItem[] = procedures.data ?? (detail.data ? detail.data.procedures : [])
   const others = (related.data?.data ?? []).filter((s) => s.id !== service.id).slice(0, 4)
 
   const cells: { icon: IconName; label: string; value: string; href?: string; external?: boolean }[] = []
-  if (service.opening_hours) cells.push({ icon: 'clock', label: 'Horaires', value: service.opening_hours })
-  if (service.address) cells.push({ icon: 'pin', label: 'Adresse', value: service.address })
-  if (service.contact_phone) cells.push({ icon: 'phone', label: 'Téléphone', value: service.contact_phone, href: telHref(service.contact_phone) })
-  if (service.contact_email) cells.push({ icon: 'mail', label: 'E-mail', value: service.contact_email, href: `mailto:${service.contact_email}` })
-  if (service.external_url) cells.push({ icon: 'external', label: 'Site web', value: service.external_url.replace(/^https?:\/\//, ''), href: service.external_url, external: true })
+  if (service.opening_hours) cells.push({ icon: 'clock', label: m.hours, value: service.opening_hours })
+  if (service.address) cells.push({ icon: 'pin', label: m.address, value: service.address })
+  if (service.contact_phone) cells.push({ icon: 'phone', label: m.phone, value: service.contact_phone, href: telHref(service.contact_phone) })
+  if (service.contact_email) cells.push({ icon: 'mail', label: m.email, value: service.contact_email, href: `mailto:${service.contact_email}` })
+  if (service.external_url) cells.push({ icon: 'external', label: m.website, value: service.external_url.replace(/^https?:\/\//, ''), href: service.external_url, external: true })
 
   return (
     <article className={styles.sheet}>
@@ -399,14 +509,14 @@ function ServiceSheet({ preview, titleId, headingRef, onCategory, onService }: V
         <section className={styles.notice} aria-labelledby={`${titleId}-notice`}>
           <Icon name="alert" size={22} />
           <div>
-            <h3 id={`${titleId}-notice`}>{view.status === 'UNAVAILABLE' ? 'Service indisponible' : 'Service perturbé'}</h3>
+            <h3 id={`${titleId}-notice`}>{view.status === 'UNAVAILABLE' ? m.serviceUnavailable : m.serviceDisrupted}</h3>
             <p>{current.reason}</p>
             <p>
-              <strong>Retour prévu :</strong> {service.availability.back_at ? formatMoment(service.availability.back_at) : "jusqu'à nouvel ordre"}
+              <strong>{m.expectedBack}</strong> {service.availability.back_at ? formatMoment(service.availability.back_at, locale) : m.untilFurtherNotice}
             </p>
             {current.alternative && (
               <p>
-                <strong>En attendant :</strong> {current.alternative}
+                <strong>{m.meanwhile}</strong> {current.alternative}
               </p>
             )}
           </div>
@@ -439,28 +549,28 @@ function ServiceSheet({ preview, titleId, headingRef, onCategory, onService }: V
 
       {service.description && (
         <section className={styles.block}>
-          <h3>Présentation</h3>
+          <h3>{m.presentation}</h3>
           <p className={styles.description}>{service.description}</p>
         </section>
       )}
 
       <section className={styles.block}>
         <h3>
-          Démarches en ligne
+          {m.onlineProcedures}
           {steps.length > 0 && <span className={styles.tally}>{steps.length}</span>}
         </h3>
         {procedures.isPending && steps.length === 0 ? (
           <span className={styles.ghostLine} aria-hidden="true" />
         ) : procedures.isError && steps.length === 0 ? (
-          <p className={styles.muted}>Les démarches n’ont pas pu être chargées. Les horaires et les coordonnées ci-dessus restent valables.</p>
+          <p className={styles.muted}>{m.proceduresFailed}</p>
         ) : steps.length === 0 ? (
-          <p className={styles.muted}>Ce service ne propose pas encore de démarche en ligne : contactez-le directement.</p>
+          <p className={styles.muted}>{m.noProcedures}</p>
         ) : (
           <>
             {view.status === 'UNAVAILABLE' && (
               <p className={styles.blocked}>
                 <Icon name="alert" size={16} />
-                Les démarches de ce service sont suspendues {service.availability.back_at ? `jusqu'au ${formatMoment(service.availability.back_at)}` : "jusqu'à nouvel ordre"}.
+                {service.availability.back_at ? m.suspendedUntil(formatMoment(service.availability.back_at, locale)) : m.suspended}
               </p>
             )}
             <ol className={styles.procedures}>
@@ -474,16 +584,16 @@ function ServiceSheet({ preview, titleId, headingRef, onCategory, onService }: V
 
       {upcoming.length > 0 && (
         <section className={styles.block}>
-          <h3>Interruptions prévues</h3>
+          <h3>{m.plannedInterruptions}</h3>
           <ul className={styles.timeline}>
             {upcoming.map((u) => (
               <li key={u.id}>
                 <p className={styles.when}>
-                  {formatMoment(u.starts_at)}
-                  {u.ends_at && <> → {formatMoment(u.ends_at)}</>}
+                  {formatMoment(u.starts_at, locale)}
+                  {u.ends_at && <> → {formatMoment(u.ends_at, locale)}</>}
                 </p>
                 <p>{u.reason}</p>
-                {u.alternative && <p className={styles.muted}>En attendant : {u.alternative}</p>}
+                {u.alternative && <p className={styles.muted}>{m.meanwhileInline(u.alternative)}</p>}
               </li>
             ))}
           </ul>
@@ -492,7 +602,7 @@ function ServiceSheet({ preview, titleId, headingRef, onCategory, onService }: V
 
       {others.length > 0 && (
         <section className={styles.block}>
-          <h3>{service.category ? 'Dans la même catégorie' : 'Autres services'}</h3>
+          <h3>{service.category ? m.sameCategory : m.otherServices}</h3>
           <div className={styles.related}>
             {others.map((s) => (
               <button key={s.id} type="button" onClick={() => onService(s)}>
@@ -510,23 +620,24 @@ function ServiceSheet({ preview, titleId, headingRef, onCategory, onService }: V
 
 /** F39: when the service receives by appointment, its next free slot and the way to book it */
 function BookingBand({ serviceId, slug, unavailable }: { serviceId: number; slug: string; unavailable: boolean }) {
+  const m = useMessages(messages)
   const slots = useSlots(serviceId)
   const next = slots.data?.[0]
   if (!next) return null
   return (
-    <section className={styles.booking} aria-label="Rendez-vous">
+    <section className={styles.booking} aria-label={m.appointment}>
       <span className={styles.bookingIcon} aria-hidden="true">
         <Icon name="calendar" size={22} />
       </span>
       <div>
-        <p className={styles.bookingTitle}>Rendez-vous avec un agent</p>
+        <p className={styles.bookingTitle}>{m.appointmentTitle}</p>
         <p className={styles.muted}>
-          Prochain créneau libre : {next.day_label} à {next.start_time} · {slots.data!.length} créneau{slots.data!.length > 1 ? 'x' : ''} sur 14 jours
+          {m.nextSlot(next.day_label, next.start_time, slots.data!.length)}
         </p>
-        {unavailable && <p className={styles.blocked}>Le service est interrompu : les créneaux pendant l’interruption seront refusés.</p>}
+        {unavailable && <p className={styles.blocked}>{m.slotsRefused}</p>}
       </div>
       <Link className={styles.bookingButton} to={`/ville/rendez-vous/nouveau?service=${slug}`}>
-        Prendre rendez-vous
+        {m.book}
         <Icon name="chevron" size={16} />
       </Link>
     </section>
@@ -534,8 +645,9 @@ function BookingBand({ serviceId, slug, unavailable }: { serviceId: number; slug
 }
 
 function ProcedureRow({ step, index }: { step: ProcedureItem; index: number }) {
+  const m = useMessages(messages)
   const documents = documentsOf(step.required_documents)
-  const delay = formatDelay(step.estimated_days)
+  const delay = formatDelay(step.estimated_days, useLocale())
   return (
     <li>
       <details className={styles.procedure}>
@@ -543,7 +655,7 @@ function ProcedureRow({ step, index }: { step: ProcedureItem; index: number }) {
           <span className={styles.index}>{String(index + 1).padStart(2, '0')}</span>
           <span className={styles.procedureTitle}>
             <strong>{step.title}</strong>
-            {delay && <small>Délai {delay}</small>}
+            {delay && <small>{m.delay(delay)}</small>}
           </span>
           <Icon name="chevron" size={18} />
         </summary>
@@ -551,7 +663,7 @@ function ProcedureRow({ step, index }: { step: ProcedureItem; index: number }) {
           {step.description && <p>{step.description}</p>}
           {documents.length > 0 && (
             <>
-              <h4>Pièces à fournir</h4>
+              <h4>{m.documents}</h4>
               <ul className={styles.documents}>
                 {documents.map((document) => (
                   <li key={document}>
@@ -562,7 +674,7 @@ function ProcedureRow({ step, index }: { step: ProcedureItem; index: number }) {
               </ul>
             </>
           )}
-          {!step.description && documents.length === 0 && <p className={styles.muted}>Aucune pièce particulière n'est demandée.</p>}
+          {!step.description && documents.length === 0 && <p className={styles.muted}>{m.noDocuments}</p>}
         </div>
       </details>
     </li>

@@ -1,12 +1,11 @@
 import express from "express";
 import auditController from "../controller/audit.controller";
-import { authenticate, requireAdmin, requireStaff } from "../middleware/auth";
+import { authenticate, requirePermission } from "../middleware/auth";
+
 const auditRouter = express.Router();
 
-// F47: read-only on purpose, no PATCH or DELETE
-auditRouter.use(authenticate, requireStaff);
-auditRouter.get("/", auditController.list);
-auditRouter.get("/export.csv", requireAdmin, auditController.exportCsv);
-auditRouter.get("/stats", requireAdmin, auditController.stats);
+auditRouter.get("/", authenticate, requirePermission("audit.read"), auditController.list);
+auditRouter.get("/export.csv", authenticate, requirePermission("audit.export"), auditController.exportCsv);
+auditRouter.get("/stats", authenticate, requirePermission("audit.export"), auditController.stats);
 
 export default auditRouter;

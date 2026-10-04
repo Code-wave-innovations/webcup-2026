@@ -73,7 +73,7 @@ export default function RequestsSupervisionPage() {
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader title="Supervision des demandes" codes={['D17', 'F22', 'F34']} lead="Charge de travail par agent, demandes en retard, et réassignation, une par une ou en groupe." />
+      <PageHeader title="Supervision des demandes" lead="Charge de travail par agent, demandes en retard, et réassignation, une par une ou en groupe." />
 
       <motion.div className={layout.stats} variants={stagger}>
         <StatTile label="En attente de prise en charge" value={stats?.awaiting_pickup ?? null} icon="clock" tone="ember" hint="D17" />

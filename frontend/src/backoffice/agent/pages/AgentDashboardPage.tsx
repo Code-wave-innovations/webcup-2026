@@ -63,7 +63,6 @@ export default function AgentDashboardPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title={`Bonjour ${actor.name}`}
-        codes={['D19', 'F22', 'D17', 'F50']}
         lead={lead}
         actions={
           <>
