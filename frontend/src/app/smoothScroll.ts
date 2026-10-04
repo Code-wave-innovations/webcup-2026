@@ -28,6 +28,12 @@ export function useSmoothScroll(enabled: boolean): void {
   }, [enabled])
 }
 
+/** Freezes the page scroll (and so the flyover) while a dialog sits over the city. */
+export function holdSmoothScroll(held: boolean): void {
+  if (held) lenis?.stop()
+  else lenis?.start()
+}
+
 /**
  * Scrolls the page to `y`: a 1.2 to 2.4 s glide (longer for farther districts) with the smooth scroll,
  * the browser's smooth scroll otherwise, a jump with reduced motion.

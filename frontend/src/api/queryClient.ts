@@ -12,6 +12,8 @@ export const REFRESH = {
   audit: 15_000,
   terraNova: 60_000,
   openRequest: 30_000,
+  /** F28 / F38: what the admin puts forward or cuts shows within a minute */
+  catalogue: 60_000,
 } as const
 
 export const queryClient = new QueryClient({

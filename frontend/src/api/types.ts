@@ -527,6 +527,7 @@ export interface ServiceCategory {
   id: number
   slug: string
   name: string
+  description?: string | null
   icon: string | null
   sort_order: number
   _count?: { services: number }
@@ -585,6 +586,11 @@ export interface ServiceInput {
   is_featured?: boolean
   priority?: number
   is_active?: boolean
+}
+
+/** GET /api/services/:idOrSlug: the service sheet a citizen opens (D05) */
+export interface ServiceDetail extends CityService {
+  procedures: Pick<Procedure, 'id' | 'slug' | 'title' | 'description' | 'estimated_days'>[]
 }
 
 /** GET /api/services/:id/impact: what cutting it would touch */
