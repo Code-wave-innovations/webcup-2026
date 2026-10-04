@@ -1,12 +1,20 @@
 import { Link, useLocation } from 'react-router'
 import { signOutCitizen, useCitizenUser } from '../../api/session'
+import type { Role } from '../../api/types'
 import { airlockPath, rewindToCockpit } from '../../app/airlock'
 import { useAuthStore } from '../../features/auth/authStore'
 import { Icon, NovaMark } from '../../ui/Icon'
 import chrome from '../CityPage/CityChrome.module.css'
+import { CitizenNav } from './CitizenNav'
 import styles from './ConsoleLayout.module.css'
 
-/** Top bar of the console pages: back to the city, the signed-in habitant (not a leftover staff JWT). */
+const ROLE_LABEL: Record<Role, string> = {
+  CITIZEN: 'Habitant·e',
+  AGENT: 'Agent municipal',
+  ADMIN: 'Administration',
+}
+
+/** Top bar of the console pages: habitant JWT (not staff), plus Accueil / Contact / Mon espace. */
 export function ConsoleTopBar() {
   const citizen = useCitizenUser()
   const citySession = useAuthStore((s) => s.session)
@@ -15,7 +23,7 @@ export function ConsoleTopBar() {
   const account = citizen
     ? {
         name: `${citizen.name} ${citizen.last_name}`.trim(),
-        label: 'Habitant·e',
+        label: ROLE_LABEL[citizen.role],
         onSignOut: signOutCitizen,
       }
     : citySession
@@ -33,8 +41,7 @@ export function ConsoleTopBar() {
         <span>NOVA</span>
       </Link>
       <nav className={chrome.links} aria-label="Rubriques">
-        <Link to="/ville">Accueil de la ville</Link>
-        <Link to="/ville#conseil">Contact</Link>
+        <CitizenNav variant="console" />
       </nav>
       <div className={chrome.end}>
         {account ? (
