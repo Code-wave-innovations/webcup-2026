@@ -26,6 +26,11 @@
   clip-path: polygon(var(--corner) 0, 100% 0, 100% calc(100% - var(--corner)), calc(100% - var(--corner)) 100%, 0 100%, 0 var(--corner));
 }
 
+.panelWide {
+  width: min(100%, 52rem);
+  max-height: min(92vh, 44rem);
+}
+
 .title {
   margin: 0;
   font: 700 1.15rem/1.25 var(--font-display);

@@ -10,10 +10,12 @@ interface ConfirmDialogProps {
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
+  /** Wider panel for forms (contact…). */
+  size?: 'default' | 'wide'
 }
 
 /** Citizen glass dialog: Escape / backdrop close, focus trap, no back-office imports. */
-export function ConfirmDialog({ open, title, onClose, children, footer }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, title, onClose, children, footer, size = 'default' }: ConfirmDialogProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
@@ -57,7 +59,7 @@ export function ConfirmDialog({ open, title, onClose, children, footer }: Confir
     <div className={styles.backdrop} onClick={onClose} role="presentation">
       <div
         ref={panelRef}
-        className={styles.panel}
+        className={size === 'wide' ? `${styles.panel} ${styles.panelWide}` : styles.panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

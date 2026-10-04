@@ -5,6 +5,11 @@
   align-items: start;
 }
 
+.layout > .noteLead {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .form,
 .aside,
 .confirmation {
