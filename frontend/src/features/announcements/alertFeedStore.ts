@@ -27,6 +27,8 @@ export const useAlertFeed = create<AlertFeedState>()((set, get) => ({
   ...readMemory(),
   reviewing: null,
   receive: (alerts) => {
+    // A stale CDN payload or a non-array response must not wipe the feed into `undefined.find`.
+    if (!Array.isArray(alerts)) return
     set({ alerts: sortAlerts(alerts) })
     remember(get())
   },
@@ -42,5 +44,5 @@ export const useAlertFeed = create<AlertFeedState>()((set, get) => ({
 }))
 
 /** The critical alert that concerns me, if any: it turns the city red and Nova reads its instructions. */
-export const criticalAlertOf = (alerts: readonly ActiveAlert[]): ActiveAlert | null =>
-  alerts.find((a) => a.concerns_me && a.severity === 'CRITICAL') ?? null
+export const criticalAlertOf = (alerts: readonly ActiveAlert[] | null | undefined): ActiveAlert | null =>
+  alerts?.find((a) => a.concerns_me && a.severity === 'CRITICAL') ?? null

@@ -90,8 +90,9 @@ const CLIP_ALIASES: Record<ClipName, readonly string[]> = {
 }
 
 /** Maps the model's animation names to Nova clips (`Armature|Waving` → `wave`). */
-export function matchClips(clipNames: readonly string[]): Partial<Record<ClipName, string>> {
+export function matchClips(clipNames: readonly string[] | null | undefined): Partial<Record<ClipName, string>> {
   const result: Partial<Record<ClipName, string>> = {}
+  if (!clipNames) return result
   for (const [clip, aliases] of Object.entries(CLIP_ALIASES) as Array<[ClipName, readonly string[]]>) {
     const found = clipNames.find((name) => aliases.includes(normalizeName(name)))
     if (found) result[clip] = found

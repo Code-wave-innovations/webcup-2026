@@ -99,7 +99,11 @@ export const POIS: readonly POI[] = [
   { id: 'village-nord', icon: 'village', x: -20, z: -70, radius: 20, flatten: 0.45 },
 ]
 
-export const poiById = (id: PoiId): POI => POIS.find((p) => p.id === id)!
+export const poiById = (id: PoiId): POI => {
+  const poi = POIS.find((p) => p.id === id)
+  if (!poi) throw new Error(`Unknown city site: ${id}`)
+  return poi
+}
 
 /** D14: each site's name and the line shown when Nova lands there. */
 const poiTexts = defineMessages(

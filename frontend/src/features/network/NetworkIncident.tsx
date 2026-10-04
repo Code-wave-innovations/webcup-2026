@@ -80,7 +80,7 @@ export function NetworkIncident() {
       serviceList: serviceList.data,
       categories: categories.data,
       districts: districts.data,
-      alerts: alerts.data ? { viewerKey, items: alerts.data } : undefined,
+      alerts: Array.isArray(alerts.data) ? { viewerKey, items: alerts.data } : undefined,
     })
   }, [settings.data, announcements.data, serviceList.data, categories.data, districts.data, alerts.data, viewerKey])
 

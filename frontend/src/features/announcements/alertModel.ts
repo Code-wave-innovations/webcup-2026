@@ -37,7 +37,8 @@ export const severityLabel = (severity: AlertSeverity, locale: Locale = currentL
 export const SEVERITY_ICON: Record<AlertSeverity, IconName> = { CRITICAL: 'siren', WARNING: 'alert', INFO: 'info' }
 
 /** What concerns me first, then the most serious, then the most recent. */
-export function sortAlerts<T extends Pick<ActiveAlert, 'concerns_me' | 'severity' | 'starts_at'>>(alerts: readonly T[]): T[] {
+export function sortAlerts<T extends Pick<ActiveAlert, 'concerns_me' | 'severity' | 'starts_at'>>(alerts: readonly T[] | null | undefined): T[] {
+  if (!Array.isArray(alerts)) return []
   return [...alerts].sort(
     (a, b) =>
       Number(b.concerns_me) - Number(a.concerns_me) ||
