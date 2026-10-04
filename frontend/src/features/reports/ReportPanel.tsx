@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchOwnRequest, requestKeys } from '../../api/requests'
 import { useCitizenSessionStore } from '../../api/session'
 import { useAuthStore } from '../auth/authStore'
+import { useMaintenanceMode } from '../maintenance/maintenanceMode'
+import { PlatformIncident } from '../maintenance/PlatformIncident'
 import { ReportForm } from './ReportForm'
 import { ReportTracker } from './ReportTracker'
 import { useReportStore } from './reportStore'
@@ -13,6 +15,7 @@ export function ReportPanel() {
   const syncStatus = useReportStore((s) => s.syncStatus)
   const citizenToken = useCitizenSessionStore((s) => s.token)
   // Film JWT only if the citizen slot is empty (mirrored airlock login / legacy).
+  const readOnly = useMaintenanceMode()
   const filmToken = useAuthStore((s) => s.session?.token)
   const token = citizenToken ?? filmToken
   const live = useQuery({
@@ -27,5 +30,7 @@ export function ReportPanel() {
     if (live.data) syncStatus(live.data.status)
   }, [live.data, syncStatus])
 
-  return report ? <ReportTracker report={report} /> : <ReportForm />
+  if (report) return <ReportTracker report={report} />
+  if (readOnly) return <PlatformIncident nested />
+  return <ReportForm />
 }

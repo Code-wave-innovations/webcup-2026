@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { http } from './client'
-import { queryClient } from './queryClient'
+import { queryClient, REFRESH } from './queryClient'
 import type { PlatformSettings, SettingsAdminView } from './types'
 
 // D07 / D08: platform settings (GET /api/settings/public, GET/PATCH /api/settings for admins)
@@ -17,6 +17,7 @@ export const usePublicSettings = () =>
     queryKey: settingsKeys.public(),
     queryFn: () => http.get<PlatformSettings>('/settings/public').then((r) => r.data),
     staleTime: 60_000,
+    refetchInterval: REFRESH.catalogue,
   })
 
 export const useAdminSettings = () =>
