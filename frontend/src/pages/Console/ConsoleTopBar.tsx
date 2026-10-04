@@ -41,29 +41,31 @@ export function ConsoleTopBar() {
 
   return (
     <header className={chrome.bar}>
-      <Link to="/ville" className={[chrome.brand, styles.brand].join(' ')}>
-        <NovaMark />
-        <span>NOVA</span>
-      </Link>
-      <nav className={chrome.links} aria-label="Rubriques">
-        <CitizenNav variant="console" />
-      </nav>
-      <div className={chrome.end}>
-        {account ? (
-          <>
-            <div className={chrome.badge}>
-              <span>{account.name}</span>
-              <small>{account.label}</small>
-            </div>
-            <button type="button" className={chrome.round} aria-label="Se déconnecter" onClick={account.onSignOut}>
-              <Icon name="logout" />
-            </button>
-          </>
-        ) : (
-          <Link to={airlockPath(pathname + search)} onClick={rewindToCockpit} className={styles.signIn}>
-            Se connecter
-          </Link>
-        )}
+      <div className={chrome.shell}>
+        <Link to="/ville" className={[chrome.brand, styles.brand].join(' ')}>
+          <NovaMark />
+          <span>NOVA</span>
+        </Link>
+        <nav className={chrome.links} aria-label="Rubriques">
+          <CitizenNav variant="console" />
+        </nav>
+        <div className={chrome.end}>
+          {account ? (
+            <>
+              <div className={chrome.badge}>
+                <span>{account.name}</span>
+                <small>{account.label}</small>
+              </div>
+              <button type="button" className={chrome.round} aria-label="Se déconnecter" onClick={account.onSignOut}>
+                <Icon name="logout" />
+              </button>
+            </>
+          ) : (
+            <Link to={airlockPath(pathname + search)} onClick={rewindToCockpit} className={styles.signIn}>
+              Se connecter
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   )

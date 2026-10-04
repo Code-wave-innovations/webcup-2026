@@ -5,7 +5,7 @@ import styles from './CitizenNav.module.css'
 
 const current = (active: boolean) => (active ? 'true' : undefined)
 
-/** Shared Accueil + Contact + Mon espace for the console and the city flyover. */
+/** Shared Accueil + Contact + Mon espace. On the flyover, Contact is already a city section — omit it. */
 export function CitizenNav({ variant }: { variant: 'console' | 'flyover' }) {
   const { pathname } = useLocation()
   const signedIn = useCitizenSignedIn()
@@ -13,6 +13,7 @@ export function CitizenNav({ variant }: { variant: 'console' | 'flyover' }) {
   const count = waiting.data?.meta.total ?? 0
   const onEspace = pathname.startsWith('/ville/espace')
   const onContact = pathname === '/ville/contact'
+  const flyover = variant === 'flyover'
 
   return (
     <>
@@ -21,11 +22,18 @@ export function CitizenNav({ variant }: { variant: 'console' | 'flyover' }) {
           Accueil
         </Link>
       )}
-      <Link to="/ville/contact" aria-current={current(onContact)}>
-        Contact
-      </Link>
-      <Link to="/ville/espace" aria-current={current(onEspace)} className={styles.espaceLink}>
-        Mon espace
+      {variant === 'console' && (
+        <Link to="/ville/contact" aria-current={current(onContact)}>
+          Contact
+        </Link>
+      )}
+      <Link
+        to="/ville/espace"
+        aria-current={current(onEspace)}
+        className={styles.espaceLink}
+        title="Mon espace"
+      >
+        {flyover ? 'Espace' : 'Mon espace'}
         {count > 0 && (
           <span className={styles.badge} aria-label={`${count} demande(s) à compléter`}>
             {count}

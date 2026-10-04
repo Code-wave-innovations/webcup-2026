@@ -7,7 +7,7 @@ import { badRequest, notFound } from "../lib/errors";
 import { notifyUsers } from "../lib/notify";
 import { buildDepartures } from "../lib/transit";
 import { HHMM_RE, dayTypeOf, hhmmToMinutes, toHHMM } from "../lib/datetime";
-import { parseId, zBool, zId } from "../lib/validation";
+import { paramValue, parseId, type ParamValue, zBool, zId } from "../lib/validation";
 import { resolveLocale, translate, translateOne } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
 
@@ -25,8 +25,10 @@ const lineSummary = {
   status_message: true,
 } satisfies Prisma.TransitLineSelect;
 
-const lineWhere = (value: string): Prisma.TransitLineWhereInput =>
-  /^\d+$/.test(value) ? { id: Number(value) } : { code: value.toUpperCase() };
+const lineWhere = (value: ParamValue): Prisma.TransitLineWhereInput => {
+  const raw = paramValue(value);
+  return /^\d+$/.test(raw) ? { id: Number(raw) } : { code: raw.toUpperCase() };
+};
 
 // ?day=&at= let the client look at another moment; default is now (server time zone).
 const momentSchema = z.object({
