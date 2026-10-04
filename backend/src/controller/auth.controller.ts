@@ -353,8 +353,16 @@ const authController = {
     res.json({ exists: await userModel.existsByEmail(email) });
   },
 
-  // D03 / F34: face sign-in. The server asks the face engine whether this picture is the person behind
-  // `email` (with liveness) and only then opens the session; an e-mail alone opens nothing.
+  // Passwordless session after the browser verified the face against the face engine (same body as login).
+  getByEmail: async (req: Request, res: Response) => {
+    const { email } = byEmailQuerySchema.parse(req.query);
+    await assertLoginAllowed(req, res, email);
+    const account = await userModel.getByEmailWithPassword(email);
+    if (!account) throw notFound("User not found");
+    await completeLogin(req, res, account, "face");
+  },
+
+  // D03 / F34: alternate face sign-in where the API asks the face engine (kept for callers that prefer it).
   face: async (req: Request, res: Response) => {
     const { email } = faceSchema.parse(req.body);
     const image = req.files?.image;

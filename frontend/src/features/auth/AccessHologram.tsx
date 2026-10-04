@@ -262,7 +262,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
     codeRef.current?.select()
   }
 
-  /** Face identity must match the typed identifier, then `GET /api/auth/by-email`. */
+  /** Face identify on the face engine, then `GET /api/auth/by-email` when it matches the typed id. */
   const identifyFace = async (frame: Blob) => {
     const result = await access.attempt(() => faceAuthService.identify(frame, identifier))
     if (result?.ok) void admit(result.session)

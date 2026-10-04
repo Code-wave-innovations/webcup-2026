@@ -157,36 +157,21 @@ export async function accountExists(identifier: string): Promise<boolean> {
 }
 
 /**
- * D03 / F34: face sign-in. The picture goes to the API, which asks the face engine whether it is the
- * person behind `email` and only then opens the session: an e-mail alone opens nothing.
+ * Passwordless session via `GET /api/auth/by-email` — same `{ token, user }` body as `POST /auth/login`.
+ * Used after the browser identified the face against the face engine.
  */
-export async function faceSignIn(identifier: string, frame: Blob): Promise<SignInResult> {
-  const form = new FormData()
-  form.append('email', resolveAuthEmail(identifier))
-  form.append('image', frame, 'frame.jpg')
+export async function sessionByEmail(identifier: string): Promise<SignInResult> {
   try {
-    const { data } = await authHttp.post<AuthResponse>('/auth/face', form)
+    const { data } = await authHttp.get<AuthResponse>('/auth/by-email', {
+      params: { email: resolveAuthEmail(identifier) },
+    })
     return { ok: true, session: sessionFromApi(data) }
   } catch (error) {
     const api = toApiError(error)
-    if (api.code === 'FACE_NOT_ENROLLED') return { ok: false, inconclusive: 'unknown' }
-    if (api.code === 'FACE_UNUSABLE') return { ok: false, inconclusive: 'noFace' }
     if (api.code === 'ACCOUNT_DISABLED') return { ok: false, inconclusive: 'disabled' }
-    // another face counts as a refused attempt, on the server as here
-    if (api.code === 'FACE_MISMATCH' || api.status === 429) return { ok: false }
+    if (api.status === 404) return { ok: false, inconclusive: 'unknown' }
+    if (api.status === 429) return { ok: false }
     return { ok: false, inconclusive: 'unavailable' }
-  }
-}
-
-/** D03: links the face to the account that just signed in (the API checks it is that person's own) */
-export async function linkOwnFace(token: string, frames: Blob[]): Promise<boolean> {
-  const form = new FormData()
-  frames.forEach((frame, i) => form.append(`img${i}`, frame, `frame${i}.jpg`))
-  try {
-    const { data } = await authHttp.post<{ committed: boolean }>('/me/face', form, { headers: { Authorization: `Bearer ${token}` } })
-    return data.committed
-  } catch {
-    return false
   }
 }
 

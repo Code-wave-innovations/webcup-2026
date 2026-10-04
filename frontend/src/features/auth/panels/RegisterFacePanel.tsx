@@ -87,9 +87,8 @@ function grab(video: HTMLVideoElement | null): Promise<Blob | null> {
 }
 
 /**
- * Live face capture: one sharp frame at a time (presence + hold). The frames are only linked once the
- * account exists, by the API and with its session (`POST /api/me/face`): nobody can enrol a face under
- * an e-mail that is not theirs.
+ * Live face capture: one sharp frame at a time (presence + hold). The frames are enrolled on the face
+ * engine from the browser once the account exists (`enrollFrames` → gallery name from the e-mail).
  */
 export function RegisterFacePanel({ name, onEnrolled, onSkip, onBack, busy }: RegisterFacePanelProps) {
   const m = useMessages(messages)
