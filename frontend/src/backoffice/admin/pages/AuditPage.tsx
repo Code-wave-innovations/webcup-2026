@@ -84,7 +84,6 @@ export default function AuditPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Journal d’audit"
-        codes={['F47', 'F48']}
         lead="Chaque action est horodatée et attribuée : qui, quoi, quand, depuis quelle adresse, et la valeur avant/après. Le journal ne se modifie ni ne se purge."
         actions={
           <Button icon="download" onClick={() => void exportCsv()} disabled={exporting} aria-busy={exporting}>

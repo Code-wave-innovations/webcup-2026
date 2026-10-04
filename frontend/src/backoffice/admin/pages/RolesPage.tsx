@@ -42,7 +42,6 @@ export default function RolesPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Rôles & permissions"
-        codes={['D08', 'D09']}
         lead="Les droits sont appliqués par le serveur. Ce tableau les décrit, il ne les modifie pas : un test vérifie qu’il reste conforme aux routes."
       />
 

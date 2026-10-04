@@ -84,7 +84,6 @@ export default function SecurityPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Sécurité des connexions"
-        codes={['F37', 'F53', 'F54', 'D02']}
         lead="Tentatives inhabituelles, comptes bloqués, nouveaux appareils et adoption de la double vérification. Un compte est bloqué 15 min après 5 échecs ; une IP après 20."
         actions={
           <Link to="/admin/parametres#securite" className={layout.linkButton}>
