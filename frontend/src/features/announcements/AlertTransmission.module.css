@@ -1,0 +1,816 @@
+/*
+  D18: a priority transmission of the High Council. The signal is acquired (a line of light, then
+  interference), the card stabilises, and the steps to follow light up one after the other. The tone
+  follows the level: ice for information, amber for vigilance, red for a critical alert.
+*/
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ─── the takeover ──────────────────────────────────────────────────────── */
+
+.dialog {
+  --tone: var(--color-ice);
+  --tone-halo: var(--color-ice-halo);
+  --tone-veil: rgba(41, 196, 232, 0.14);
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: clamp(12px, 3vw, 36px);
+  overflow: hidden;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+}
+
+.dialog:not([open]) {
+  display: none;
+}
+
+.dialog[data-severity='WARNING'] {
+  --tone: var(--color-progress);
+  --tone-halo: var(--color-ember-halo);
+  --tone-veil: rgba(255, 177, 92, 0.16);
+}
+
+.dialog[data-severity='CRITICAL'] {
+  --tone: var(--color-alert);
+  --tone-halo: var(--color-alert-veil);
+  --tone-veil: rgba(255, 70, 60, 0.2);
+}
+
+.dialog::backdrop {
+  background: rgba(2, 4, 10, 0.78);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  backdrop-filter: blur(6px) saturate(120%);
+  animation: veil 0.5s ease both;
+}
+
+.folding::backdrop {
+  animation: veilOut 0.5s 0.05s ease both;
+}
+
+@keyframes veil {
+  0% {
+    background: rgba(255, 255, 255, 0.35);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+}
+
+@keyframes veilOut {
+  to {
+    opacity: 0;
+  }
+}
+
+/* the edges of the screen breathe in the alert's colour; a critical alert pulses */
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, transparent 45%, var(--tone-veil) 100%);
+  box-shadow: inset 0 0 120px var(--tone-veil);
+  animation: fadeIn 0.6s 0.2s both;
+}
+
+.dialog[data-severity='CRITICAL'] .vignette {
+  animation:
+    fadeIn 0.6s 0.2s both,
+    emergency 1.6s 0.8s ease-in-out infinite;
+}
+
+@keyframes emergency {
+  50% {
+    box-shadow: inset 0 0 220px rgba(255, 60, 50, 0.45);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.folding .vignette,
+.folding .rings {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* the broadcast: waves leave the middle of the screen, again and again */
+.rings {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.rings i {
+  grid-area: 1 / 1;
+  width: 60vmin;
+  height: 60vmin;
+  border: 1px solid var(--tone);
+  border-radius: 50%;
+  opacity: 0;
+  animation: wave 4.2s var(--ease-out-soft) infinite;
+}
+
+.rings i:nth-child(2) {
+  animation-delay: 1.4s;
+}
+
+.rings i:nth-child(3) {
+  animation-delay: 2.8s;
+}
+
+@keyframes wave {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+/* ─── the card ──────────────────────────────────────────────────────────── */
+
+.card {
+  --cut: 22px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(780px, 100%);
+  max-height: 100%;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--tone) 14%, transparent), transparent 220px),
+    var(--color-glass-dense);
+  border: 1px solid color-mix(in srgb, var(--tone) 60%, transparent);
+  box-shadow:
+    inset 0 1px 0 var(--color-sheen),
+    0 0 80px var(--tone-halo);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  animation: acquire 1s var(--ease-out-soft) both;
+}
+
+/* scanlines over the card */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: repeating-linear-gradient(0deg, var(--color-scanline) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+}
+
+/* signal acquisition: a thin line, it widens, opens, then the picture jumps before it settles */
+@keyframes acquire {
+  0% {
+    opacity: 0;
+    transform: scale(0.5, 0.004);
+    filter: brightness(3);
+  }
+  28% {
+    opacity: 1;
+    transform: scale(1, 0.004);
+    filter: brightness(3);
+  }
+  55% {
+    transform: scale(1, 1.02);
+    filter: brightness(1.4);
+  }
+  62% {
+    transform: translateX(-7px) skewX(5deg);
+    filter: brightness(1.6) hue-rotate(-20deg);
+  }
+  67% {
+    transform: translateX(6px) skewX(-4deg);
+    filter: brightness(1.2) hue-rotate(15deg);
+  }
+  72%,
+  100% {
+    transform: none;
+    filter: none;
+  }
+}
+
+/* the next message: this one slides away */
+.cardOut {
+  animation: cardOut 0.38s var(--ease-in-out-sharp) both;
+}
+
+@keyframes cardOut {
+  to {
+    opacity: 0;
+    transform: translateY(-36px) scale(0.96);
+    filter: blur(6px);
+  }
+}
+
+/* « J'ai compris » on the last one: it folds into a line that rises to the banner */
+.folding .card {
+  animation: fold 0.52s var(--ease-in-out-sharp) both;
+}
+
+@keyframes fold {
+  0% {
+    transform: none;
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1, 0.004);
+    filter: brightness(2.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-42vh) scale(0.35, 0.004);
+    filter: brightness(2.5);
+  }
+}
+
+.corner {
+  position: absolute;
+  z-index: 4;
+  width: calc(var(--cut) * 1.4142 + 1px);
+  height: 2px;
+  background: var(--tone);
+  box-shadow: 0 0 10px var(--tone);
+  pointer-events: none;
+}
+
+.cornerA {
+  top: calc(var(--cut) - 1px);
+  left: -1px;
+  transform-origin: 0 50%;
+  transform: rotate(-45deg);
+}
+
+.cornerB {
+  right: -1px;
+  bottom: calc(var(--cut) - 1px);
+  transform-origin: 100% 50%;
+  transform: rotate(-45deg);
+}
+
+/* a reading beam, once as the card settles, then now and then */
+.scan {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 4;
+  height: 120px;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--tone) 12%, transparent) 85%, color-mix(in srgb, var(--tone) 60%, white));
+  opacity: 0;
+  pointer-events: none;
+  animation: sweep 6s 0.55s var(--ease-in-out-sharp) infinite;
+}
+
+@keyframes sweep {
+  0% {
+    opacity: 0.9;
+    transform: translateY(-120px);
+  }
+  18% {
+    opacity: 0.7;
+  }
+  22%,
+  100% {
+    opacity: 0;
+    transform: translateY(900px);
+  }
+}
+
+/* ─── signal strip ──────────────────────────────────────────────────────── */
+
+.signal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 22px 12px 34px;
+  font: 600 11px/1.2 var(--font-body);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--tone);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 16%, transparent), transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--tone) 30%, transparent);
+}
+
+/* the voice of the transmission: an equaliser that never stops */
+.wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+}
+
+.wave i {
+  width: 2px;
+  height: 100%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  transform-origin: 50% 50%;
+  animation: eq 0.9s ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * -0.13s);
+}
+
+.wave i:nth-child(3n) {
+  animation-duration: 0.62s;
+}
+
+.wave i:nth-child(4n + 1) {
+  animation-duration: 1.15s;
+}
+
+@keyframes eq {
+  from {
+    transform: scaleY(0.15);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.channel {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.channel b {
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.channel b::before {
+  content: '· ';
+}
+
+.stamp {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  letter-spacing: 0.12em;
+}
+
+/* ─── head ──────────────────────────────────────────────────────────────── */
+
+.head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+  padding: 24px 30px 4px;
+}
+
+.emblem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  color: var(--tone);
+  animation: rise 0.6s 0.55s var(--ease-out-soft) both;
+}
+
+/* sonar pings out of the emblem */
+.emblem::before,
+.emblem::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1.5px solid var(--tone);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  animation: ping 2.2s 1s var(--ease-out-soft) infinite;
+}
+
+.emblem::after {
+  animation-delay: 2.1s;
+}
+
+@keyframes ping {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+.emblemHex {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 82px;
+  color: var(--color-text);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--tone) 70%, white 10%), color-mix(in srgb, var(--tone) 25%, transparent));
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  animation: beacon 1.8s ease-in-out infinite;
+}
+
+.dialog[data-severity='CRITICAL'] .emblemHex {
+  animation-duration: 0.9s;
+}
+
+@keyframes beacon {
+  50% {
+    filter: brightness(1.5);
+  }
+}
+
+.headText {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  animation: rise 0.5s 0.62s var(--ease-out-soft) both;
+}
+
+.level,
+.zone,
+.me {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.level {
+  color: var(--color-ink);
+  background: var(--tone);
+}
+
+.zone {
+  color: var(--color-text);
+  border: 1px solid var(--color-line);
+}
+
+.me {
+  color: var(--tone);
+  border: 1px solid currentColor;
+  animation: blink 1.4s steps(1) 3;
+}
+
+@keyframes blink {
+  50% {
+    background: color-mix(in srgb, var(--tone) 25%, transparent);
+  }
+}
+
+.title {
+  min-height: 1.1em;
+  font: 600 clamp(26px, 3.6vw, 40px) / 1.08 var(--font-display);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  text-shadow: 0 0 28px var(--tone-halo);
+  /* interference on the letters while the signal settles */
+  animation: glitch 0.9s 0.55s steps(2) both;
+}
+
+@keyframes glitch {
+  0%,
+  60% {
+    text-shadow:
+      3px 0 rgba(255, 40, 90, 0.75),
+      -3px 0 rgba(0, 240, 255, 0.75);
+  }
+  30%,
+  80% {
+    text-shadow:
+      -2px 1px rgba(255, 40, 90, 0.75),
+      2px -1px rgba(0, 240, 255, 0.75);
+  }
+  100% {
+    text-shadow: 0 0 28px var(--tone-halo);
+  }
+}
+
+.caret {
+  display: inline-block;
+  width: 0.45em;
+  height: 0.09em;
+  margin-left: 0.12em;
+  vertical-align: baseline;
+  background: var(--tone);
+  box-shadow: 0 0 10px var(--tone);
+  animation: caret 1s steps(1) infinite;
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.message {
+  max-width: 62ch;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  animation: rise 0.5s 0.75s var(--ease-out-soft) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+}
+
+/* ─── what to do ────────────────────────────────────────────────────────── */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+  padding: 18px 30px 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--color-line) transparent;
+  scrollbar-width: thin;
+}
+
+.todo,
+.recos {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.todo h3,
+.recos h3 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 600 12px/1 var(--font-body);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--tone);
+  animation: rise 0.5s 0.85s var(--ease-out-soft) both;
+}
+
+.todo h3::after,
+.recos h3::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 50%, transparent), transparent);
+}
+
+.todo ol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* each step lights up in turn */
+.todo li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px 14px 14px;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--tone) 9%, transparent);
+  border-left: 3px solid var(--tone);
+  animation: step 0.55s var(--ease-out-soft) both;
+  animation-delay: calc(0.95s + var(--i) * 0.16s);
+}
+
+.todo li::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tone) 30%, transparent), transparent);
+  transform: translateX(-100%);
+  animation: light 0.9s var(--ease-out-soft) both;
+  animation-delay: calc(1.05s + var(--i) * 0.16s);
+  pointer-events: none;
+}
+
+@keyframes step {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes light {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.stepNumber {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 36px;
+  font: 600 15px/1 var(--font-display);
+  color: var(--color-ink);
+  background: var(--tone);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+.recos ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recos li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-line-thin);
+  background: var(--color-glass-light);
+  animation: rise 0.5s var(--ease-out-soft) both;
+  animation-delay: calc(1.25s + var(--i) * 0.1s);
+}
+
+.recos strong {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tone);
+}
+
+.recos p {
+  line-height: 1.45;
+}
+
+/* ─── foot ──────────────────────────────────────────────────────────────── */
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 14px 22px 18px 30px;
+  border-top: 1px solid var(--color-line-thin);
+  animation: rise 0.5s 1.1s var(--ease-out-soft) both;
+}
+
+.period,
+.queue {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.queue {
+  color: var(--tone);
+  font-weight: 600;
+}
+
+.ack {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  margin-left: auto;
+  padding: 0 24px;
+  overflow: hidden;
+  font: 600 16px/1 var(--font-body);
+  letter-spacing: 0.02em;
+  color: var(--color-ink);
+  background: var(--tone);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  box-shadow: 0 0 30px var(--tone-halo);
+  transition:
+    filter 0.2s,
+    transform 0.2s;
+}
+
+/* a gleam runs across the button: this is the way out */
+.ack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: gleam 3s 1.6s ease-in-out infinite;
+}
+
+@keyframes gleam {
+  0% {
+    transform: translateX(-120%);
+  }
+  40%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+.ack:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.ack:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 3px var(--color-ink),
+    0 0 0 2px var(--color-text);
+}
+
+/* ─── phones ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .dialog {
+    padding: 10px;
+  }
+
+  .dialog::backdrop {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: rgba(2, 4, 10, 0.88);
+  }
+
+  .signal {
+    padding: 10px 16px 10px 26px;
+  }
+
+  .stamp {
+    margin-left: 0;
+  }
+
+  .head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 18px 18px 4px;
+  }
+
+  .emblem {
+    width: 70px;
+    height: 70px;
+  }
+
+  .emblemHex {
+    width: 54px;
+    height: 62px;
+  }
+
+  .body {
+    padding: 14px 18px 18px;
+  }
+
+  .todo li {
+    font-size: 16px;
+  }
+
+  .foot {
+    padding: 12px 18px 16px;
+  }
+
+  .ack {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+  }
+}

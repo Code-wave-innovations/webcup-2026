@@ -1,0 +1,29 @@
+.alert {
+  --tone: var(--color-ice);
+  justify-content: flex-start;
+  border-left: 3px solid var(--tone);
+}
+
+.alert[data-severity='WARNING'] {
+  --tone: var(--color-progress);
+}
+
+.alert[data-severity='CRITICAL'] {
+  --tone: var(--color-alert);
+  background: var(--color-alert-veil);
+}
+
+.icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 34px;
+  color: var(--color-ink);
+  background: var(--tone);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+.important {
+  color: var(--color-ember);
+}

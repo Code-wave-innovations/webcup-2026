@@ -475,3 +475,161 @@
   border: 1px solid var(--color-alert);
   font-size: 12.5px;
 }
+
+/* ─── alerts (D18, F29, F31) ─────────────────────────────────────────────── */
+
+.alertRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--color-glass);
+  border: 1px solid var(--color-line-thin);
+}
+
+.alertRow span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fieldError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--color-alert);
+}
+
+.recoList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recoList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 6px 6px 12px;
+  font-size: 14px;
+  background: var(--color-glass-light);
+  border-left: 2px solid var(--color-ember);
+}
+
+.recoAdd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.reach {
+  font: 500 40px/1 var(--font-display);
+}
+
+/* the citizen's transmission, in miniature */
+.transmission {
+  --tone: var(--color-ice);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 14%, transparent), transparent 120px), var(--color-glass-dense);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--tone) 18%, transparent);
+}
+
+.transmission[data-severity='WARNING'] {
+  --tone: var(--color-progress);
+}
+
+.transmission[data-severity='CRITICAL'] {
+  --tone: var(--color-alert);
+}
+
+.transmissionStrip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--tone);
+  border-bottom: 1px solid color-mix(in srgb, var(--tone) 30%, transparent);
+}
+
+.transmissionBody {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px 14px;
+}
+
+.transmissionBody > strong {
+  font: 600 18px/1.15 var(--font-display);
+}
+
+.transmissionBody > p:not(.transmissionTags) {
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+}
+
+.transmissionTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.transmissionTags span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--color-line);
+}
+
+.transmissionTags span:first-child {
+  color: var(--color-ink);
+  background: var(--tone);
+  border-color: var(--tone);
+}
+
+.transmissionSteps {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.transmissionSteps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--tone) 9%, transparent);
+  border-left: 2px solid var(--tone);
+  counter-increment: step;
+}
+
+.transmissionSteps li::before {
+  content: counter(step);
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 22px;
+  font-size: 12px;
+  color: var(--color-ink);
+  background: var(--tone);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}

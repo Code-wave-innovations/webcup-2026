@@ -5,6 +5,8 @@ import { useEffect } from 'react'
 import { clamp } from '../lib/math'
 
 let lenis: Lenis | null = null
+/** dialogs over the city that froze the scroll (a transmission can open over the services terminal) */
+let holds = 0
 
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 
@@ -20,6 +22,7 @@ export function useSmoothScroll(enabled: boolean): void {
     gsap.ticker.add(tick)
     gsap.ticker.lagSmoothing(0)
     lenis = instance
+    if (holds > 0) instance.stop()
     return () => {
       gsap.ticker.remove(tick)
       instance.destroy()
@@ -30,7 +33,8 @@ export function useSmoothScroll(enabled: boolean): void {
 
 /** Freezes the page scroll (and so the flyover) while a dialog sits over the city. */
 export function holdSmoothScroll(held: boolean): void {
-  if (held) lenis?.stop()
+  holds = Math.max(0, holds + (held ? 1 : -1))
+  if (holds > 0) lenis?.stop()
   else lenis?.start()
 }
 

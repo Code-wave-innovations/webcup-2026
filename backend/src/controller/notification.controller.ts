@@ -1,12 +1,24 @@
 import type { Request, Response } from "express";
-import type { Prisma } from "@prisma/client";
+import { AlertAudience, type Prisma } from "@prisma/client";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { notFound } from "../lib/errors";
-import { pageMeta, paginationSchema, parseId, toSkipTake, zBool } from "../lib/validation";
+import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zId } from "../lib/validation";
+import { audienceUserWhere } from "../model/alert.model";
 
 // F30 / D18 / D11: the current user's in-app notifications
 
 const listQuerySchema = paginationSchema.extend({ unread: zBool.optional() });
+
+// "1,4" or repeated ?district_ids=1&district_ids=4
+const audienceQuerySchema = z.object({
+  audience: z.nativeEnum(AlertAudience).default("ALL"),
+  district_ids: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((value) => (value === undefined ? [] : [value].flat().flatMap((part) => part.split(",")).filter(Boolean)))
+    .pipe(z.array(zId)),
+});
 
 const findOwn = async (req: Request) => {
   const id = parseId(req.params.id);
@@ -16,6 +28,13 @@ const findOwn = async (req: Request) => {
 };
 
 const notificationController = {
+  // D18 / F29 / F31: how many people a broadcast would reach, counted like notifyUsers sends
+  audience: async (req: Request, res: Response) => {
+    const { audience, district_ids } = audienceQuerySchema.parse(req.query);
+    const count = await prisma.user.count({ where: { ...audienceUserWhere(audience, district_ids), is_active: true } });
+    res.json({ audience, district_ids, count });
+  },
+
   getAll: async (req: Request, res: Response) => {
     const { unread, ...pagination } = listQuerySchema.parse(req.query);
     const userId = req.user!.id;

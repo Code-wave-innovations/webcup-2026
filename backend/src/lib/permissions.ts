@@ -106,6 +106,7 @@ export const PERMISSIONS: Permission[] = [
       r("POST", "/api/alerts", "staff"),
       r("PATCH", "/api/alerts/:id", "staff"),
       r("POST", "/api/alerts/:id/close", "staff"),
+      r("GET", "/api/notifications/audience", "staff"),
     ],
   },
   {

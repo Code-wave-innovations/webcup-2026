@@ -334,12 +334,17 @@ model Alert {
   starts_at       DateTime      @default(now())
   ends_at         DateTime?
   is_active       Boolean       @default(true)
+  // D18: notify the people concerned when the alert starts (at once, or by the scheduler when programmed)
+  notify          Boolean       @default(false)
+  notified_at     DateTime?
+  recipients      Int           @default(0)
   created_by_id   Int?
 
   created_by User?           @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
   districts  AlertDistrict[]
 
   @@index([is_active, starts_at])
+  @@index([notify, notified_at])
 }
 
 model AlertDistrict {

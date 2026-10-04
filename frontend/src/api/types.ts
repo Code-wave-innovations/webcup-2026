@@ -417,16 +417,77 @@ export interface DashboardSummary {
 
 /* ─── Alerts (D18, F29, F31) ─────────────────────────────────────────────── */
 
-export interface ActiveAlert {
+export type AlertSeverity = 'INFO' | 'WARNING' | 'CRITICAL'
+export type AlertAudience = 'ALL' | 'DISTRICTS' | 'VULNERABLE'
+
+/** F31: advice for one part of the public ("Personnes âgées : …"); plain text in older rows */
+export interface AlertRecommendation {
+  title?: string
+  text: string
+  audience?: string
+}
+
+/** GET /api/alerts (staff) */
+export interface CityAlert {
   id: number
+  created_at: string
   title: string
   message: string
+  /** free: GENERAL, FLOOD, HEATWAVE… */
   category: string
-  severity: 'INFO' | 'WARNING' | 'CRITICAL'
-  audience: 'ALL' | 'DISTRICTS' | 'VULNERABLE'
+  severity: AlertSeverity
+  audience: AlertAudience
+  /** what people must do, shown first */
+  instructions: string | null
+  recommendations: (string | AlertRecommendation)[] | null
+  source: string | null
   starts_at: string
+  /** null: until it is closed */
   ends_at: string | null
+  is_active: boolean
+  /** D18: notify the people concerned when it starts */
+  notify: boolean
+  notified_at: string | null
+  recipients: number
   districts: { id: number; code: string; name: string }[]
+  created_by: { id: number; name: string; last_name: string } | null
+}
+
+/** GET /api/alerts/active: what residents see, with whether it targets the signed-in person */
+export interface ActiveAlert extends CityAlert {
+  concerns_me: boolean
+}
+
+export interface AlertInput {
+  title: string
+  message: string
+  category?: string
+  severity: AlertSeverity
+  audience: AlertAudience
+  district_ids: number[]
+  instructions?: string | null
+  recommendations?: AlertRecommendation[] | null
+  source?: string | null
+  /** ISO; absent: now */
+  starts_at?: string
+  ends_at?: string | null
+  notify: boolean
+}
+
+/* ─── Announcements (D06, F30) ───────────────────────────────────────────── */
+
+export type AnnouncementCategory = 'NEWS' | 'SERVICE_CHANGE' | 'PRACTICAL_INFO' | 'EVENT'
+
+/** GET /api/announcements: what the city published */
+export interface Announcement {
+  id: number
+  title: string
+  summary: string | null
+  category: AnnouncementCategory
+  /** F30: every resident was notified */
+  is_important: boolean
+  published_at: string | null
+  service: { id: number; slug: string; name: string } | null
 }
 
 /* ─── Terra Nova feed (D19) ──────────────────────────────────────────────── */

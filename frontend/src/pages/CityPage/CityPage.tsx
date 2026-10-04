@@ -5,7 +5,6 @@ import { director } from '../../experience/director/director'
 import { useSmoothScroll } from '../../app/smoothScroll'
 import { useDirectorStore } from '../../experience/director/directorStore'
 import { novaScenes } from '../../experience/nova/behavior/scenes'
-import { AlertBanner } from '../../features/announcements/AlertBanner'
 import { AnnouncementList } from '../../features/announcements/AnnouncementList'
 import type { Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
@@ -130,7 +129,6 @@ function CityView({ session }: { session: Session }) {
         onQuit={quit}
         onToggleExplore={() => (exploring ? exploreActions.leave() : exploreActions.enter())}
       />
-      <AlertBanner />
       {!exploring && <RouteRail active={active} />}
       {!exploring && <LinkLine live={live} phone={phone} />}
       <ExploreHud exploring={exploring} ready={status === 'ready' && arrived && !leaving} phone={phone} />

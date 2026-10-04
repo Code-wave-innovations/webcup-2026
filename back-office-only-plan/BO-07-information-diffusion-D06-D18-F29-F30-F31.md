@@ -131,13 +131,13 @@ Sont supprimés :
 ## 6. Étapes
 
 - [ ] Backend :
-  - [ ] `GET /api/notifications/audience` ;
+  - [x] `GET /api/notifications/audience` ;
   - [ ] `Broadcast`, `POST /broadcast` et `GET /broadcasts`, avec `read_count` ;
   - [ ] une ligne `Broadcast` pour les annonces importantes ;
   - [ ] audit.
 - [ ] `src/api/announcements.ts`, `alerts.ts`, `notifications.ts`
 - [ ] `AnnouncementsPage` : éditeur, aperçu, publication, nombre de personnes prévenues
-- [ ] `AlertsPage` : composeur, audience réelle, aperçu sous deux angles, clôture
+- [x] `AlertsPage` : composeur, audience réelle, aperçu sous deux angles, clôture ; en plus : diffusion programmée, durée, notification facultative, annulation d'une diffusion programmée
 - [ ] `NotificationsPage` : historique et diffusion
 - [ ] Badge `activeAlerts`
 - [ ] Facultatif : `POST /api/alerts/assist` et le bouton « Proposer un brouillon »

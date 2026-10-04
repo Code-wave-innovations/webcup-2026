@@ -64,7 +64,8 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 | `GET /api/announcements` · `GET /api/announcements/:id` | public | D06 |
 | `POST /api/announcements` · `PATCH /:id` · `POST /:id/publish` · `DELETE /:id` | staff | D06, F30 |
 | `GET /api/alerts/active` · `GET /api/alerts/:id` | public | D18, F29, F31 |
-| `GET /api/alerts` · `POST /api/alerts` · `PATCH /:id` · `POST /:id/close` | staff | D18, F29, F31 |
+| `GET /api/alerts` · `POST /api/alerts` · `PATCH /:id` · `POST /:id/close` | staff | D18, F29, F31 (`notify` sends the notifications when the alert starts: at once, or from the scheduler for a programmed `starts_at`; `recipients` keeps the count) |
+| `GET /api/notifications/audience?audience=&district_ids=1,3` | staff | D18, F29, F31 (`{ count }` of the people an alert would notify) |
 | `GET /api/notifications` · `GET /unread-count` · `PATCH /:id/read` · `POST /read-all` · `DELETE /:id` | logged in | F30 |
 | `GET /api/service-interruptions?service_id=&scope=current\|upcoming\|active\|all` | public | F38 |
 | `POST /api/service-interruptions` · `PATCH /:id` · `POST /:id/end` · `DELETE /:id` | staff | F38 |
@@ -128,7 +129,7 @@ Booking returns `when` (ISO dates, duration, time zone, readable label), `where`
 ### Deploying on cPanel
 
 - cPanel serves Node apps through Passenger. After deploying, log in as admin and call `GET /api/security/client-ip`: if `x_forwarded_for` holds your IP, add `TRUST_PROXY=1` to the app's environment variables and restart. Without a known client IP, per-IP limits are skipped and only the per-account lock applies.
-- Passenger stops idle apps, which pauses the in-process reminder job. Add a cPanel Cron Job every 5 minutes: `cd ~/<app folder> && <node path shown by cPanel> dist/src/jobs/sendReminders.js` (`npm run reminders` locally).
+- Passenger stops idle apps, which pauses the in-process reminder job (it also notifies the programmed alerts once they start, D18). Add a cPanel Cron Job every 5 minutes: `cd ~/<app folder> && <node path shown by cPanel> dist/src/jobs/sendReminders.js` (`npm run reminders` locally).
 - Set `TZ` in the app's environment variables so timetables and appointment labels use the city's time zone.
 
 ### CRUD generator (simple tables)

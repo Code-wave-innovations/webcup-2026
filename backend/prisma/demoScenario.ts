@@ -476,6 +476,8 @@ const ALERTS = [
     category: "FLOOD", severity: "CRITICAL" as const, audience: "DISTRICTS" as const, districts: ["SUD"],
     instructions: "Évitez les berges et les sous-sols, montez dans les étages et suivez les consignes des secours.",
     source: "Centre de surveillance environnementale", startedMinutesAgo: 120, author: ALEX,
+    // D18: notified when it started (the notification is seeded below, for citoyen@)
+    notify: true, recipients: 1,
   },
   // F31: vulnerable people, with tailored recommendations
   {
@@ -519,6 +521,7 @@ async function seedInformation(prisma: PrismaClient, refs: ScenarioRefs, userIds
         ...alert,
         created_by_id: userIds[author],
         starts_at: minutesAgo(startedMinutesAgo),
+        notified_at: alert.notify ? minutesAgo(startedMinutesAgo) : null,
         ends_at: endedMinutesAgo === undefined ? null : minutesAgo(endedMinutesAgo),
         is_active: endedMinutesAgo === undefined,
         districts: { create: districts.map((code) => ({ district_id: refs.districtIds[code] })) },

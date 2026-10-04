@@ -1,5 +1,6 @@
 import type { AlertAudience, Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
+import { notifyUsers } from "../lib/notify";
 import type { AuthUser } from "../middleware/auth";
 
 const alertInclude = {
@@ -46,6 +47,33 @@ export const concernsUser = (
   const inDistrict = ids.length === 0 || (user.district_id !== null && ids.includes(user.district_id));
   if (alert.audience === "DISTRICTS") return inDistrict;
   return user.is_vulnerable && inDistrict;
+};
+
+type NotifiableAlert = {
+  id: number;
+  title: string;
+  message: string;
+  instructions: string | null;
+  severity: string;
+  category: string;
+  audience: AlertAudience;
+  districts: { id: number }[];
+};
+
+// D18: notifies the people an alert targets, once. Claiming notified_at first keeps the API and the
+// cron job from sending the same alert twice. Returns the number notified, or null when already sent.
+export const sendAlertNotifications = async (alert: NotifiableAlert, now = new Date()) => {
+  const { count } = await prisma.alert.updateMany({ where: { id: alert.id, notified_at: null }, data: { notified_at: now } });
+  if (count === 0) return null;
+  const recipients = await notifyUsers(audienceUserWhere(alert.audience, alert.districts.map((d) => d.id)), {
+    type: "ALERT",
+    title: alert.title,
+    body: alert.instructions ?? alert.message,
+    link: `/alerts/${alert.id}`,
+    data: { alert_id: alert.id, severity: alert.severity, category: alert.category },
+  });
+  await prisma.alert.update({ where: { id: alert.id }, data: { recipients } });
+  return recipients;
 };
 
 const alertModel = {

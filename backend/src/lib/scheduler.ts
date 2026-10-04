@@ -2,8 +2,9 @@ import prisma from "./prisma";
 import { auditAs } from "./audit";
 import { notifyUser } from "./notify";
 import { formatSlotLabel } from "./datetime";
+import { activeAlertWhere, sendAlertNotifications } from "../model/alert.model";
 
-// F40: appointment reminders, checked every minute by the API process.
+// F40: appointment reminders, and D18 programmed alerts, checked every minute by the API process.
 export const MAX_REMINDER_OFFSET_MINUTES = 7 * 24 * 60;
 
 export const sendDueReminders = async (now = new Date()) => {
@@ -45,9 +46,26 @@ export const sendDueReminders = async (now = new Date()) => {
   return sent;
 };
 
+// D18: an alert programmed for later notifies the people concerned once it starts (same claim as above)
+export const sendStartedAlerts = async (now = new Date()) => {
+  const due = await prisma.alert.findMany({
+    where: { ...activeAlertWhere(), notify: true, notified_at: null },
+    include: { districts: { select: { district_id: true } } },
+  });
+  let sent = 0;
+  for (const alert of due) {
+    const recipients = await sendAlertNotifications({ ...alert, districts: alert.districts.map((d) => ({ id: d.district_id })) }, now);
+    if (recipients === null) continue;
+    sent += 1;
+    await auditAs(null, null, { action: "alert.notified", entity: "Alert", entityId: alert.id, label: alert.title, metadata: { recipients } });
+  }
+  return sent;
+};
+
 export const startScheduler = () => {
   const run = () => {
     sendDueReminders().catch((error) => console.error("Reminder job failed:", error));
+    sendStartedAlerts().catch((error) => console.error("Alert job failed:", error));
   };
   run();
   setInterval(run, 60_000).unref();
