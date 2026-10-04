@@ -3,12 +3,42 @@ import { director } from '../../director/director'
 import { useDirectorStore } from '../../director/directorStore'
 import { frameBus } from '../../director/frameState'
 import { novaScenes } from '../../nova/behavior/scenes'
+import { defineMessages, useMessages } from '../../../i18n'
 import { Icon } from '../../../ui/Icon'
-import { POIS, poiById } from '../cityConfig'
+import { POIS, poiById, poiText, usePoiTexts } from '../cityConfig'
 import { relief } from '../layout/relief'
 import { exploreActions } from './exploreActions'
 import { useExploreInput } from './useExploreInput'
 import styles from './ExploreHud.module.css'
+
+const messages = defineMessages(
+  {
+    here: 'Vous êtes ici',
+    flyToOther: "S'envoler vers un autre site",
+    flyTo: "S'envoler vers",
+    hintPhone: 'Joystick pour marcher · glissez pour regarder',
+    hintDesktop: 'ZQSD / WASD pour marcher · glissez pour regarder · Échap pour le survol',
+    resume: 'Reprendre le survol',
+    flyingTo: (destination: string) => `En vol vers ${destination}`,
+    heading: 'Cap',
+    altitude: 'Alt',
+    speed: 'Vit',
+    landing: 'Atterrissage',
+  },
+  {
+    here: 'You are here',
+    flyToOther: 'Fly to another site',
+    flyTo: 'Fly to',
+    hintPhone: 'Joystick to walk · drag to look around',
+    hintDesktop: 'WASD / ZQSD to walk · drag to look around · Esc for the flyover',
+    resume: 'Resume the flyover',
+    flyingTo: (destination) => `Flying to ${destination}`,
+    heading: 'Heading',
+    altitude: 'Alt',
+    speed: 'Spd',
+    landing: 'Landing',
+  },
+)
 
 interface ExploreHudProps {
   exploring: boolean
@@ -25,12 +55,14 @@ export function ExploreHud({ exploring, ready, phone }: ExploreHudProps) {
   const onGround = exploring && !leaving && site !== null && flight === null
   const { beginLook, setStick } = useExploreInput(exploring && !leaving)
   const pad = useRef<HTMLDivElement>(null)
+  const m = useMessages(messages)
+  const texts = usePoiTexts()
 
   // Nova introduces each site as it lands on it
   const lastFlight = useRef(flight)
   useEffect(() => {
     if (flight === 'landing' && lastFlight.current !== 'landing' && destination) {
-      const poi = poiById(destination)
+      const poi = poiText(destination)
       novaScenes.landAtPoi(poi.name, poi.blurb)
     }
     lastFlight.current = flight
@@ -56,30 +88,30 @@ export function ExploreHud({ exploring, ready, phone }: ExploreHudProps) {
     <div className={styles.hud}>
       {onGround && <div className={styles.look} onPointerDown={beginLook} aria-hidden="true" />}
 
-      {airborne && <FlightDisplay destination={poiById(destination).name} />}
+      {airborne && <FlightDisplay destination={texts[destination].name} />}
 
       {onGround && here && (
         <>
           <section className={styles.site} aria-live="polite">
             <p className={styles.siteKicker}>
               <Icon name={here.icon} size={14} />
-              <span>Vous êtes ici</span>
+              <span>{m.here}</span>
             </p>
-            <h2 className={styles.siteName}>{here.name}</h2>
-            <p className={styles.siteBlurb}>{here.blurb}</p>
+            <h2 className={styles.siteName}>{texts[here.id].name}</h2>
+            <p className={styles.siteBlurb}>{texts[here.id].blurb}</p>
           </section>
 
-          <nav className={styles.poiBar} aria-label="S'envoler vers un autre site">
-            <span className={styles.poiLabel}>S'envoler vers</span>
+          <nav className={styles.poiBar} aria-label={m.flyToOther}>
+            <span className={styles.poiLabel}>{m.flyTo}</span>
             {POIS.filter((poi) => poi.id !== site).map((poi) => (
               <button key={poi.id} type="button" className={styles.poiBtn} onClick={() => exploreActions.flyTo(poi.id)}>
                 <Icon name={poi.icon} size={16} />
-                <span>{poi.name}</span>
+                <span>{texts[poi.id].name}</span>
               </button>
             ))}
           </nav>
 
-          <p className={styles.hint}>{phone ? 'Joystick pour marcher · glissez pour regarder' : 'ZQSD / WASD pour marcher · glissez pour regarder · Échap pour le survol'}</p>
+          <p className={styles.hint}>{phone ? m.hintPhone : m.hintDesktop}</p>
 
           {phone && (
             <div
@@ -101,7 +133,7 @@ export function ExploreHud({ exploring, ready, phone }: ExploreHudProps) {
 
       {!leaving && (
         <button type="button" className={styles.leave} onClick={exploreActions.leave}>
-          Reprendre le survol
+          {m.resume}
         </button>
       )}
     </div>
@@ -114,6 +146,7 @@ function FlightDisplay({ destination }: { destination: string }) {
   const speed = useRef<HTMLSpanElement>(null)
   const eta = useRef<HTMLSpanElement>(null)
   const progress = useRef<HTMLDivElement>(null)
+  const m = useMessages(messages)
 
   useEffect(
     () =>
@@ -132,9 +165,9 @@ function FlightDisplay({ destination }: { destination: string }) {
   )
 
   return (
-    <div className={styles.flight} role="status" aria-label={`En vol vers ${destination}`}>
+    <div className={styles.flight} role="status" aria-label={m.flyingTo(destination)}>
       <p className={styles.heading}>
-        <span>Cap</span>
+        <span>{m.heading}</span>
         <strong>{destination}</strong>
       </p>
       <div className={styles.reticle} aria-hidden="true">
@@ -142,17 +175,17 @@ function FlightDisplay({ destination }: { destination: string }) {
         <i />
       </div>
       <p className={`${styles.gauge} ${styles.gaugeLeft}`} aria-hidden="true">
-        <span>Alt</span>
+        <span>{m.altitude}</span>
         <strong ref={altitude}>000</strong>
         <em>m</em>
       </p>
       <p className={`${styles.gauge} ${styles.gaugeRight}`} aria-hidden="true">
-        <span>Vit</span>
+        <span>{m.speed}</span>
         <strong ref={speed}>000</strong>
         <em>km/h</em>
       </p>
       <div className={styles.arrival} aria-hidden="true">
-        <span>Atterrissage</span>
+        <span>{m.landing}</span>
         <strong>
           <span ref={eta}>0.0</span> s
         </strong>

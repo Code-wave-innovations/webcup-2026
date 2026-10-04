@@ -5,9 +5,23 @@ import { isLightScene } from '../../a11y/sceneMode'
 import { useDirectorStore } from '../../experience/director/directorStore'
 import { nova } from '../../experience/nova/behavior/novaStore'
 import { stopSpeaking } from '../../hooks/useSpeakMessage'
+import { defineMessages, messagesFor, useMessages } from '../../i18n'
 import { announce } from '../../ui/toastStore'
 import { ConsoleTopBar } from './ConsoleTopBar'
 import styles from './ConsoleLayout.module.css'
+
+const messages = defineMessages(
+  {
+    expired: 'Votre session a expiré. Reconnectez-vous pour retrouver votre espace.',
+    skip: 'Aller au contenu',
+    footer: 'NOVA, plateforme numérique de Terra Nova.',
+  },
+  {
+    expired: 'Your session has expired. Sign in again to get back to your space.',
+    skip: 'Skip to content',
+    footer: 'NOVA, the digital platform of Terra Nova.',
+  },
+)
 
 /**
  * The city's pages beyond the flyover (/ville/*): a reading surface laid over the city, which stays
@@ -16,6 +30,7 @@ import styles from './ConsoleLayout.module.css'
  */
 export function ConsoleLayout() {
   const { pathname } = useLocation()
+  const m = useMessages(messages)
 
   useEffect(() => {
     useDirectorStore.getState().setConsole(true)
@@ -30,12 +45,12 @@ export function ConsoleLayout() {
     window.scrollTo(0, 0)
   }, [pathname])
 
-  useEffect(() => onSessionExpired(() => announce('Votre session a expiré. Reconnectez-vous pour retrouver votre espace.')), [])
+  useEffect(() => onSessionExpired(() => announce(messagesFor(messages).expired)), [])
 
   return (
     <div className={styles.console}>
       <a className={styles.skip} href="#contenu">
-        Aller au contenu
+        {m.skip}
       </a>
       {!isLightScene && <div className={styles.veil} aria-hidden="true" />}
       <ConsoleTopBar />
@@ -43,7 +58,7 @@ export function ConsoleLayout() {
         <Outlet />
       </main>
       <footer className={styles.footer}>
-        <span>NOVA, plateforme numérique de Terra Nova.</span>
+        <span>{m.footer}</span>
         <span>24H by Webcup 2026</span>
       </footer>
     </div>

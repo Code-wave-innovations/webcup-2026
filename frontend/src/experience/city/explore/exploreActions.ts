@@ -1,6 +1,6 @@
 import { director } from '../../director/director'
 import { novaScenes } from '../../nova/behavior/scenes'
-import { poiById, type PoiId } from '../cityConfig'
+import { poiText, type PoiId } from '../cityConfig'
 
 /** What the interface does to explore: the director moves the film, Nova says a word about it. */
 export const exploreActions = {
@@ -8,7 +8,7 @@ export const exploreActions = {
   enter(): void {
     if (director.phase !== 'city') return
     director.enterExplore()
-    novaScenes.enterStreets(poiById('golf').name)
+    novaScenes.enterStreets(poiText('golf').name)
   },
   /** back to the flyover */
   leave(): void {
@@ -20,6 +20,6 @@ export const exploreActions = {
   flyTo(id: PoiId): void {
     if (!director.site || director.flying) return
     director.flyTo(id)
-    novaScenes.flyToPoi(poiById(id).name)
+    novaScenes.flyToPoi(poiText(id).name)
   },
 }

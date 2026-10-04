@@ -12,7 +12,7 @@ Ces plans décrivent comment brancher chaque fonctionnalité sur l'API pour la r
 ## Périmètre
 
 - **Inclus :** 44 demandes, réparties en un socle technique (PLAN-00) et 10 plans. Chaque plan regroupe des demandes complémentaires, qui partagent les mêmes données, écrans ou parcours.
-- **Exclu, le multilingue :** D14 (choix de la langue de l'interface) et F27 (contenus traduits). L'API des traductions existe déjà (`/api/translations`). La page Traductions du back-office reste simulée.
+- **Multilingue (ajouté le 4 octobre) :** D14 (choix de la langue de l'interface) et F27 (contenus traduits), français et anglais dans l'espace citoyen : PLAN-12. Le back-office reste en français et sa page Traductions reste simulée.
 - **Hors demandes :** les jauges Air / Eau / Énergie (`features/cityStatus`) restent simulées, car aucune demande ne les concerne.
 
 ## Les plans
@@ -31,8 +31,9 @@ Ces plans décrivent comment brancher chaque fonctionnalité sur l'API pour la r
 | [PLAN-09](09-accompagnement-D12-D13-F35.md) | Accompagnement des nouveaux habitants | D12 · D13 · F35 | 1 140 | 01, 02, 03 (08) | ≈ 4 h |
 | [PLAN-10](10-espace-agents-tracabilite-D19-F47-F48.md) | Espace agents, API Nova Terra et traçabilité | D19 · F47 · F48 | 2 350 | 00, 01 (03) | ≈ 5 h |
 | [PLAN-11](11-sobriete-F95.md) | Sobriété numérique : ressources chargées et requêtes inutiles | F95 | 1 320 | 00 (08 : version légère F96) | ≈ 6 h |
+| [PLAN-12](12-multilingue-D14-F27.md) | Multilingue français / anglais de l'espace citoyen | D14 · F27 | 1 080 | 00 | ≈ 5 h |
 
-Au total, 22 120 XP sont couverts par ces plans ; les 1 080 XP du multilingue sont exclus. Les efforts sont estimés pour une personne. Chaque plan a une section « Version minimale » à suivre si le temps manque.
+Au total, 24 520 XP sont couverts par ces plans (sobriété F95 et multilingue compris). Les efforts sont estimés pour une personne. Chaque plan a une section « Version minimale » à suivre si le temps manque.
 
 ## Trouver le plan d'une réf
 
@@ -46,10 +47,10 @@ Au total, 22 120 XP sont couverts par ces plans ; les 1 080 XP du multilingue so
 | D07 | 02 | F24 | 08 | F37 | 01 |
 | D08 | 01 | F25 | 03 | F38 | 02 |
 | D09 | 01 | F26 | 03 | F39 | 05 |
-| D11 | 03 | F27 | exclu | F40 | 05 |
+| D11 | 03 | F27 | 12 | F40 | 05 |
 | D12 | 09 | F28 | 02 | F41 | 08 |
 | D13 | 09 | F29 | 04 | F42 | 08 |
-| D14 | exclu | F30 | 04 | F43 | 08 |
+| D14 | 12 | F30 | 04 | F43 | 08 |
 | D15 | 02 | F31 | 04 | F44 | 08 |
 | D16 | 03 | | | F45 | 07 |
 | D17 | 03 | | | F46 | 07 |
@@ -138,6 +139,7 @@ Ces règles sont détaillées dans le PLAN-00 et s'appliquent à tous les plans 
 | 09 | À faire | |
 | 10 | À faire | |
 | 11 | En cours | Étapes 0–1 faites : mesure de référence, bundles (back-office et pages hors film −79 %) |
+| 12 | En cours (4 oct.) | Socle `src/i18n`, sélecteur FR/EN, écrans citoyens traduits. Reste : traductions EN du seed (§ 4 du plan) |
 
 ## Quand une nouvelle vague arrive
 

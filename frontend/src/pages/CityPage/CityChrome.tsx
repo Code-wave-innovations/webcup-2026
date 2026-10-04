@@ -2,23 +2,50 @@ import { useEffect, useRef, type RefObject } from 'react'
 import { switchScene } from '../../a11y/sceneMode'
 import { frameBus, frameState } from '../../experience/director/frameState'
 import type { Session } from '../../features/auth/authService'
+import { useSessionRoleLabel } from '../../features/auth/roleLabel'
+import { defineMessages, useMessages } from '../../i18n'
 import { formatLocalTime } from '../../lib/format'
 import { useNow } from '../../lib/useNow'
 import { Icon, NovaMark } from '../../ui/Icon'
+import { LanguageSwitch } from '../../ui/LanguageSwitch'
 import { CitizenNav } from '../Console/CitizenNav'
-import { CITY_SECTIONS } from './citySections'
+import { CITY_SECTIONS, useCitySectionLabels } from './citySections'
 import type { LiveScroll } from './useCityScroll'
 import styles from './CityChrome.module.css'
+
+const messages = defineMessages(
+  {
+    localTime: 'Heure locale',
+    sections: 'Rubriques',
+    resumeFlyover: 'Reprendre le survol',
+    exploreCity: 'Explorer la ville',
+    resume: 'Reprendre',
+    explore: 'Explorer',
+    quit: "Quitter la ville et revenir au contrôle d'accès",
+    rail: 'Étapes du survol',
+  },
+  {
+    localTime: 'Local time',
+    sections: 'Sections',
+    resumeFlyover: 'Resume the flyover',
+    exploreCity: 'Explore the city',
+    resume: 'Resume',
+    explore: 'Explore',
+    quit: 'Leave the city and go back to access control',
+    rail: 'Flyover stops',
+  },
+)
 
 const current = (active: boolean) => (active ? 'true' : undefined)
 
 /** Wall clock of the visitor's device. */
 function Clock() {
   const now = useNow()
+  const m = useMessages(messages)
   return (
-    <div className={styles.clock} aria-label="Heure locale">
+    <div className={styles.clock} aria-label={m.localTime}>
       <b>{formatLocalTime(now)}</b>
-      <span>Heure locale</span>
+      <span>{m.localTime}</span>
     </div>
   )
 }
@@ -33,24 +60,27 @@ interface TopBarProps {
 }
 
 export function TopBar({ session, active, alert, exploring, onQuit, onToggleExplore }: TopBarProps) {
+  const m = useMessages(messages)
+  const labels = useCitySectionLabels()
+  const roleLabel = useSessionRoleLabel(session)
   return (
-    <header className={styles.bar} data-alert={alert} data-exploring={exploring}>
+    <header className={`${styles.bar} ${styles.city}`} data-alert={alert} data-exploring={exploring}>
       <div className={styles.shell}>
         <div className={styles.brand}>
           <NovaMark />
           <span>NOVA</span>
         </div>
-        <nav className={styles.links} aria-label="Rubriques">
+        <nav className={styles.links} aria-label={m.sections}>
           {CITY_SECTIONS.map((section, i) =>
-            section.nav ? (
+            labels[section.id].nav ? (
               <a
                 key={section.id}
                 href={`#${section.id}`}
                 aria-current={current(i === active)}
-                aria-label={section.navFull ?? section.nav}
-                title={section.navFull ?? section.nav}
+                aria-label={labels[section.id].full}
+                title={labels[section.id].full}
               >
-                {section.nav}
+                {labels[section.id].nav}
               </a>
             ) : null,
           )}
@@ -58,10 +88,13 @@ export function TopBar({ session, active, alert, exploring, onQuit, onToggleExpl
           <CitizenNav variant="flyover" />
         </nav>
         <div className={styles.end}>
+          <div className={styles.lang}>
+            <LanguageSwitch />
+          </div>
           <Clock />
           <div className={styles.badge}>
             <span>{session.name}</span>
-            <small>{session.roleLabel}</small>
+            <small>{roleLabel}</small>
           </div>
           {/* F96: the essentials without the 3D (reloads the page in the light version) */}
           <button type="button" className={styles.light} onClick={() => switchScene('light')}>
@@ -70,14 +103,14 @@ export function TopBar({ session, active, alert, exploring, onQuit, onToggleExpl
           <button
             type="button"
             className={styles.explore}
-            aria-label={exploring ? 'Reprendre le survol' : 'Explorer la ville'}
+            aria-label={exploring ? m.resumeFlyover : m.exploreCity}
             aria-pressed={exploring}
             onClick={onToggleExplore}
           >
             <Icon name="rocket" />
-            <span>{exploring ? 'Reprendre' : 'Explorer'}</span>
+            <span>{exploring ? m.resume : m.explore}</span>
           </button>
-          <button type="button" className={styles.round} aria-label="Quitter la ville et revenir au contrôle d'accès" onClick={onQuit}>
+          <button type="button" className={styles.round} aria-label={m.quit} onClick={onQuit}>
             <Icon name="logout" />
           </button>
         </div>
@@ -87,11 +120,13 @@ export function TopBar({ session, active, alert, exploring, onQuit, onToggleExpl
 }
 
 export function RouteRail({ active }: { active: number }) {
+  const m = useMessages(messages)
+  const labels = useCitySectionLabels()
   return (
-    <nav className={styles.rail} aria-label="Étapes du survol">
+    <nav className={styles.rail} aria-label={m.rail}>
       {CITY_SECTIONS.map((section, i) => (
         <a key={section.id} href={`#${section.id}`} aria-current={current(i === active)}>
-          <span>{section.rail}</span>
+          <span>{labels[section.id].rail}</span>
           <i />
         </a>
       ))}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { ANNOUNCEMENT_CATEGORIES, ANNOUNCEMENT_CATEGORY_LABEL, useAnnouncements } from '../../api/announcements'
+import { ANNOUNCEMENT_CATEGORIES, announcementCategoryLabel, useAnnouncements } from '../../api/announcements'
 import { messageFor } from '../../api/errors'
 import { formatPublished } from '../../lib/format'
 import { Pill } from '../../ui/Badges'
@@ -66,7 +66,7 @@ export default function AnnouncementsPage() {
           </button>
           {ANNOUNCEMENT_CATEGORIES.map((value) => (
             <button key={value} type="button" aria-pressed={category === value} onClick={() => update({ categorie: value })}>
-              {ANNOUNCEMENT_CATEGORY_LABEL[value]}
+              {announcementCategoryLabel(value)}
             </button>
           ))}
         </fieldset>
@@ -86,7 +86,7 @@ export default function AnnouncementsPage() {
               <span className={styles.rowTitle}>
                 <span>
                   <small>
-                    {ANNOUNCEMENT_CATEGORY_LABEL[announcement.category]}
+                    {announcementCategoryLabel(announcement.category)}
                     {announcement.published_at ? ` · ${formatPublished(announcement.published_at)}` : ''}
                     {announcement.service ? ` · ${announcement.service.name}` : ''}
                   </small>

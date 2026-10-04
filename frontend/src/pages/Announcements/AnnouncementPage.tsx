@@ -1,5 +1,5 @@
 import { useParams } from 'react-router'
-import { ANNOUNCEMENT_CATEGORY_LABEL, useAnnouncement } from '../../api/announcements'
+import { announcementCategoryLabel, useAnnouncement } from '../../api/announcements'
 import { messageFor } from '../../api/errors'
 import { formatPublished } from '../../lib/format'
 import { Pill } from '../../ui/Badges'
@@ -44,7 +44,7 @@ export default function AnnouncementPage() {
   return (
     <ConsolePage title={announcement.title} crumbs={[{ label: 'Annonces', to: '/ville/annonces' }]}>
       <p className={styles.meta}>
-        <span>{ANNOUNCEMENT_CATEGORY_LABEL[announcement.category]}</span>
+        <span>{announcementCategoryLabel(announcement.category)}</span>
         {announcement.published_at && <time dateTime={announcement.published_at}>{formatPublished(announcement.published_at)}</time>}
         {announcement.service && <span>{announcement.service.name}</span>}
         {announcement.is_important && <Pill tone="alert">Importante</Pill>}

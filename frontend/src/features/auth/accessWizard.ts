@@ -1,3 +1,4 @@
+import { defineMessages, messagesFor, type Locale } from '../../i18n'
 import { accountExists, isEmail, resolveAuthEmail, type Session } from './authService'
 import { DEMO_ACCOUNTS } from './demoAccounts'
 
@@ -59,40 +60,58 @@ export function sessionFromRegister(identifier: string, name: string): Session {
     accountId,
     name: name.trim(),
     roleLabel: 'Habitante',
+    roleKey: 'resident',
     role: 'resident',
   }
 }
 
-export function stepTitle(step: AccessStep): string {
-  switch (step) {
-    case 'identify':
-      return 'Demande d’approche'
-    case 'login':
-      return 'Vérification d’identité'
-    case 'recover':
-      return 'Retrouver votre accès'
-    case 'register-1':
-      return 'Premier amarrage'
-    case 'register-2':
-      return 'Sceller votre accès'
-    case 'register-3':
-      return 'Empreinte de lumière'
-  }
+const messages = defineMessages(
+  {
+    title: {
+      identify: 'Demande d’approche',
+      login: 'Vérification d’identité',
+      recover: 'Retrouver votre accès',
+      'register-1': 'Premier amarrage',
+      'register-2': 'Sceller votre accès',
+      'register-3': 'Empreinte de lumière',
+    },
+    subtitle: {
+      identify: 'Nova ouvre le sas. Présentez votre signal citoyen.',
+      login: 'Le code d’accès confirme que c’est bien vous.',
+      loginFace: 'Regardez la caméra pour entrer.',
+      recover: 'Avec le code remis par la mairie, choisissez un nouveau code d’accès.',
+      'register-1': 'Identité et quartier — Terra Nova vous situe.',
+      'register-2': 'Choisissez un code que vous seul·e connaissez.',
+      'register-3': 'Enregistrez votre visage pour les prochaines entrées.',
+    },
+  },
+  {
+    title: {
+      identify: 'Approach request',
+      login: 'Identity check',
+      recover: 'Recover your access',
+      'register-1': 'First docking',
+      'register-2': 'Seal your access',
+      'register-3': 'Light print',
+    },
+    subtitle: {
+      identify: 'Nova opens the airlock. Show your citizen signal.',
+      login: 'Your access code confirms it is really you.',
+      loginFace: 'Look at the camera to come in.',
+      recover: 'With the code the city hall gave you, choose a new access code.',
+      'register-1': 'Identity and district — Terra Nova places you.',
+      'register-2': 'Choose a code that only you know.',
+      'register-3': 'Record your face for your next arrivals.',
+    },
+  },
+)
+
+/** Title of an access step, in the given language (the visitor's by default). */
+export function stepTitle(step: AccessStep, locale?: Locale): string {
+  return messagesFor(messages, locale).title[step]
 }
 
-export function stepSubtitle(step: AccessStep, opts?: { face?: boolean }): string {
-  switch (step) {
-    case 'identify':
-      return 'Nova ouvre le sas. Présentez votre signal citoyen.'
-    case 'login':
-      return opts?.face ? 'Regardez la caméra pour entrer.' : 'Le code d’accès confirme que c’est bien vous.'
-    case 'recover':
-      return 'Avec le code remis par la mairie, choisissez un nouveau code d’accès.'
-    case 'register-1':
-      return 'Identité et quartier — Terra Nova vous situe.'
-    case 'register-2':
-      return 'Choisissez un code que vous seul·e connaissez.'
-    case 'register-3':
-      return 'Enregistrez votre visage pour les prochaines entrées.'
-  }
+export function stepSubtitle(step: AccessStep, opts?: { face?: boolean }, locale?: Locale): string {
+  const subtitle = messagesFor(messages, locale).subtitle
+  return step === 'login' && opts?.face ? subtitle.loginFace : subtitle[step]
 }

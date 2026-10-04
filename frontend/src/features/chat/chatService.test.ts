@@ -20,6 +20,15 @@ describe('chat script', () => {
     expect(scriptedReply('Sécurité ?', context).text).toContain('Aucune alerte')
   })
 
+  it('answers the English suggestions in English', () => {
+    expect(scriptedReply('Where is my request TN-0416?', context, 'en').text).toContain('being handled')
+    expect(scriptedReply('Which services are open tonight?', context, 'en').text).toContain('clinic')
+    expect(scriptedReply('Tell me about Terra Nova', context, 'en').text).toContain('Miora')
+    expect(scriptedReply('Is it safe? Any emergency?', context, 'en').text).toContain('No alerts')
+    expect(scriptedReply('Thanks Nova', context, 'en')).toMatchObject({ gesture: 'celebrate' })
+    expect(scriptedReply('What do they eat?', context, 'en')).toMatchObject({ emotion: 'sad' })
+  })
+
   it('says honestly when it does not know yet', () => {
     expect(scriptedReply('Quelle est la recette du gâteau ?', context)).toMatchObject({ emotion: 'sad' })
   })

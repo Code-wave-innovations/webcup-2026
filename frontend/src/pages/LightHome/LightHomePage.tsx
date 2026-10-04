@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation } from 'react-router'
 import { messageFor } from '../../api/errors'
 import { useHome } from '../../api/home'
 import type { Home } from '../../api/types'
-import { ANNOUNCEMENT_CATEGORY_LABEL } from '../../api/announcements'
+import { announcementCategoryLabel } from '../../api/announcements'
 import { SCENE, SCENE_REASON_LABEL } from '../../a11y/sceneMode'
 import { useAuthStore } from '../../features/auth/authStore'
 import { availabilityView, formatShortMoment, plural } from '../../features/services/availability'
@@ -229,7 +229,7 @@ function Announcements({ announcements }: { announcements: Home['announcements']
         <Row key={announcement.id}>
           <Link to={`/ville/annonces/${announcement.id}`}>
             <small>
-              {announcement.service?.name ?? ANNOUNCEMENT_CATEGORY_LABEL[announcement.category]}
+              {announcement.service?.name ?? announcementCategoryLabel(announcement.category)}
               {announcement.published_at ? `, ${formatPublished(announcement.published_at)}` : ''}
             </small>
             <strong>{announcement.title}</strong>

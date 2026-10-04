@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { defineMessages, useMessages } from '../../i18n'
 import type { ChatContext, ChatGesture, ChatMessage, ChatService } from './chatModel'
+
+const messages = defineMessages(
+  { welcome: (name: string) => `Bienvenue à l'Observatoire, ${name}. Je vous écoute : une question sur la ville, une démarche, votre demande ?` },
+  { welcome: (name) => `Welcome to the Observatory, ${name}. I'm listening: a question about the city, a formality, your request?` },
+)
 
 export type ChatStatus = 'idle' | 'thinking' | 'streaming'
 
@@ -15,19 +21,24 @@ export type ChatEvent =
  * The service is the only thing that knows where answers come from.
  */
 export function useNovaChat(service: ChatService, context: ChatContext, onEvent?: (event: ChatEvent) => void) {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    { id: 0, role: 'nova', text: `Bienvenue à l'Observatoire, ${context.name}. Je vous écoute : une question sur la ville, une démarche, votre demande ?`, emotion: 'happy' },
-  ])
+  const m = useMessages(messages)
+  // the welcome is not part of the exchange: it is written in the visitor's language at each render, so it follows a switch
+  const welcomeText = m.welcome(context.name)
+  const welcome = useMemo<ChatMessage>(() => ({ id: 0, role: 'nova', text: welcomeText, emotion: 'happy' }), [welcomeText])
+  const [exchange, setExchange] = useState<ChatMessage[]>([])
+  const thread = useMemo(() => [welcome, ...exchange], [welcome, exchange])
   const [status, setStatus] = useState<ChatStatus>('idle')
   const nextId = useRef(1)
   const running = useRef<AbortController | null>(null)
-  const history = useRef(messages)
+  const history = useRef(exchange)
+  const welcomeRef = useRef(welcome)
   const emit = useRef(onEvent)
   const contextRef = useRef(context)
   useEffect(() => {
     emit.current = onEvent
     contextRef.current = context
-    history.current = messages
+    history.current = exchange
+    welcomeRef.current = welcome
   })
 
   useEffect(() => () => running.current?.abort(), [])
@@ -41,9 +52,9 @@ export function useNovaChat(service: ChatService, context: ChatContext, onEvent?
       const question: ChatMessage = { id: nextId.current++, role: 'resident', text: said }
       const answer: ChatMessage = { id: nextId.current++, role: 'nova', text: '' }
       const conversation = [...history.current, question]
-      setMessages(conversation)
+      setExchange(conversation)
       try {
-        for await (const chunk of service.reply(conversation, contextRef.current, controller.signal)) {
+        for await (const chunk of service.reply([welcomeRef.current, ...conversation], contextRef.current, controller.signal)) {
           if (chunk.type === 'thinking') {
             setStatus('thinking')
             emit.current?.({ type: 'thinking' })
@@ -54,16 +65,16 @@ export function useNovaChat(service: ChatService, context: ChatContext, onEvent?
             }
             answer.text += chunk.text
             const partial = { ...answer }
-            setMessages([...conversation, partial])
+            setExchange([...conversation, partial])
           } else {
             const complete = { ...answer, emotion: chunk.emotion }
-            setMessages([...conversation, complete])
+            setExchange([...conversation, complete])
             emit.current?.({ type: 'replied', message: complete, gesture: chunk.gesture })
           }
         }
       } catch {
         // interrupted: keep what was said so far
-        if (answer.text) setMessages([...conversation, { ...answer, text: `${answer.text.trimEnd()}…` }])
+        if (answer.text) setExchange([...conversation, { ...answer, text: `${answer.text.trimEnd()}…` }])
         emit.current?.({ type: 'interrupted' })
       } finally {
         running.current = null
@@ -75,5 +86,5 @@ export function useNovaChat(service: ChatService, context: ChatContext, onEvent?
 
   const stop = useCallback(() => running.current?.abort(), [])
 
-  return { messages, status, send, stop }
+  return { messages: thread, status, send, stop }
 }

@@ -1,3 +1,5 @@
+import { localeTag } from '../i18n/locale'
+
 // F39: the city's calendar days, read in the server's time zone (given by the API), never the browser's.
 // Shared by the resident's booking and the agents' agenda.
 
@@ -26,9 +28,11 @@ export interface DayCell {
   dow: number
 }
 
+/** Named in the visitor's language (always French in the back-office) */
 export function dayCell(key: string): DayCell {
   const at = noonOf(key)
-  const f = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', ...options }).format(at)
+  const tag = localeTag()
+  const f = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(tag, { timeZone: 'UTC', ...options }).format(at)
   return { key, weekday: f({ weekday: 'short' }), date: f({ day: 'numeric' }), month: f({ month: 'short' }), label: f({ dateStyle: 'full' }), dow: at.getUTCDay() }
 }
 

@@ -5,13 +5,31 @@ import { useCitizenSessionStore } from '../../api/session'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import type { ActiveAlert } from '../../api/types'
 import { useDirectorStore } from '../../experience/director/directorStore'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { Icon } from '../../ui/Icon'
 import { useAuthStore } from '../auth/authStore'
 import { criticalAlertOf, useAlertFeed } from './alertFeedStore'
-import { pendingTransmissions, SEVERITY, SEVERITY_ICON, stepsOf, zoneLabel } from './alertModel'
+import { pendingTransmissions, SEVERITY_ICON, severityLabel, stepsOf, zoneLabel } from './alertModel'
 import { bindCityAlertSound } from './alertSound'
 import { AlertTransmission } from './AlertTransmission'
 import styles from './AlertCenter.module.css'
+
+const messages = defineMessages(
+  {
+    current: 'Alertes en cours',
+    previous: 'Alerte précédente',
+    next: 'Alerte suivante',
+    instructions: 'Voir les consignes',
+    hide: (title: string) => `Masquer l'alerte « ${title} »`,
+  },
+  {
+    current: 'Current alerts',
+    previous: 'Previous alert',
+    next: 'Next alert',
+    instructions: 'See the instructions',
+    hide: (title) => `Hide the alert “${title}”`,
+  },
+)
 
 /** setTimeout holds at most ~24.8 days */
 const MAX_TIMER_MS = 2_147_000_000
@@ -85,6 +103,8 @@ function AlertTicker({
   onDismiss: (id: number) => void
 }) {
   const [index, setIndex] = useState(0)
+  const m = useMessages(messages)
+  const locale = useLocale()
   const visible = alerts.filter((a) => a.severity === 'CRITICAL' || !dismissed.includes(a.id))
   // pages that start at the top (console pages) leave room for the banner while it shows
   useBodyClass('has-alert-ticker', visible.length > 0)
@@ -96,36 +116,36 @@ function AlertTicker({
   const step = (delta: number) => setIndex((position + delta + visible.length) % visible.length)
 
   return (
-    <aside className={styles.ticker} data-severity={alert.severity} data-airlock={airlock || undefined} aria-label="Alertes en cours">
+    <aside className={styles.ticker} data-severity={alert.severity} data-airlock={airlock || undefined} aria-label={m.current}>
       <span className={styles.beacon} aria-hidden="true">
         <Icon name={SEVERITY_ICON[alert.severity]} size={18} />
       </span>
       <div className={styles.text} aria-live="polite">
         <p className={styles.line}>
-          <strong className={styles.level}>{SEVERITY[alert.severity].label}</strong>
+          <strong className={styles.level}>{severityLabel(alert.severity, locale)}</strong>
           <span className={styles.title}>{alert.title}</span>
-          {alert.audience !== 'ALL' && <span className={styles.zone}>{zoneLabel(alert)}</span>}
+          {alert.audience !== 'ALL' && <span className={styles.zone}>{zoneLabel(alert, locale)}</span>}
         </p>
         <p className={styles.todo}>{firstStep}</p>
       </div>
       {visible.length > 1 && (
         <div className={styles.pager}>
-          <button type="button" onClick={() => step(-1)} aria-label="Alerte précédente">
+          <button type="button" onClick={() => step(-1)} aria-label={m.previous}>
             <Icon name="back" size={14} />
           </button>
           <span>
             {position + 1}/{visible.length}
           </span>
-          <button type="button" onClick={() => step(1)} aria-label="Alerte suivante">
+          <button type="button" onClick={() => step(1)} aria-label={m.next}>
             <Icon name="chevron" size={14} />
           </button>
         </div>
       )}
       <button type="button" className={styles.open} onClick={() => onOpen(alert.id)}>
-        Voir les consignes
+        {m.instructions}
       </button>
       {alert.severity !== 'CRITICAL' && (
-        <button type="button" className={styles.hide} onClick={() => onDismiss(alert.id)} aria-label={`Masquer l'alerte « ${alert.title} »`}>
+        <button type="button" className={styles.hide} onClick={() => onDismiss(alert.id)} aria-label={m.hide(alert.title)}>
           <Icon name="close" size={16} />
         </button>
       )}

@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
+import { defineMessages, messagesFor } from '../i18n'
+
+/** Errors raised in the browser (the server's own messages are shown as they come). */
+const messages = defineMessages(
+    { wsError: 'Connexion WebSocket impossible', startFailed: 'Impossible de démarrer la transcription' },
+    { wsError: 'Could not open the WebSocket connection', startFailed: 'Could not start the transcription' },
+)
 
 /** The STT service (transcription and Nova's voice): the production one in a production build unless `.env` says otherwise. */
 export const sttApiUrl = import.meta.env.VITE_STT_API_URL || (import.meta.env.PROD ? 'https://webcup-stt.duckdns.org' : 'http://localhost:9100')
@@ -51,7 +58,9 @@ export function useRealtimeTranscription(options?: {
     context?: { domain?: string; keywords?: string[] }
 }) {
     const optionsRef = useRef(options)
-    optionsRef.current = options
+    useEffect(() => {
+        optionsRef.current = options
+    })
 
     const [status, setStatus] = useState<RealtimeStatus>('idle')
     const [partialText, setPartialText] = useState('')
@@ -192,7 +201,7 @@ export function useRealtimeTranscription(options?: {
             wsRef.current = ws
 
             ws.onerror = () => {
-                setError({ code: 'WS_ERROR', message: 'Connexion WebSocket impossible' })
+                setError({ code: 'WS_ERROR', message: messagesFor(messages).wsError })
                 setStatus('error')
             }
 
@@ -263,7 +272,7 @@ export function useRealtimeTranscription(options?: {
             startVad(stream)
         } catch (err) {
             const message =
-                err instanceof Error ? err.message : 'Impossible de démarrer la transcription'
+                err instanceof Error ? err.message : messagesFor(messages).startFailed
             setError({ code: 'START_FAILED', message })
             setStatus('error')
             stop()

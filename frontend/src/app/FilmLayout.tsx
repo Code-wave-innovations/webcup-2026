@@ -16,9 +16,15 @@ import { useCitizenUser } from '../api/session'
 import { toSession } from '../features/auth/authService'
 import { useAuthStore } from '../features/auth/authStore'
 import { DEMO_ACCOUNTS } from '../features/auth/demoAccounts'
+import { defineMessages, useMessages } from '../i18n'
 import { Toast } from '../ui/Toast'
 import { FilmLoadingScreen } from './FilmLoadingScreen'
 import styles from './FilmLayout.module.css'
+
+const messages = defineMessages(
+  { skipToContent: 'Aller au contenu', skipArrival: "Passer l'arrivée" },
+  { skipToContent: 'Skip to content', skipArrival: 'Skip the arrival' },
+)
 
 /** Keyboard users jump over the navigation to the page itself (the city sections, the chat, the airlock form). */
 function skipToContent(event: MouseEvent<HTMLAnchorElement>) {
@@ -39,6 +45,7 @@ export function FilmLayout() {
   const filmSession = useAuthStore((s) => s.session)
   const citizen = useCitizenUser()
   const debugSignIn = useRef(false)
+  const m = useMessages(messages)
 
   // the letterbox bars retract once the city is reached (or after a return to the cockpit)
   useEffect(() => {
@@ -68,7 +75,7 @@ export function FilmLayout() {
   return (
     <>
       <a className={styles.skipLink} href="#contenu" onClick={skipToContent}>
-        Aller au contenu
+        {m.skipToContent}
       </a>
       <Experience />
       <div className={styles.letterbox} data-active={cinematic} aria-hidden="true">
@@ -86,7 +93,7 @@ export function FilmLayout() {
       <NovaSpeechBubble />
       {cinematic && (phase === 'entry' || phase === 'descent') && (
         <button type="button" className={styles.skip} onClick={() => director.skip()}>
-          Passer l'arrivée
+          {m.skipArrival}
         </button>
       )}
       <Toast />

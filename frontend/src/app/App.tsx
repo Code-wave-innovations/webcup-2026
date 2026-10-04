@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { isLightScene } from '../a11y/sceneMode'
 import { ConsoleLayout } from '../pages/Console/ConsoleLayout'
 import { NotFoundPage } from '../pages/Console/NotFoundPage'
+import { LocaleSync } from '../i18n/LocaleSync'
 import { FilmLoadingScreen } from './FilmLoadingScreen'
 import { LightLayout } from './LightLayout'
 import { RequireRole, RequireSession } from './guards'
@@ -56,6 +57,7 @@ const ComptePage = lazy(() => import('../pages/Espace/ComptePage'))
 function App() {
   return (
     <BrowserRouter>
+      <LocaleSync />
       <Routes>
         {/* F96: same URLs in both versions; the light one never mounts the film */}
         <Route

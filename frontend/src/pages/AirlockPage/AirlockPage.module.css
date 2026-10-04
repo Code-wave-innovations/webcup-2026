@@ -16,3 +16,15 @@
   color: var(--color-ice-bright);
   text-align: center;
 }
+
+/*
+  D14: the language switch sits top right. On short, narrow desktops (861-1100px wide) the access
+  hologram, centred at 64% of the width, grows up into that corner on its taller steps: the switch
+  moves to the top left there, above the empty sky on Nova's side.
+*/
+@media (min-width: 861px) and (max-width: 1100px) and (max-height: 720px) {
+  .airlock > [role='group'][data-variant='floating'] {
+    right: auto;
+    left: var(--gutter);
+  }
+}

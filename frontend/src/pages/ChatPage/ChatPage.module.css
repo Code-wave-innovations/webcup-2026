@@ -42,6 +42,13 @@
   border-color: var(--color-ice);
 }
 
+/* the language switch, then Nova's mark */
+.end {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -82,6 +89,10 @@
 
   .chat {
     width: 100%;
+  }
+
+  .end {
+    gap: 12px;
   }
 
   .back span {

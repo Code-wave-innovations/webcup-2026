@@ -3,11 +3,43 @@ import { messageFor } from '../../api/errors'
 import { isNetworkFailure } from '../../api/essentialCache'
 import { useCatalogue, useServiceCategories } from '../../api/services'
 import type { CityService } from '../../api/types'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { Icon } from '../../ui/Icon'
-import { availabilityView, plural } from './availability'
+import { availabilityView } from './availability'
 import { ServiceGlyph } from './ServiceGlyph'
 import { ServiceTerminal, type TerminalTarget } from './ServiceTerminal'
 import styles from './Services.module.css'
+
+const messages = defineMessages(
+  {
+    categories: 'Catégories de services',
+    featured: 'À la une',
+    priority: 'les services prioritaires de la ville',
+    lastKnown: ' · dernier état connu',
+    domeDown: 'Le dôme central ne répond pas',
+    retry: 'Réessayer',
+    loading: 'Chargement des services',
+    empty: "Aucun service dans cette catégorie pour l'instant.",
+    explore: 'Explorer le catalogue',
+    count: (n: number) => (n > 1 ? `${n} services` : `${n} service`),
+    quickAccess: 'Accès rapide aux services',
+    highlighted: ', service mis en avant',
+  },
+  {
+    categories: 'Service categories',
+    featured: 'Featured',
+    priority: "the city's priority services",
+    lastKnown: ' · last known state',
+    domeDown: 'The central dome is not responding',
+    retry: 'Try again',
+    loading: 'Loading services',
+    empty: 'No services in this category yet.',
+    explore: 'Explore the catalogue',
+    count: (n) => (n === 1 ? '1 service' : `${n} services`),
+    quickAccess: 'Quick access to services',
+    highlighted: ', featured service',
+  },
+)
 
 /** Tiles on the flyover panel; the rest of the catalogue opens in the terminal. */
 const SHOWN = 6
@@ -33,6 +65,7 @@ function trackGlow(event: PointerEvent<HTMLElement>) {
  * first, each with its live availability; the hexagons filter by category, a tile opens its sheet.
  */
 export function ServiceShowcase() {
+  const m = useMessages(messages)
   const [category, setCategory] = useState<string | null>(null)
   const [terminal, setTerminal] = useState<TerminalTarget | null>(null)
   const categories = useServiceCategories()
@@ -44,18 +77,18 @@ export function ServiceShowcase() {
 
   return (
     <>
-      <div className={styles.hexes} role="group" aria-label="Catégories de services">
-        <HexChip label="À la une" glyph="star" pressed={category === null} onClick={() => setCategory(null)} />
+      <div className={styles.hexes} role="group" aria-label={m.categories}>
+        <HexChip label={m.featured} glyph="star" pressed={category === null} onClick={() => setCategory(null)} />
         {categories.data?.map((c) => (
           <HexChip key={c.id} label={c.name} glyph={c.icon} pressed={category === c.slug} onClick={() => setCategory(c.slug)} />
         ))}
       </div>
 
       <p className={styles.caption} aria-live="polite">
-        <strong>{active?.name ?? 'À la une'}</strong>
+        <strong>{active?.name ?? m.featured}</strong>
         <span>
-          {active ? plural(total, 'service', 'services') : 'les services prioritaires de la ville'}
-          {services.isError && services.data && isNetworkFailure(services.error) ? ' · dernier état connu' : ''}
+          {active ? m.count(total) : m.priority}
+          {services.isError && services.data && isNetworkFailure(services.error) ? m.lastKnown : ''}
         </span>
       </p>
 
@@ -63,21 +96,21 @@ export function ServiceShowcase() {
         <div className={styles.offline} role="alert">
           <Icon name="alert" />
           <span>
-            <strong>Le dôme central ne répond pas</strong>
+            <strong>{m.domeDown}</strong>
             <small>{messageFor(services.error)}</small>
           </span>
           <button type="button" onClick={() => void services.refetch()}>
-            Réessayer
+            {m.retry}
           </button>
         </div>
       ) : !services.data ? (
-        <div className={styles.grid} aria-busy="true" aria-label="Chargement des services">
+        <div className={styles.grid} aria-busy="true" aria-label={m.loading}>
           {Array.from({ length: SHOWN }, (_, i) => (
             <span key={i} className={styles.ghost} style={{ '--i': i } as CSSProperties} />
           ))}
         </div>
       ) : services.data.data.length === 0 ? (
-        <p className={styles.empty}>Aucun service dans cette catégorie pour l'instant.</p>
+        <p className={styles.empty}>{m.empty}</p>
       ) : (
         // a new set of tiles plays its entrance; the refresh of the same set does not
         <ul
@@ -94,8 +127,8 @@ export function ServiceShowcase() {
 
       <button type="button" className={styles.explore} onClick={open({ category, service: null })} disabled={!services.data}>
         <span>
-          Explorer le catalogue
-          {services.data && <small>{active ? `${plural(total, 'service', 'services')} · ${active.name}` : plural(total, 'service', 'services')}</small>}
+          {m.explore}
+          {services.data && <small>{active ? `${m.count(total)} · ${active.name}` : m.count(total)}</small>}
         </span>
         <Icon name="chevron" />
       </button>
@@ -110,6 +143,8 @@ export function ServiceShowcase() {
  * tiles (the first ones of the catalogue order), so both read one cache.
  */
 export function QuickServices() {
+  const m = useMessages(messages)
+  const locale = useLocale()
   const [terminal, setTerminal] = useState<TerminalTarget | null>(null)
   const services = useCatalogue({ category: null, limit: SHOWN })
   const quick = services.data?.data.slice(0, 4) ?? []
@@ -118,11 +153,11 @@ export function QuickServices() {
   return (
     <div className={styles.quick}>
       <p className={styles.quickLabel} id="quick-services">
-        Accès rapide aux services
+        {m.quickAccess}
       </p>
       <ul aria-labelledby="quick-services">
         {quick.map((service, i) => {
-          const view = availabilityView(service.availability)
+          const view = availabilityView(service.availability, locale)
           return (
             <li key={service.id} style={{ '--i': i } as CSSProperties}>
               <button
@@ -156,7 +191,8 @@ function HexChip({ label, glyph, pressed, onClick }: { label: string; glyph: str
 }
 
 function ServiceTile({ service, onClick }: { service: CityService; onClick: (event: MouseEvent<HTMLElement>) => void }) {
-  const view = availabilityView(service.availability)
+  const m = useMessages(messages)
+  const view = availabilityView(service.availability, useLocale())
   return (
     <button type="button" className={styles.tile} data-status={view.status} onClick={onClick} onPointerMove={trackGlow}>
       <span className={styles.tileGlyph}>
@@ -173,7 +209,7 @@ function ServiceTile({ service, onClick }: { service: CityService; onClick: (eve
       {service.is_featured && (
         <span className={styles.featured}>
           <ServiceGlyph name="star" size={11} stroke={2} />
-          <span className={styles.srOnly}>, service mis en avant</span>
+          <span className={styles.srOnly}>{m.highlighted}</span>
         </span>
       )}
     </button>

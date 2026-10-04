@@ -1,15 +1,17 @@
 import { useState } from 'react'
+import { useMessages } from '../../i18n'
 import { Plate } from '../../ui/Badges'
 import { ButtonLink, ButtonRouteLink } from '../../ui/Button'
 import { CountUp } from '../../ui/CountUp'
 import { Row, RowList } from '../../ui/Rows'
 import text from '../../ui/text.module.css'
-import { REGISTRY, REGISTRY_COUNTS } from './registry'
+import { REGISTRY, REGISTRY_COUNTS, registryMessages } from './registry'
 import styles from './RegistryPanel.module.css'
 
 /** Every request received, linked to the feature that delivers it: the jury checks in one click. */
 export function RegistryPanel({ visible }: { visible: boolean }) {
   const [started, setStarted] = useState(false)
+  const m = useMessages(registryMessages)
   if (visible && !started) setStarted(true)
 
   return (
@@ -19,19 +21,19 @@ export function RegistryPanel({ visible }: { visible: boolean }) {
           <b>
             <CountUp value={REGISTRY_COUNTS.received} start={started} duration={1200} />
           </b>
-          reçues
+          {m.received}
         </span>
         <span>
           <b>
             <CountUp value={REGISTRY_COUNTS.delivered} start={started} duration={1400} />
           </b>
-          livrées
+          {m.delivered}
         </span>
         <span>
           <b>
             <CountUp value={REGISTRY_COUNTS.inProgress} start={started} duration={900} />
           </b>
-          en chantier
+          {m.inProgress}
         </span>
       </div>
       <RowList>
@@ -41,22 +43,22 @@ export function RegistryPanel({ visible }: { visible: boolean }) {
               <small>
                 <Plate>{entry.ref}</Plate>
               </small>
-              <strong>« {entry.request} »</strong>
-              <small>{entry.meta}</small>
+              <strong>{m.quote(m.entries[entry.ref].request)}</strong>
+              <small>{m.entries[entry.ref].meta}</small>
             </span>
             {entry.section.startsWith('/') ? (
               <ButtonRouteLink variant="ghost" small to={entry.section}>
-                Voir
+                {m.see}
               </ButtonRouteLink>
             ) : (
               <ButtonLink variant="ghost" small href={`#${entry.section}`}>
-                Voir
+                {m.see}
               </ButtonLink>
             )}
           </Row>
         ))}
       </RowList>
-      <p className={text.note}>Lignes d'exemple. La première reprend l'exemple de la documentation de l'API.</p>
+      <p className={text.note}>{m.note}</p>
     </>
   )
 }
