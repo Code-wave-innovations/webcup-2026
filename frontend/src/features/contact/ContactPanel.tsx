@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { CreatedContact } from '../../api/requests'
+import { useMaintenanceMode } from '../maintenance/maintenanceMode'
+import { PlatformIncident } from '../maintenance/PlatformIncident'
 import { ContactForm } from './ContactForm'
 import { RequestConfirmation } from './RequestConfirmation'
 import styles from './Contact.module.css'
@@ -10,6 +12,7 @@ import styles from './Contact.module.css'
  */
 export function ContactPanel() {
   const [sent, setSent] = useState<CreatedContact | null>(null)
+  const readOnly = useMaintenanceMode()
 
   if (sent) {
     return (
@@ -23,6 +26,8 @@ export function ContactPanel() {
       </div>
     )
   }
+
+  if (readOnly) return <PlatformIncident nested />
 
   return (
     <div className={styles.panel}>
