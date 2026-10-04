@@ -1,3 +1,4 @@
+import { currentLocale, localeTag, type Locale } from '../i18n/locale'
 import { toApiError } from './errors'
 import type { ActiveAlert, Announcement, CityService, District, Paginated, PlatformSettings, ServiceCategory } from './types'
 
@@ -117,11 +118,11 @@ export function isNetworkFailure(error: unknown): boolean {
   return api.status === 0 || api.code === 'NETWORK_ERROR'
 }
 
-/** When the snapshot was received, in Madagascar time, for the banner. */
-export function formatSavedAt(iso: string): string {
+/** When the snapshot was received, in Madagascar time, for the banner (in the visitor's language). */
+export function formatSavedAt(iso: string, locale: Locale = currentLocale()): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(localeTag(locale), {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',

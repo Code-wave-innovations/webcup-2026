@@ -3,15 +3,10 @@ import { useParams } from 'react-router'
 import { imgUrl } from '../../api/client'
 import { messageFor, toApiError } from '../../api/errors'
 import { useAddComment, useRequest } from '../../api/requests'
-import {
-  CITIZEN_STATUS_LABEL,
-  EVENT_TYPE_LABEL,
-  TYPE_LABEL,
-  friseTone,
-  isOpenStatus,
-} from '../../api/requestStatus'
+import { friseTone, isOpenStatus, requestStatusMessages } from '../../api/requestStatus'
 import type { RequestDetail, RequestEvent } from '../../api/types'
 import { useApiForm } from '../../hooks/useApiForm'
+import { defineMessages, useMessages } from '../../i18n'
 import { formatDateTime, formatRelative } from '../../lib/format'
 import { useNow } from '../../lib/useNow'
 import { Button, ButtonRouteLink } from '../../ui/Button'
@@ -20,39 +15,89 @@ import { Field } from '../../ui/Field'
 import { GlassPanel } from '../../ui/GlassPanel'
 import text from '../../ui/text.module.css'
 import { ConsolePage } from '../Console/ConsolePage'
+import { espaceMessages } from './espace.messages'
 import { RequestFrise } from './RequestFrise'
 import styles from './Espace.module.css'
 
-const LABELS = { message: 'Votre message' }
+const messages = defineMessages(
+  {
+    municipalService: 'Service municipal',
+    details: 'Détails',
+    place: 'Lieu',
+    position: 'Position',
+    attachment: 'Pièce jointe',
+    seeFile: 'Voir le fichier',
+    messageLabel: 'Votre message',
+    messageRequired: 'Écrivez un message.',
+    replyNeeded: 'Votre réponse est attendue',
+    addMessage: 'Ajouter un message',
+    sending: 'Envoi…',
+    send: 'Envoyer',
+    notFound: 'Demande introuvable',
+    notFoundLead: 'Cette demande n’existe pas ou ne vous est pas accessible.',
+    backToRequests: 'Retour à mes demandes',
+    request: 'Demande',
+    lead: (type: string) => `${type} · suivi de votre demande`,
+    copyReference: 'Copier la référence',
+    history: 'Historique',
+    noEvents: 'Aucune étape publique pour le moment.',
+  },
+  {
+    municipalService: 'Municipal service',
+    details: 'Details',
+    place: 'Place',
+    position: 'Position',
+    attachment: 'Attachment',
+    seeFile: 'View the file',
+    messageLabel: 'Your message',
+    messageRequired: 'Write a message.',
+    replyNeeded: 'Your reply is needed',
+    addMessage: 'Add a message',
+    sending: 'Sending…',
+    send: 'Send',
+    notFound: 'Request not found',
+    notFoundLead: 'This request does not exist or is not available to you.',
+    backToRequests: 'Back to my requests',
+    request: 'Request',
+    lead: (type) => `${type} · tracking your request`,
+    copyReference: 'Copy the reference',
+    history: 'History',
+    noEvents: 'No public steps yet.',
+  },
+)
 
-function eventTitle(event: RequestEvent): string {
-  if (event.type === 'STATUS_CHANGED' && event.to_status) return CITIZEN_STATUS_LABEL[event.to_status]
-  return EVENT_TYPE_LABEL[event.type]
+type Labels = (typeof requestStatusMessages)['fr']
+type Words = (typeof messages)['fr']
+
+function eventTitle(event: RequestEvent, labels: Labels): string {
+  if (event.type === 'STATUS_CHANGED' && event.to_status) return labels.status[event.to_status]
+  return labels.event[event.type]
 }
 
-function eventWho(event: RequestEvent): string {
-  if (!event.author) return 'Service municipal'
+function eventWho(event: RequestEvent, m: Words): string {
+  if (!event.author) return m.municipalService
   return `${event.author.name} ${event.author.last_name}`.trim()
 }
 
 function Recap({ request }: { request: RequestDetail }) {
+  const m = useMessages(messages)
   const hasLocation = Boolean(request.location_label || (request.latitude != null && request.longitude != null))
   const dataEntries = request.data ? Object.entries(request.data).filter(([key]) => key !== 'urgency_hint') : []
   if (!hasLocation && !request.attachment && dataEntries.length === 0) return null
 
   return (
     <GlassPanel className={styles.card}>
-      <h2>Détails</h2>
+      <h2>{m.details}</h2>
       <dl className={styles.recapList}>
         {request.location_label && (
           <>
-            <dt>Lieu</dt>
+            <dt>{m.place}</dt>
             <dd>{request.location_label}</dd>
           </>
         )}
         {request.latitude != null && request.longitude != null && (
           <>
-            <dt>Position</dt>
+            <dt>{m.position}</dt>
             <dd>
               {request.latitude.toFixed(5)}, {request.longitude.toFixed(5)}
             </dd>
@@ -60,10 +105,10 @@ function Recap({ request }: { request: RequestDetail }) {
         )}
         {request.attachment && (
           <>
-            <dt>Pièce jointe</dt>
+            <dt>{m.attachment}</dt>
             <dd>
               <a href={`${imgUrl}${request.attachment}`} target="_blank" rel="noreferrer">
-                Voir le fichier
+                {m.seeFile}
               </a>
             </dd>
           </>
@@ -83,13 +128,14 @@ function ReplyForm({ request }: { request: RequestDetail }) {
   const addComment = useAddComment()
   const [message, setMessage] = useState('')
   const waiting = request.status === 'WAITING_CITIZEN'
+  const m = useMessages(messages)
   const form = useApiForm({
-    labels: LABELS,
+    labels: { message: m.messageLabel },
     submit: (values: { message: string }) =>
       addComment.mutateAsync({ id: request.id, message: values.message, is_internal: false }),
     validate: (values) => {
       const errors: Record<string, string> = {}
-      if (!values.message.trim()) errors.message = 'Écrivez un message.'
+      if (!values.message.trim()) errors.message = m.messageRequired
       return errors
     },
     onSuccess: () => setMessage(''),
@@ -103,9 +149,9 @@ function ReplyForm({ request }: { request: RequestDetail }) {
   return (
     <GlassPanel className={styles.card}>
       <form className={styles.reply} data-emphasis={waiting || undefined} onSubmit={onSubmit} noValidate>
-        <h2>{waiting ? 'Votre réponse est attendue' : 'Ajouter un message'}</h2>
+        <h2>{waiting ? m.replyNeeded : m.addMessage}</h2>
         <ErrorSummary id={form.summaryId} errors={form.summary} formError={form.formError} />
-        <Field label={LABELS.message} htmlFor={form.fieldId('message')} required error={form.errors.message}>
+        <Field label={m.messageLabel} htmlFor={form.fieldId('message')} required error={form.errors.message}>
           {(control) => (
             <textarea
               {...control}
@@ -118,7 +164,7 @@ function ReplyForm({ request }: { request: RequestDetail }) {
         </Field>
         <div className={styles.cardActions}>
           <Button type="submit" disabled={form.pending}>
-            {form.pending ? 'Envoi…' : 'Envoyer'}
+            {form.pending ? m.sending : m.send}
           </Button>
         </div>
       </form>
@@ -133,19 +179,23 @@ export default function DemandeDetailPage() {
   const validId = Number.isInteger(id) && id > 0
   const detail = useRequest(validId ? id : undefined)
   const now = useNow()
+  const m = useMessages(messages)
+  const common = useMessages(espaceMessages)
+  const labels = useMessages(requestStatusMessages)
+  const crumbs = [
+    { label: common.espace, to: '/ville/espace' },
+    { label: common.requests, to: '/ville/espace/demandes' },
+  ]
 
   if (!validId || (detail.isError && toApiError(detail.error).status === 404)) {
     return (
       <ConsolePage
-        title="Demande introuvable"
-        crumbs={[
-          { label: 'Mon espace', to: '/ville/espace' },
-          { label: 'Mes demandes', to: '/ville/espace/demandes' },
-        ]}
-        lead="Cette demande n’existe pas ou ne vous est pas accessible."
+        title={m.notFound}
+        crumbs={crumbs}
+        lead={m.notFoundLead}
       >
         <GlassPanel className={styles.card}>
-          <ButtonRouteLink to="/ville/espace/demandes">Retour à mes demandes</ButtonRouteLink>
+          <ButtonRouteLink to="/ville/espace/demandes">{m.backToRequests}</ButtonRouteLink>
         </GlassPanel>
       </ConsolePage>
     )
@@ -154,13 +204,10 @@ export default function DemandeDetailPage() {
   if (detail.isPending) {
     return (
       <ConsolePage
-        title="Demande"
-        crumbs={[
-          { label: 'Mon espace', to: '/ville/espace' },
-          { label: 'Mes demandes', to: '/ville/espace/demandes' },
-        ]}
+        title={m.request}
+        crumbs={crumbs}
       >
-        <p className={text.note}>Chargement…</p>
+        <p className={text.note}>{common.loading}</p>
       </ConsolePage>
     )
   }
@@ -168,16 +215,13 @@ export default function DemandeDetailPage() {
   if (detail.isError || !detail.data) {
     return (
       <ConsolePage
-        title="Demande"
-        crumbs={[
-          { label: 'Mon espace', to: '/ville/espace' },
-          { label: 'Mes demandes', to: '/ville/espace/demandes' },
-        ]}
+        title={m.request}
+        crumbs={crumbs}
       >
         <p className={text.error}>
           {messageFor(detail.error)}{' '}
           <button type="button" onClick={() => void detail.refetch()}>
-            Réessayer
+            {common.retry}
           </button>
         </p>
       </ConsolePage>
@@ -190,17 +234,14 @@ export default function DemandeDetailPage() {
   return (
     <ConsolePage
       title={request.subject}
-      crumbs={[
-        { label: 'Mon espace', to: '/ville/espace' },
-        { label: 'Mes demandes', to: '/ville/espace/demandes' },
-      ]}
-      lead={`${TYPE_LABEL[request.type]} · suivi de votre demande`}
+      crumbs={crumbs}
+      lead={m.lead(labels.type[request.type])}
     >
       <GlassPanel className={styles.card}>
         <div className={styles.headerBlock}>
           <div className={styles.refRow}>
             <span className={styles.pill} data-tone={friseTone(request.status)}>
-              {CITIZEN_STATUS_LABEL[request.status]}
+              {labels.status[request.status]}
             </span>
             <code>{request.reference}</code>
             <Button
@@ -209,7 +250,7 @@ export default function DemandeDetailPage() {
               variant="ghost"
               onClick={() => void navigator.clipboard.writeText(request.reference)}
             >
-              Copier la référence
+              {m.copyReference}
             </Button>
           </div>
           <RequestFrise status={request.status} />
@@ -217,16 +258,16 @@ export default function DemandeDetailPage() {
       </GlassPanel>
 
       <GlassPanel className={styles.card}>
-        <h2>Historique</h2>
+        <h2>{m.history}</h2>
         {events.length === 0 ? (
-          <p className={text.note}>Aucune étape publique pour le moment.</p>
+          <p className={text.note}>{m.noEvents}</p>
         ) : (
           <ol className={styles.events}>
             {events.map((event) => (
               <li key={event.id} className={styles.event}>
-                <p className={styles.eventTitle}>{eventTitle(event)}</p>
+                <p className={styles.eventTitle}>{eventTitle(event, labels)}</p>
                 <p className={styles.eventMeta}>
-                  {eventWho(event)} · {formatRelative(event.created_at, now)} · {formatDateTime(event.created_at)}
+                  {eventWho(event, m)} · {formatRelative(event.created_at, now)} · {formatDateTime(event.created_at)}
                 </p>
                 {event.message && <p className={styles.eventBody}>{event.message}</p>}
               </li>

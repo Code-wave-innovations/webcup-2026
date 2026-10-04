@@ -3,16 +3,36 @@ import { signOutCitizen, useCitizenUser } from '../../api/session'
 import type { Role } from '../../api/types'
 import { airlockPath, rewindToCockpit } from '../../app/airlock'
 import { useAuthStore } from '../../features/auth/authStore'
+import { sessionRoleLabel } from '../../features/auth/roleLabel'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { Icon, NovaMark } from '../../ui/Icon'
+import { LanguageSwitch } from '../../ui/LanguageSwitch'
 import chrome from '../CityPage/CityChrome.module.css'
 import { CitizenNav } from './CitizenNav'
 import styles from './ConsoleLayout.module.css'
 
-const ROLE_LABEL: Record<Role, string> = {
-  CITIZEN: 'Habitant·e',
-  AGENT: 'Agent municipal',
-  ADMIN: 'Administration',
-}
+const messages = defineMessages(
+  {
+    role: {
+      CITIZEN: 'Habitant·e',
+      AGENT: 'Agent municipal',
+      ADMIN: 'Administration',
+    } satisfies Record<Role, string>,
+    sections: 'Rubriques',
+    signOut: 'Se déconnecter',
+    signIn: 'Se connecter',
+  },
+  {
+    role: {
+      CITIZEN: 'Resident',
+      AGENT: 'Municipal agent',
+      ADMIN: 'Administration',
+    },
+    sections: 'Sections',
+    signOut: 'Sign out',
+    signIn: 'Sign in',
+  },
+)
 
 function signOutFilmAndCitizen() {
   useAuthStore.getState().signOut()
@@ -24,17 +44,19 @@ export function ConsoleTopBar() {
   const citizen = useCitizenUser()
   const citySession = useAuthStore((s) => s.session)
   const { pathname, search } = useLocation()
+  const m = useMessages(messages)
+  const locale = useLocale()
 
   const account = citizen
     ? {
         name: `${citizen.name} ${citizen.last_name}`.trim(),
-        label: ROLE_LABEL[citizen.role],
+        label: m.role[citizen.role],
         onSignOut: signOutFilmAndCitizen,
       }
     : citySession
       ? {
           name: citySession.name,
-          label: citySession.roleLabel,
+          label: sessionRoleLabel(citySession, locale),
           onSignOut: signOutFilmAndCitizen,
         }
       : null
@@ -46,23 +68,24 @@ export function ConsoleTopBar() {
           <NovaMark />
           <span>NOVA</span>
         </Link>
-        <nav className={chrome.links} aria-label="Rubriques">
+        <nav className={chrome.links} aria-label={m.sections}>
           <CitizenNav variant="console" />
         </nav>
-        <div className={chrome.end}>
+        <div className={[chrome.end, styles.end].join(' ')}>
+          <LanguageSwitch />
           {account ? (
             <>
-              <div className={chrome.badge}>
+              <div className={[chrome.badge, styles.account].join(' ')}>
                 <span>{account.name}</span>
                 <small>{account.label}</small>
               </div>
-              <button type="button" className={chrome.round} aria-label="Se déconnecter" onClick={account.onSignOut}>
+              <button type="button" className={chrome.round} aria-label={m.signOut} title={m.signOut} onClick={account.onSignOut}>
                 <Icon name="logout" />
               </button>
             </>
           ) : (
             <Link to={airlockPath(pathname + search)} onClick={rewindToCockpit} className={styles.signIn}>
-              Se connecter
+              {m.signIn}
             </Link>
           )}
         </div>

@@ -3,6 +3,24 @@ import { Link } from 'react-router'
 import logo from '../../assets/logo/code-wave-logo.png'
 import logo2 from '../../assets/logo/code-wave-high-resolution-logo-transparent.png'
 import useHttps from '../../hooks/useHttps'
+import { defineMessages, useMessages } from '../../i18n'
+
+const messages = defineMessages(
+  {
+    hello: 'Hello',
+    title: 'We are the team',
+    loading: 'Chargement des membres…',
+    loadError: 'Impossible de charger les membres.',
+    empty: 'Aucun membre pour le moment.',
+  },
+  {
+    hello: 'Hello',
+    title: 'We are the team',
+    loading: 'Loading members…',
+    loadError: 'Could not load the members.',
+    empty: 'No members yet.',
+  },
+)
 
 type User = {
   id: number
@@ -15,7 +33,8 @@ function TeamPage() {
   const { http } = useHttps()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  const m = useMessages(messages)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -24,12 +43,12 @@ function TeamPage() {
       .get<User[]>('/users', { signal: controller.signal })
       .then((response) => {
         setUsers(response.data)
-        setError(null)
+        setFailed(false)
       })
       .catch((err) => {
         if (controller.signal.aborted) return
         console.log(err)
-        setError('Impossible de charger les membres.')
+        setFailed(true)
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
@@ -80,20 +99,20 @@ function TeamPage() {
         />
 
         <p className="mb-3 text-sm font-medium uppercase tracking-[0.48em] text-[#4A90FF]">
-          Hello
+          {m.hello}
         </p>
         <h1 className="max-w-4xl text-4xl font-semibold leading-[1.08] tracking-tight text-[#0A2342] sm:text-5xl md:text-6xl">
-          We are the team
+          {m.title}
           <span className="block text-[#4A90FF]">CodeWave</span>
         </h1>
 
         <div className="mt-10 w-full max-w-3xl">
           {loading ? (
-            <p className="text-sm text-[#0A2342]/60">Chargement des membres…</p>
-          ) : error ? (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-[#0A2342]/60">{m.loading}</p>
+          ) : failed ? (
+            <p className="text-sm text-red-600">{m.loadError}</p>
           ) : users.length === 0 ? (
-            <p className="text-sm text-[#0A2342]/60">Aucun membre pour le moment.</p>
+            <p className="text-sm text-[#0A2342]/60">{m.empty}</p>
           ) : (
             <ul className="flex flex-wrap justify-center gap-3">
               {users.map((user) => (

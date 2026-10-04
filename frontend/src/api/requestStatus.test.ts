@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
-  CITIZEN_STATUS_LABEL,
-  FRISE_STEPS,
   friseIndex,
+  friseSteps,
   friseTone,
   nextStepHint,
   isOpenStatus,
+  statusLabel,
 } from './requestStatus'
 
 describe('requestStatus', () => {
   it('exposes citizen-facing labels without raw codes', () => {
-    expect(CITIZEN_STATUS_LABEL.IN_REVIEW).toBe('En examen')
-    expect(CITIZEN_STATUS_LABEL.WAITING_CITIZEN).toBe('Votre réponse est attendue')
-    expect(FRISE_STEPS).toHaveLength(4)
+    expect(statusLabel('IN_REVIEW')).toBe('En examen')
+    expect(statusLabel('WAITING_CITIZEN')).toBe('Votre réponse est attendue')
+    expect(friseSteps()).toHaveLength(4)
   })
 
   it('maps statuses onto the frise', () => {

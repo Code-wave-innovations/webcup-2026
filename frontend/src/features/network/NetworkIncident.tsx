@@ -7,11 +7,40 @@ import { queryClient } from '../../api/queryClient'
 import { useCitizenSessionStore, useCitizenUser } from '../../api/session'
 import { usePublicServices, useServiceCategories } from '../../api/services'
 import { usePublicSettings } from '../../api/settings'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { Icon } from '../../ui/Icon'
 import { useAuthStore } from '../auth/authStore'
 import { phoneHref } from '../maintenance/phoneHref'
 import { useOnline } from './networkStatus'
 import styles from './NetworkIncident.module.css'
+
+const messages = defineMessages(
+  {
+    label: 'Connexion interrompue',
+    serverDown: 'Serveur injoignable',
+    networkDown: 'Réseau interrompu',
+    serverMessage: 'Le serveur de la ville ne répond pas. L’envoi d’un signalement et le message à la mairie sont en attente.',
+    networkMessage: 'Cet appareil n’a plus accès au réseau. L’envoi d’un signalement et le message à la mairie sont en attente.',
+    stillReadable: (when: string) =>
+      `Les annonces, les consignes, l’état des services et les coordonnées déjà reçus restent consultables. Dernière réception : ${when}.`,
+    nothingSaved: 'Rien n’est encore enregistré sur cet appareil. Réessayez dès que la liaison revient : les annonces, les services et les numéros s’afficheront ici.',
+    townHall: 'Mairie',
+    retrying: 'Nouvelle tentative…',
+    retry: 'Réessayer',
+  },
+  {
+    label: 'Connection lost',
+    serverDown: 'Server unreachable',
+    networkDown: 'Network down',
+    serverMessage: 'The city’s server is not responding. Sending a report and the message to the city hall are on hold.',
+    networkMessage: 'This device has lost network access. Sending a report and the message to the city hall are on hold.',
+    stillReadable: (when) => `The announcements, instructions, service status and contact details already received remain available. Last received: ${when}.`,
+    nothingSaved: 'Nothing is saved on this device yet. Try again as soon as the link is back: the announcements, services and numbers will appear here.',
+    townHall: 'City hall',
+    retrying: 'Trying again…',
+    retry: 'Try again',
+  },
+)
 
 /** Public reads the citizen space can show again after a dropped connection. */
 function retryEssentials() {
@@ -29,6 +58,8 @@ function retryEssentials() {
  */
 export function NetworkIncident() {
   const online = useOnline()
+  const m = useMessages(messages)
+  const locale = useLocale()
   const citizenToken = useCitizenSessionStore((s) => s.token)
   const filmToken = useAuthStore((s) => s.session?.token)
   const token = citizenToken ?? filmToken
@@ -64,32 +95,28 @@ export function NetworkIncident() {
   if (online && !broken) return null
 
   const savedAt = readEssential()?.savedAt
-  const when = savedAt ? formatSavedAt(savedAt) : ''
+  const when = savedAt ? formatSavedAt(savedAt, locale) : ''
   const contact = settings.data?.support_contact
   const numbers = settings.data?.emergency_numbers ?? []
 
   return (
-    <section className={styles.bar} role="status" aria-label="Connexion interrompue">
+    <section className={styles.bar} role="status" aria-label={m.label}>
       <p className={styles.kicker}>
         <Icon name="alert" size={16} />
-        {online ? 'Serveur injoignable' : 'Réseau interrompu'}
+        {online ? m.serverDown : m.networkDown}
       </p>
       <p className={styles.message}>
-        {online
-          ? 'Le serveur de la ville ne répond pas. L’envoi d’un signalement et le message à la mairie sont en attente.'
-          : 'Cet appareil n’a plus accès au réseau. L’envoi d’un signalement et le message à la mairie sont en attente.'}
+        {online ? m.serverMessage : m.networkMessage}
       </p>
       <p className={styles.still}>
-        {when
-          ? `Les annonces, les consignes, l’état des services et les coordonnées déjà reçus restent consultables. Dernière réception : ${when}.`
-          : 'Rien n’est encore enregistré sur cet appareil. Réessayez dès que la liaison revient : les annonces, les services et les numéros s’afficheront ici.'}
+        {when ? m.stillReadable(when) : m.nothingSaved}
       </p>
       {(contact || numbers.length > 0) && (
         <ul className={styles.numbers}>
           {contact && (
             <li>
               <a href={phoneHref(contact.phone)}>{contact.phone}</a>
-              <span>Mairie</span>
+              <span>{m.townHall}</span>
             </li>
           )}
           {numbers.map((item) => (
@@ -101,7 +128,7 @@ export function NetworkIncident() {
         </ul>
       )}
       <button type="button" onClick={retryEssentials} disabled={pending}>
-        {pending ? 'Nouvelle tentative…' : 'Réessayer'}
+        {pending ? m.retrying : m.retry}
       </button>
     </section>
   )

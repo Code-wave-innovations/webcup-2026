@@ -5,8 +5,9 @@ import { director } from '../director/director'
 import { useDirectorStore } from '../director/directorStore'
 import { speechProgress } from '../nova/behavior/novaBrain'
 import { isSpeaking, isVoiceBusy, speakMessage, stopSpeaking, subscribeSpeaking, warmSpeech } from '../../hooks/useSpeakMessage'
-import { DISTRICTS } from '../city/districts'
-import { POKE_QUIPS } from '../nova/behavior/quips'
+import { districtIntros } from '../city/districts'
+import { useLocale } from '../../i18n'
+import { pokeQuips } from '../nova/behavior/quips'
 import { nova, novaNow, useNovaStore } from '../nova/behavior/novaStore'
 import { soundEngine } from './soundEngine'
 import { useSoundStore } from './soundStore'
@@ -24,6 +25,7 @@ const KEY_EVERY = 25
  */
 export function SoundDirector() {
   const enabled = useSoundStore((s) => s.enabled)
+  const locale = useLocale()
 
   useEffect(() => {
     soundEngine.setEnabled(enabled)
@@ -46,9 +48,6 @@ export function SoundDirector() {
       mouth = isSpeaking()
       nova.talk(mouth)
     })
-    // the lines of the visit are generated ahead, so that they play as soon as they are said
-    void warmSpeech([...DISTRICTS.flatMap((d) => (d.intro ? [d.intro] : [])), ...POKE_QUIPS])
-
     // the interface: a glass tick on hover and press, a soft click per keystroke
     let hovered: Element | null = null
     let lastHover = 0
@@ -145,6 +144,11 @@ export function SoundDirector() {
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [enabled])
+
+  // the lines of the visit are generated ahead, so that they play as soon as they are said (again after a language switch)
+  useEffect(() => {
+    if (enabled) void warmSpeech([...districtIntros(locale), ...pokeQuips(locale)])
+  }, [enabled, locale])
 
   return null
 }

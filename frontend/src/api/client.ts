@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from 'axios'
+import { currentLocale } from '../i18n/locale'
 import { toApiError } from './errors'
-import { authTokenForSpace, expireSession } from './session'
+import { authTokenForSpace, expireSession, isStaffPath } from './session'
 
 // Fall back to the local backend when a variable is missing from .env
 export const BaseUrl = import.meta.env.VITE_BASE_URL || 'http://localhost:9002'
@@ -40,6 +41,13 @@ function authorize(instance: AxiosInstance) {
     else config.headers.delete('Authorization')
     const device = deviceId()
     if (device) config.headers.set('X-Device-Id', device)
+    // D14 / F27: the citizen space asks for content in the visitor's language (`?lang=` wins over the profile's on the server).
+    // The back-office's requests are left as they were.
+    if (!isStaffPath(window.location.pathname)) {
+      const locale = currentLocale()
+      config.headers.set('Accept-Language', locale)
+      config.params = { lang: locale, ...config.params }
+    }
     return config
   })
   instance.interceptors.response.use(undefined, (error: unknown) => {

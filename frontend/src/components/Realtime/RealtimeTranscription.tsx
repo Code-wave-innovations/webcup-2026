@@ -1,18 +1,34 @@
 import { useState } from 'react'
 import {
-    DEFAULT_LANGUAGE,
     useRealtimeTranscription,
     type RealtimeLanguage,
 } from '../../hooks/useRealtimeTranscription'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 
-const statusLabels: Record<string, string> = {
-    idle: 'Prêt',
-    connecting: 'Connexion…',
-    listening: 'Écoute en cours',
-    closed: 'Déconnecté',
-    error: 'Erreur',
-}
+const messages = defineMessages(
+    {
+        status: { idle: 'Prêt', connecting: 'Connexion…', listening: 'Écoute en cours', closed: 'Déconnecté', error: 'Erreur' },
+        eyebrow: 'Transcription temps réel',
+        title: 'Parlez, le texte apparaît',
+        language: 'Langue parlée',
+        start: 'Démarrer',
+        stop: 'Arrêter',
+        error: (code: string, message: string) => `${code} : ${message}`,
+        empty: 'La transcription apparaîtra ici…',
+    },
+    {
+        status: { idle: 'Ready', connecting: 'Connecting…', listening: 'Listening', closed: 'Disconnected', error: 'Error' },
+        eyebrow: 'Real-time transcription',
+        title: 'Speak, the text appears',
+        language: 'Spoken language',
+        start: 'Start',
+        stop: 'Stop',
+        error: (code, message) => `${code}: ${message}`,
+        empty: 'The transcription will appear here…',
+    },
+)
 
+/** Each language is named in itself. */
 const languageLabels: Record<RealtimeLanguage, string> = {
     fr: 'Français',
     en: 'English',
@@ -20,7 +36,10 @@ const languageLabels: Record<RealtimeLanguage, string> = {
 }
 
 function RealtimeTranscription() {
-    const [language, setLanguage] = useState<RealtimeLanguage>(DEFAULT_LANGUAGE)
+    const m = useMessages(messages)
+    // the spoken language starts as the interface's (Malagasy stays one click away)
+    const interfaceLocale = useLocale()
+    const [language, setLanguage] = useState<RealtimeLanguage>(interfaceLocale)
     const { start, stop, status, partialText, finalText, error } = useRealtimeTranscription({
         mode: 'BALANCED',
         language,
@@ -40,15 +59,16 @@ function RealtimeTranscription() {
 
             <section className="flex flex-1 flex-col items-center justify-center px-6 py-12">
                 <p className="mb-2 text-sm font-medium uppercase tracking-[0.48em] text-[#4A90FF]">
-                    Transcription temps réel
+                    {m.eyebrow}
                 </p>
                 <h1 className="mb-8 text-3xl font-semibold tracking-tight text-[#0A2342] sm:text-4xl">
-                    Parlez, le texte apparaît
+                    {m.title}
                 </h1>
 
                 <div className="mb-8 flex items-center gap-4">
                     <select
                         value={language}
+                        aria-label={m.language}
                         onChange={(e) => setLanguage(e.target.value as RealtimeLanguage)}
                         disabled={listening || status === 'connecting'}
                         className="rounded-full border border-[#4A90FF]/40 px-4 py-3 text-sm font-semibold text-[#0A2342] transition hover:border-[#4A90FF] disabled:cursor-not-allowed disabled:opacity-50"
@@ -65,7 +85,7 @@ function RealtimeTranscription() {
                         disabled={listening || status === 'connecting'}
                         className="rounded-full bg-[#4A90FF] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0A2342] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        Démarrer
+                        {m.start}
                     </button>
                     <button
                         type="button"
@@ -73,12 +93,12 @@ function RealtimeTranscription() {
                         disabled={!listening}
                         className="rounded-full border border-[#4A90FF]/40 px-8 py-3 text-sm font-semibold text-[#0A2342] transition hover:border-[#4A90FF] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        Arrêter
+                        {m.stop}
                     </button>
                 </div>
 
                 <p className="mb-6 text-sm uppercase tracking-[0.3em] text-[#0A2342]/60">
-                    {statusLabels[status] ?? status}
+                    {m.status[status]}
                     {listening && (
                         <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-500 align-middle" />
                     )}
@@ -86,7 +106,7 @@ function RealtimeTranscription() {
 
                 {error && (
                     <p className="mb-6 max-w-2xl rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
-                        {error.code} : {error.message}
+                        {m.error(error.code, error.message)}
                     </p>
                 )}
 
@@ -100,7 +120,7 @@ function RealtimeTranscription() {
                         </p>
                     ) : (
                         <p className="text-sm text-[#0A2342]/40">
-                            La transcription apparaîtra ici…
+                            {m.empty}
                         </p>
                     )}
                 </div>

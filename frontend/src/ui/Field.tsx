@@ -1,5 +1,8 @@
 import { useId, type ReactNode } from 'react'
+import { defineMessages, useMessages } from '../i18n'
 import styles from './Field.module.css'
+
+const messages = defineMessages({ required: ' (obligatoire)' }, { required: ' (required)' })
 
 /** Attributes the field hands to its control so label, hint and error are announced with it (F42). */
 export interface ControlProps {
@@ -31,6 +34,7 @@ interface FieldProps {
 /** Label, control, help and error message, styled for the interface glass. */
 export function Field({ label, htmlFor, group, hint, required, error, errorId, children }: FieldProps) {
   const autoId = useId()
+  const m = useMessages(messages)
   const controlId = htmlFor ?? `${autoId}-control`
   const hintId = hint ? `${controlId}-hint` : undefined
   const messageId = error ? (errorId ?? `${controlId}-error`) : undefined
@@ -43,7 +47,7 @@ export function Field({ label, htmlFor, group, hint, required, error, errorId, c
   const caption = (
     <>
       {label}
-      {required && <span className={styles.required}> (obligatoire)</span>}
+      {required && <span className={styles.required}>{m.required}</span>}
     </>
   )
   const help = hint ? (

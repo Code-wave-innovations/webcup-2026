@@ -7,6 +7,7 @@ import { notificationKeys, useMarkRead } from '../../api/notifications'
 import { useCitizenSignedIn } from '../../api/session'
 import type { NotificationPage } from '../../api/types'
 import { useNow } from '../../hooks/useNow'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { capitalize } from '../../lib/format'
 import { Icon } from '../../ui/Icon'
 import { countdown, zoneNote } from './appointmentModel'
@@ -14,6 +15,29 @@ import styles from './Reminder.module.css'
 
 const REMINDER = 'APPOINTMENT_REMINDER'
 const POLL_MS = 30_000
+
+const messages = defineMessages(
+  {
+    kicker: 'Rappel de rendez-vous',
+    bring: 'À apporter :',
+    see: 'Voir le rendez-vous',
+    gotIt: 'Compris',
+    others: (n: number) => ` (${n} autre${n > 1 ? 's' : ''})`,
+    optInOn: 'Rappels aussi dans les notifications du navigateur',
+    optInDenied: 'Notifications du navigateur bloquées : les rappels restent visibles dans Nova.',
+    optInAsk: 'Recevoir aussi les rappels du navigateur',
+  },
+  {
+    kicker: 'Appointment reminder',
+    bring: 'To bring:',
+    see: 'View the appointment',
+    gotIt: 'Got it',
+    others: (n) => ` (${n} more)`,
+    optInOn: 'Reminders also arrive as browser notifications',
+    optInDenied: 'Browser notifications are blocked: reminders stay visible in Nova.',
+    optInAsk: 'Also get reminders from the browser',
+  },
+)
 
 /**
  * F40: the reminder the server sends before an appointment reaches the resident wherever they are in
@@ -82,6 +106,8 @@ function ReminderCard({
   onOpen: () => void
 }) {
   const now = useNow()
+  const m = useMessages(messages)
+  const locale = useLocale()
   const lookup = useAppointment(appointmentId)
   const appointment = lookup.data
   const when = appointment?.when
@@ -106,7 +132,10 @@ function ReminderCard({
         <Icon name="bell" size={22} />
       </span>
       <div className={styles.text}>
-        <p className={styles.kicker}>Rappel de rendez-vous{when && ` · ${countdown(when.starts_at, now)}`}</p>
+        <p className={styles.kicker}>
+          {m.kicker}
+          {when && ` · ${countdown(when.starts_at, now, locale)}`}
+        </p>
         <p id="reminder-title" className={styles.title}>
           {appointment ? appointment.service.name : title}
         </p>
@@ -114,7 +143,7 @@ function ReminderCard({
           <p className={styles.when}>
             <strong>{capitalize(when.day_label)}</strong>
             <span>
-              {when.start_time} → {when.end_time} · {zoneNote(when.time_zone)}
+              {when.start_time} → {when.end_time} · {zoneNote(when.time_zone, locale)}
             </span>
             <span>{appointment!.where.location}</span>
           </p>
@@ -123,15 +152,16 @@ function ReminderCard({
         )}
         {appointment && appointment.preparation.bring.length > 0 && (
           <p className={styles.bring}>
-            <Icon name="file" size={14} /> À apporter : {appointment.preparation.bring.join(' · ')}
+            <Icon name="file" size={14} /> {m.bring} {appointment.preparation.bring.join(' · ')}
           </p>
         )}
         <div className={styles.actions}>
           <button type="button" className={styles.primary} onClick={onOpen}>
-            Voir le rendez-vous
+            {m.see}
           </button>
           <button type="button" className={styles.secondary} onClick={onDismiss}>
-            Compris{others > 0 ? ` (${others} autre${others > 1 ? 's' : ''})` : ''}
+            {m.gotIt}
+            {others > 0 ? m.others(others) : ''}
           </button>
         </div>
       </div>
@@ -158,16 +188,17 @@ export function BrowserReminderOptIn() {
     () => 'unsupported',
   )
   const [asking, setAsking] = useState(false)
+  const m = useMessages(messages)
 
   if (permission === 'unsupported') return null
   if (permission === 'granted')
     return (
       <p className={styles.optIn} data-state="on">
-        <Icon name="check" size={14} /> Rappels aussi dans les notifications du navigateur
+        <Icon name="check" size={14} /> {m.optInOn}
       </p>
     )
   if (permission === 'denied')
-    return <p className={styles.optIn}>Notifications du navigateur bloquées : les rappels restent visibles dans Nova.</p>
+    return <p className={styles.optIn}>{m.optInDenied}</p>
   return (
     <button
       type="button"
@@ -181,7 +212,7 @@ export function BrowserReminderOptIn() {
         })
       }}
     >
-      <Icon name="bell" size={15} /> Recevoir aussi les rappels du navigateur
+      <Icon name="bell" size={15} /> {m.optInAsk}
     </button>
   )
 }

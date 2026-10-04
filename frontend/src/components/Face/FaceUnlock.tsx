@@ -2,16 +2,43 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import logo2 from '../../assets/logo/code-wave-high-resolution-logo-transparent.png'
 import { useFaceDetection } from '../../hooks/useFaceDetection'
+import { defineMessages, useMessages } from '../../i18n'
 import Webcam from './Webcam'
 
+const messages = defineMessages(
+    {
+        verified: 'Visage vérifié',
+        initialising: 'Initialisation caméra…',
+        detected: 'Visage détecté',
+        placeFace: 'Placez votre visage face à la caméra',
+        searching: 'Recherche…',
+        noFace: 'Aucun visage',
+        intro: 'Reconnaissance faciale — le scan confirme le visage dès qu’il est détecté.',
+        cameraOn: 'Caméra active',
+        cameraStarting: 'Caméra…',
+    },
+    {
+        verified: 'Face verified',
+        initialising: 'Starting the camera…',
+        detected: 'Face detected',
+        placeFace: 'Place your face in front of the camera',
+        searching: 'Searching…',
+        noFace: 'No face',
+        intro: 'Face recognition — the scan confirms the face as soon as it is detected.',
+        cameraOn: 'Camera on',
+        cameraStarting: 'Camera…',
+    },
+)
+
 function VerifiedSeal() {
+    const m = useMessages(messages)
     return (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
             <svg
                 viewBox="0 0 100 100"
                 className="verified-seal h-28 w-28 drop-shadow-[0_6px_14px_rgba(0,0,0,0.28)] sm:h-32 sm:w-32"
                 role="img"
-                aria-label="Visage vérifié"
+                aria-label={m.verified}
             >
                 <path
                     d="M74.5 42.7 A 30 30 0 1 1 60.1 25.5"
@@ -34,25 +61,27 @@ function VerifiedSeal() {
 }
 
 export default function FaceUnlock() {
+    const m = useMessages(messages)
     const videoRef = useRef<HTMLVideoElement>(null)
     const [ready, setReady] = useState(false)
-    const [status, setStatus] = useState('Initialisation caméra…')
+    // the camera's error, if any (the other statuses follow the language)
+    const [cameraError, setCameraError] = useState<string | null>(null)
 
     const { faceDetected, modelReady } = useFaceDetection(videoRef, {
         enabled: ready,
     })
 
     const liveStatus = !ready
-        ? status
+        ? cameraError ?? m.initialising
         : faceDetected
-            ? 'Visage détecté'
-            : 'Placez votre visage face à la caméra'
+            ? m.detected
+            : m.placeFace
 
     const faceLabel = !modelReady
-        ? 'Recherche…'
+        ? m.searching
         : faceDetected
-            ? 'Visage détecté'
-            : 'Aucun visage'
+            ? m.detected
+            : m.noFace
 
     return (
         <main className="relative isolate min-h-svh overflow-hidden bg-[#0a2342] text-white">
@@ -79,7 +108,7 @@ export default function FaceUnlock() {
                     CodeWave
                 </h1>
                 <p className="mb-8 max-w-md text-center text-sm text-white/70">
-                    Reconnaissance faciale — le scan confirme le visage dès qu’il est détecté.
+                    {m.intro}
                 </p>
 
                 <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-black/40 shadow-[0_0_0_1px_#4a90ff33]">
@@ -87,11 +116,11 @@ export default function FaceUnlock() {
                         videoRef={videoRef}
                         onReady={() => {
                             setReady(true)
-                            setStatus('Placez votre visage face à la caméra')
+                            setCameraError(null)
                         }}
                         onError={(message) => {
                             setReady(false)
-                            setStatus(message)
+                            setCameraError(message)
                         }}
                     />
                     <div
@@ -108,7 +137,7 @@ export default function FaceUnlock() {
                         <span
                             className={`h-1.5 w-1.5 rounded-full ${ready ? 'bg-emerald-400' : 'bg-red-400'}`}
                         />
-                        {ready ? 'Caméra active' : 'Caméra…'}
+                        {ready ? m.cameraOn : m.cameraStarting}
                     </div>
                     {ready && (
                         <div className="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 text-[12px] uppercase tracking-[0.2em]">

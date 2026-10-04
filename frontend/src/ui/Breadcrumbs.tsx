@@ -1,5 +1,8 @@
 import { Link } from 'react-router'
+import { defineMessages, useMessages } from '../i18n'
 import styles from './Breadcrumbs.module.css'
+
+const messages = defineMessages({ label: 'Fil d’Ariane' }, { label: 'Breadcrumb' })
 
 export interface Crumb {
   label: string
@@ -9,8 +12,9 @@ export interface Crumb {
 
 /** D15: where the visitor is, each level above being a link back to it. */
 export function Breadcrumbs({ items }: { items: Crumb[] }) {
+  const m = useMessages(messages)
   return (
-    <nav className={styles.breadcrumbs} aria-label="Fil d’Ariane">
+    <nav className={styles.breadcrumbs} aria-label={m.label}>
       <ol>
         {items.map((item, i) => (
           <li key={`${i}-${item.label}`}>

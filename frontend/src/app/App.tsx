@@ -4,6 +4,7 @@ import { AirlockPage } from '../pages/AirlockPage/AirlockPage'
 import { CityPage } from '../pages/CityPage/CityPage'
 import { ConsoleLayout } from '../pages/Console/ConsoleLayout'
 import { NotFoundPage } from '../pages/Console/NotFoundPage'
+import { LocaleSync } from '../i18n/LocaleSync'
 import { FilmLayout } from './FilmLayout'
 import { RequireRole, RequireSession } from './guards'
 
@@ -29,6 +30,7 @@ const ComptePage = lazy(() => import('../pages/Espace/ComptePage'))
 function App() {
   return (
     <BrowserRouter>
+      <LocaleSync />
       <Routes>
         <Route element={<FilmLayout />}>
           <Route index element={<AirlockPage />} />

@@ -5,6 +5,7 @@ import { useProcedures } from '../../api/procedures'
 import { useCatalogue } from '../../api/services'
 import type { Appointment, AppointmentSlot } from '../../api/types'
 import { useNow } from '../../hooks/useNow'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { Button } from '../../ui/Button'
 import { Field } from '../../ui/Field'
 import { GlassPanel } from '../../ui/GlassPanel'
@@ -13,14 +14,145 @@ import { hexBurst } from '../../ui/hexBurst'
 import text from '../../ui/text.module.css'
 import { availabilityView } from '../services/availability'
 import { ServiceGlyph } from '../services/ServiceGlyph'
-import { closedReason, dayPart, documentsOf, formatCityMoment, groupByDay, nextDays, openSlots, REMINDER_OPTIONS, reminderLabel, reminderPlan, zoneNote, type DayPart } from './appointmentModel'
+import {
+  closedReason,
+  dayPart,
+  dayPartLabel,
+  documentsOf,
+  formatCityMoment,
+  groupByDay,
+  nextDays,
+  openSlots,
+  reminderLabel,
+  reminderOptions,
+  reminderPlan,
+  zoneNote,
+  type DayPart,
+} from './appointmentModel'
 import { AppointmentTicket } from './AppointmentTicket'
 import styles from './Booking.module.css'
 
 type Step = 0 | 1 | 2 | 3
-const STEPS = ['Service', 'Jour', 'Heure', 'Préparation'] as const
+const STEP_COUNT = 4
 const PARTS: DayPart[] = ['Matin', 'Après-midi', 'Soir']
 const DEFAULT_REMINDER = 1440
+
+const plural = (n: number, one: string, many: string) => (n > 1 ? many : one)
+const pluralEn = (n: number, one: string, many: string) => (n === 1 ? one : many)
+
+const messages = defineMessages(
+  {
+    steps: ['Service', 'Jour', 'Heure', 'Préparation'],
+    stepsLabel: 'Étapes de la prise de rendez-vous',
+    reasonTooShort: 'Dites en quelques mots l’objet du rendez-vous : l’agent le prépare.',
+    interruptedSlot: (reason: string | null, back: string | null) =>
+      `Le service est interrompu sur ce créneau${reason ? ` : ${reason}` : ''}${back ? ` Retour prévu ${back}.` : ''} Choisissez une autre heure.`,
+    slotTaken: 'Ce créneau vient d’être réservé par quelqu’un d’autre. Choisissez une autre heure : la liste est à jour.',
+    opening: 'Ouverture de l’agenda de la ville…',
+    noService: 'Aucun service n’ouvre de créneau dans les deux prochaines semaines. Revenez bientôt, ou écrivez à la mairie.',
+    whichService: 'Avec quel service ?',
+    freeSlots: (n: number) => `${n} ${plural(n, 'créneau libre', 'créneaux libres')} sur 14 jours`,
+    whichDay: 'Quel jour ?',
+    nextTwoWeeks: (zone: string) => `Les deux prochaines semaines, en ${zone}.`,
+    days: 'Jours',
+    dayFree: (n: number) => `${n} ${plural(n, 'créneau libre', 'créneaux libres')}`,
+    today: 'auj.',
+    free: (n: number) => `${n} ${plural(n, 'libre', 'libres')}`,
+    whatTime: (day: string) => `À quelle heure, ${day} ?`,
+    hoursIn: (zone: string) => `Heures de début et de fin en ${zone}.`,
+    blockedSlot: 'indisponible : service interrompu',
+    withAgent: (name: string) => `, avec ${name}`,
+    places: (n: number) => `${n} ${plural(n, 'place', 'places')}`,
+    interrupted: 'Service interrompu',
+    otherDay: 'Choisir un autre jour',
+    prepare: 'Préparer votre venue',
+    reasonLabel: 'Objet du rendez-vous',
+    reasonHint: 'Quelques mots suffisent : l’agent prépare votre dossier.',
+    reasonPlaceholder: 'Ex. : demande d’acte de naissance pour mon fils',
+    procedureLabel: 'Démarche liée (facultatif)',
+    procedureHint: 'Les pièces à apporter s’ajoutent à votre convocation.',
+    none: 'Aucune',
+    reminderLegend: 'Rappel avant le rendez-vous',
+    reminderImmediate: 'Le rendez-vous est proche : votre confirmation vous servira de rappel.',
+    reminderPlanned: (when: string) => `Rappel prévu ${when}, dans votre espace Nova.`,
+    noReminder: 'Aucun rappel ne sera envoyé.',
+    toPrepare: 'À préparer',
+    booking: 'Réservation…',
+    confirm: 'Confirmer le rendez-vous',
+    changeTime: 'Changer d’heure',
+    summary: 'Récapitulatif',
+    yourAppointment: 'Votre rendez-vous',
+    recapService: 'Service',
+    recapWhen: 'Quand',
+    fromTo: (start: string, end: string, zone: string) => `de ${start} à ${end} (${zone})`,
+    recapWhere: 'Où',
+    recapWith: 'Avec',
+    anAgent: 'Un agent du service',
+    recapReminder: 'Rappel',
+    question: 'Une question avant de venir ?',
+    interruptedPart: 'Service interrompu sur une partie de la journée.',
+    backAt: (moment: string) => ` Retour prévu ${moment}.`,
+    meanwhile: (alternative: string) => ` En attendant : ${alternative}`,
+    toChoose: 'À choisir',
+    confirmed: 'Rendez-vous confirmé',
+    again: 'Prendre un autre rendez-vous',
+  },
+  {
+    steps: ['Service', 'Day', 'Time', 'Preparation'],
+    stepsLabel: 'Booking steps',
+    reasonTooShort: 'Say in a few words what the appointment is about: the agent prepares it.',
+    interruptedSlot: (reason, back) => `The service is interrupted during this slot${reason ? `: ${reason}` : '.'}${back ? ` Expected back ${back}.` : ''} Choose another time.`,
+    slotTaken: 'Someone else has just booked this slot. Choose another time: the list is up to date.',
+    opening: 'Opening the city’s calendar…',
+    noService: 'No service is opening slots in the next two weeks. Come back soon, or write to the city hall.',
+    whichService: 'With which service?',
+    freeSlots: (n) => `${n} ${pluralEn(n, 'free slot', 'free slots')} over 14 days`,
+    whichDay: 'Which day?',
+    nextTwoWeeks: (zone) => `The next two weeks, in ${zone}.`,
+    days: 'Days',
+    dayFree: (n) => `${n} ${pluralEn(n, 'free slot', 'free slots')}`,
+    today: 'today',
+    free: (n) => `${n} free`,
+    whatTime: (day) => `What time on ${day}?`,
+    hoursIn: (zone) => `Start and end times in ${zone}.`,
+    blockedSlot: 'unavailable: service interrupted',
+    withAgent: (name) => `, with ${name}`,
+    places: (n) => `${n} ${pluralEn(n, 'place', 'places')}`,
+    interrupted: 'Service interrupted',
+    otherDay: 'Choose another day',
+    prepare: 'Prepare your visit',
+    reasonLabel: 'Subject of the appointment',
+    reasonHint: 'A few words are enough: the agent prepares your file.',
+    reasonPlaceholder: 'E.g. birth certificate request for my son',
+    procedureLabel: 'Related procedure (optional)',
+    procedureHint: 'The documents to bring are added to your appointment notice.',
+    none: 'None',
+    reminderLegend: 'Reminder before the appointment',
+    reminderImmediate: 'The appointment is close: your confirmation will serve as a reminder.',
+    reminderPlanned: (when) => `Reminder planned ${when}, in your Nova space.`,
+    noReminder: 'No reminder will be sent.',
+    toPrepare: 'To prepare',
+    booking: 'Booking…',
+    confirm: 'Confirm the appointment',
+    changeTime: 'Change the time',
+    summary: 'Summary',
+    yourAppointment: 'Your appointment',
+    recapService: 'Service',
+    recapWhen: 'When',
+    fromTo: (start, end, zone) => `from ${start} to ${end} (${zone})`,
+    recapWhere: 'Where',
+    recapWith: 'With',
+    anAgent: 'An agent of the service',
+    recapReminder: 'Reminder',
+    question: 'A question before you come?',
+    interruptedPart: 'Service interrupted for part of the day.',
+    backAt: (moment) => ` Expected back ${moment}.`,
+    meanwhile: (alternative) => ` In the meantime: ${alternative}`,
+    toChoose: 'To choose',
+    confirmed: 'Appointment confirmed',
+    again: 'Book another appointment',
+  },
+)
 
 /**
  * F39 / F40: booking an appointment with an agent in four steps, with a summary that never leaves the
@@ -29,6 +161,8 @@ const DEFAULT_REMINDER = 1440
  */
 export function BookingFlow({ initialService }: { initialService?: string | null }) {
   const now = useNow()
+  const m = useMessages(messages)
+  const locale = useLocale()
   const slots = useSlots(null)
   const catalogue = useCatalogue({ category: null, limit: 100 })
   const book = useBookAppointment()
@@ -61,14 +195,15 @@ export function BookingFlow({ initialService }: { initialService?: string | null
   const timeZone = all[0]?.time_zone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
   const ofService = useMemo(() => all.filter((s) => s.service_id === chosenService), [all, chosenService])
   const byDay = useMemo(() => groupByDay(ofService), [ofService])
-  const days = useMemo(() => nextDays(now, timeZone), [now, timeZone])
+  // the day names follow the visitor's language
+  const days = useMemo(() => nextDays(now, timeZone), [now, timeZone, locale]) // eslint-disable-line react-hooks/exhaustive-deps
   const slot = ofService.find((s) => s.id === slotId) ?? null
   const day = days.find((d) => d.key === dayKey) ?? null
   const service = offered.find((o) => o.service.id === chosenService)?.service ?? null
   const details = catalogue.data?.data.find((s) => s.id === chosenService)
   const procedures = useProcedures(chosenService)
   const procedure = procedures.data?.find((p) => p.id === procedureId) ?? null
-  const plan = slot ? reminderPlan(slot.starts_at, reminder, timeZone, now) : null
+  const plan = slot ? reminderPlan(slot.starts_at, reminder, timeZone, now, locale) : null
 
   const go = (next: Step) => {
     setNotice(null)
@@ -96,7 +231,7 @@ export function BookingFlow({ initialService }: { initialService?: string | null
   const confirm = () => {
     if (!slot) return
     if (reason.trim().length < 3) {
-      setReasonError('Dites en quelques mots l’objet du rendez-vous : l’agent le prépare.')
+      setReasonError(m.reasonTooShort)
       document.getElementById('booking-reason')?.focus()
       return
     }
@@ -116,9 +251,7 @@ export function BookingFlow({ initialService }: { initialService?: string | null
           // F38: the service was interrupted meanwhile: why, and when it is back
           if (api.code === 'SERVICE_UNAVAILABLE') {
             const details = api.details as { reason?: string; back_at?: string | null } | undefined
-            setNotice(
-              `Le service est interrompu sur ce créneau${details?.reason ? ` : ${details.reason}` : ''}${details?.back_at ? ` Retour prévu ${formatCityMoment(details.back_at, timeZone)}.` : ''} Choisissez une autre heure.`,
-            )
+            setNotice(m.interruptedSlot(details?.reason ?? null, details?.back_at ? formatCityMoment(details.back_at, timeZone, locale) : null))
             setSlotId(null)
             void slots.refetch()
             setStep(2)
@@ -127,7 +260,7 @@ export function BookingFlow({ initialService }: { initialService?: string | null
           if (api.code === 'SLOT_FULL') {
             setSlotId(null)
             void slots.refetch()
-            setNotice('Ce créneau vient d’être réservé par quelqu’un d’autre. Choisissez une autre heure : la liste est à jour.')
+            setNotice(m.slotTaken)
             setStep(2)
             return
           }
@@ -139,17 +272,17 @@ export function BookingFlow({ initialService }: { initialService?: string | null
 
   if (booked) return <Confirmation appointment={booked} onAgain={() => window.location.reload()} />
 
-  if (slots.isPending) return <GlassPanel className={styles.loading} aria-busy="true">Ouverture de l’agenda de la ville…</GlassPanel>
+  if (slots.isPending) return <GlassPanel className={styles.loading} aria-busy="true">{m.opening}</GlassPanel>
   if (slots.isError) return <GlassPanel><p className={text.error}>{messageFor(slots.error)}</p></GlassPanel>
-  if (offered.length === 0) return <GlassPanel><p>Aucun service n’ouvre de créneau dans les deux prochaines semaines. Revenez bientôt, ou écrivez à la mairie.</p></GlassPanel>
+  if (offered.length === 0) return <GlassPanel><p>{m.noService}</p></GlassPanel>
 
   return (
     <div className={styles.flow}>
-      <ol className={styles.rail} aria-label="Étapes de la prise de rendez-vous" style={{ '--progress': currentStep / (STEPS.length - 1) } as CSSProperties}>
-        {STEPS.map((label, i) => {
+      <ol className={styles.rail} aria-label={m.stepsLabel} style={{ '--progress': currentStep / (STEP_COUNT - 1) } as CSSProperties}>
+        {m.steps.map((label, i) => {
           const reachable = i === 0 || (i === 1 && chosenService !== null) || (i === 2 && dayKey !== null) || (i === 3 && slot !== null)
           return (
-            <li key={label} data-state={i < currentStep ? 'done' : i === currentStep ? 'current' : 'next'}>
+            <li key={i} data-state={i < currentStep ? 'done' : i === currentStep ? 'current' : 'next'}>
               <button type="button" disabled={!reachable || i === currentStep} onClick={() => go(i as Step)} aria-current={i === currentStep ? 'step' : undefined}>
                 <span className={styles.node} aria-hidden="true">
                   {i < currentStep ? <Icon name="check" size={14} /> : i + 1}
@@ -171,11 +304,11 @@ export function BookingFlow({ initialService }: { initialService?: string | null
 
           {currentStep === 0 && (
             <section className={styles.step} key="service" aria-labelledby="step-title">
-              <h2 id="step-title">Avec quel service ?</h2>
+              <h2 id="step-title">{m.whichService}</h2>
               <div className={styles.services}>
                 {offered.map(({ service: s, count }, i) => {
                   const catalogueEntry = catalogue.data?.data.find((c) => c.id === s.id)
-                  const view = catalogueEntry ? availabilityView(catalogueEntry.availability) : null
+                  const view = catalogueEntry ? availabilityView(catalogueEntry.availability, locale) : null
                   return (
                     <button
                       key={s.id}
@@ -189,9 +322,7 @@ export function BookingFlow({ initialService }: { initialService?: string | null
                         <ServiceGlyph name={catalogueEntry?.icon} size={24} />
                       </span>
                       <strong>{s.name}</strong>
-                      <small>
-                        {count} créneau{count > 1 ? 'x' : ''} libre{count > 1 ? 's' : ''} sur 14 jours
-                      </small>
+                      <small>{m.freeSlots(count)}</small>
                       {view && view.status !== 'AVAILABLE' && (
                         <small className={styles.warn}>
                           <Icon name="alert" size={13} /> {view.label} {view.detail}
@@ -206,12 +337,12 @@ export function BookingFlow({ initialService }: { initialService?: string | null
 
           {currentStep === 1 && (
             <section className={styles.step} key="day" aria-labelledby="step-title">
-              <h2 id="step-title">Quel jour ?</h2>
-              <p className={text.note}>Les deux prochaines semaines, en {zoneNote(timeZone)}.</p>
-              <div className={styles.days} role="group" aria-label="Jours">
+              <h2 id="step-title">{m.whichDay}</h2>
+              <p className={text.note}>{m.nextTwoWeeks(zoneNote(timeZone, locale))}</p>
+              <div className={styles.days} role="group" aria-label={m.days}>
                 {days.map((d, i) => {
                   const list = openSlots(byDay.get(d.key))
-                  const closed = closedReason(d, byDay.get(d.key))
+                  const closed = closedReason(d, byDay.get(d.key), locale)
                   return (
                     <button
                       key={d.key}
@@ -219,11 +350,11 @@ export function BookingFlow({ initialService }: { initialService?: string | null
                       className={styles.day}
                       aria-pressed={dayKey === d.key}
                       disabled={closed !== null}
-                      aria-label={`${d.label}${closed ? ` : ${closed}` : ` : ${list.length} créneau${list.length > 1 ? 'x' : ''} libre${list.length > 1 ? 's' : ''}`}`}
+                      aria-label={`${d.label}${locale === 'en' ? ':' : ' :'} ${closed ?? m.dayFree(list.length)}`}
                       style={{ '--i': i } as CSSProperties}
                       onClick={() => chooseDay(d.key)}
                     >
-                      <span className={styles.weekday}>{i === 0 ? 'auj.' : d.weekday}</span>
+                      <span className={styles.weekday}>{i === 0 ? m.today : d.weekday}</span>
                       <span className={styles.date}>{d.date}</span>
                       <span className={styles.month}>{d.month}</span>
                       {closed ? (
@@ -231,7 +362,7 @@ export function BookingFlow({ initialService }: { initialService?: string | null
                       ) : (
                         <small className={styles.open}>
                           <i style={{ '--fill': Math.min(1, list.length / 8) } as CSSProperties} aria-hidden="true" />
-                          {list.length} libre{list.length > 1 ? 's' : ''}
+                          {m.free(list.length)}
                         </small>
                       )}
                     </button>
@@ -243,8 +374,8 @@ export function BookingFlow({ initialService }: { initialService?: string | null
 
           {currentStep === 2 && day && (
             <section className={styles.step} key="time" aria-labelledby="step-title">
-              <h2 id="step-title">À quelle heure, {day.label} ?</h2>
-              <p className={text.note}>Heures de début et de fin en {zoneNote(timeZone)}.</p>
+              <h2 id="step-title">{m.whatTime(day.label)}</h2>
+              <p className={text.note}>{m.hoursIn(zoneNote(timeZone, locale))}</p>
               {(byDay.get(day.key) ?? []).find((s) => s.blocked) && (
                 <InterruptionNotice slot={(byDay.get(day.key) ?? []).find((s) => s.blocked)!} timeZone={timeZone} />
               )}
@@ -253,8 +384,8 @@ export function BookingFlow({ initialService }: { initialService?: string | null
                 if (list.length === 0) return null
                 return (
                   <div key={part} className={styles.part}>
-                    <p className={styles.partLabel}>{part}</p>
-                    <div className={styles.times} role="group" aria-label={part}>
+                    <p className={styles.partLabel}>{dayPartLabel(part, locale)}</p>
+                    <div className={styles.times} role="group" aria-label={dayPartLabel(part, locale)}>
                       {list.map((s, i) => (
                         <button
                           key={s.id}
@@ -262,7 +393,7 @@ export function BookingFlow({ initialService }: { initialService?: string | null
                           className={styles.time}
                           aria-pressed={slotId === s.id}
                           disabled={s.blocked !== null}
-                          aria-label={`${s.label}, ${s.blocked ? 'indisponible : service interrompu' : `${s.location}${s.agent ? `, avec ${s.agent.name} ${s.agent.last_name}` : ''}, ${s.remaining} place${s.remaining > 1 ? 's' : ''}`}`}
+                          aria-label={`${s.label}, ${s.blocked ? m.blockedSlot : `${s.location}${s.agent ? m.withAgent(`${s.agent.name} ${s.agent.last_name}`) : ''}, ${m.places(s.remaining)}`}`}
                           style={{ '--i': i } as CSSProperties}
                           onClick={() => chooseSlot(s.id)}
                         >
@@ -273,10 +404,10 @@ export function BookingFlow({ initialService }: { initialService?: string | null
                           </strong>
                           <small>
                             {s.blocked ? (
-                              'Service interrompu'
+                              m.interrupted
                             ) : (
                               <>
-                                {s.remaining} place{s.remaining > 1 ? 's' : ''}
+                                {m.places(s.remaining)}
                                 {s.agent && ` · ${s.agent.name} ${s.agent.last_name.charAt(0)}.`}
                               </>
                             )}
@@ -288,21 +419,21 @@ export function BookingFlow({ initialService }: { initialService?: string | null
                 )
               })}
               <Button variant="ghost" small onClick={() => go(1)}>
-                Choisir un autre jour
+                {m.otherDay}
               </Button>
             </section>
           )}
 
           {currentStep === 3 && slot && (
             <section className={styles.step} key="details" aria-labelledby="step-title">
-              <h2 id="step-title">Préparer votre venue</h2>
-              <Field label="Objet du rendez-vous" htmlFor="booking-reason" required error={reasonError} hint="Quelques mots suffisent : l’agent prépare votre dossier.">
-                <textarea id="booking-reason" className={styles.textarea} rows={3} maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex. : demande d’acte de naissance pour mon fils" />
+              <h2 id="step-title">{m.prepare}</h2>
+              <Field label={m.reasonLabel} htmlFor="booking-reason" required error={reasonError} hint={m.reasonHint}>
+                <textarea id="booking-reason" className={styles.textarea} rows={3} maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={m.reasonPlaceholder} />
               </Field>
               {(procedures.data?.length ?? 0) > 0 && (
-                <Field label="Démarche liée (facultatif)" htmlFor="booking-procedure" hint="Les pièces à apporter s’ajoutent à votre convocation.">
+                <Field label={m.procedureLabel} htmlFor="booking-procedure" hint={m.procedureHint}>
                   <select id="booking-procedure" className={styles.select} value={procedureId ?? ''} onChange={(e) => setProcedureId(e.target.value ? Number(e.target.value) : null)}>
-                    <option value="">Aucune</option>
+                    <option value="">{m.none}</option>
                     {procedures.data!.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.title}
@@ -313,9 +444,9 @@ export function BookingFlow({ initialService }: { initialService?: string | null
               )}
 
               <fieldset className={styles.reminders}>
-                <legend>Rappel avant le rendez-vous</legend>
+                <legend>{m.reminderLegend}</legend>
                 <div className={styles.reminderGrid}>
-                  {REMINDER_OPTIONS.map((option) => (
+                  {reminderOptions(locale).map((option) => (
                     <label key={String(option.value)} className={styles.reminder} data-checked={reminder === option.value}>
                       <input type="radio" name="reminder" checked={reminder === option.value} onChange={() => setReminder(option.value)} />
                       <Icon name={option.value === null ? 'close' : 'bell'} size={18} />
@@ -328,15 +459,15 @@ export function BookingFlow({ initialService }: { initialService?: string | null
                   <Icon name="bell" size={14} />
                   {plan?.when
                     ? plan.immediate
-                      ? 'Le rendez-vous est proche : votre confirmation vous servira de rappel.'
-                      : `Rappel prévu ${plan.when}, dans votre espace Nova.`
-                    : 'Aucun rappel ne sera envoyé.'}
+                      ? m.reminderImmediate
+                      : m.reminderPlanned(plan.when)
+                    : m.noReminder}
                 </p>
               </fieldset>
 
               {(slot.preparation_notes || procedure) && (
                 <div className={styles.prepare}>
-                  <p className={styles.partLabel}>À préparer</p>
+                  <p className={styles.partLabel}>{m.toPrepare}</p>
                   {slot.preparation_notes && <p>{slot.preparation_notes}</p>}
                   {documentsOf(procedure?.required_documents).length > 0 && (
                     <ul>
@@ -352,28 +483,33 @@ export function BookingFlow({ initialService }: { initialService?: string | null
 
               <div className={styles.submitRow}>
                 <Button ref={submitRef} onClick={confirm} disabled={book.isPending} aria-busy={book.isPending} data-nova-look>
-                  {book.isPending ? 'Réservation…' : 'Confirmer le rendez-vous'}
+                  {book.isPending ? m.booking : m.confirm}
                 </Button>
                 <Button variant="ghost" onClick={() => go(2)}>
-                  Changer d’heure
+                  {m.changeTime}
                 </Button>
               </div>
             </section>
           )}
         </GlassPanel>
 
-        <GlassPanel className={styles.summary} aria-label="Récapitulatif" data-ready={slot !== null || undefined}>
-          <p className={styles.summaryKicker}>Votre rendez-vous</p>
+        <GlassPanel className={styles.summary} aria-label={m.summary} data-ready={slot !== null || undefined}>
+          <p className={styles.summaryKicker}>{m.yourAppointment}</p>
           <dl className={styles.recap}>
-            <RecapLine icon="hex" label="Service" value={service?.name} />
-            <RecapLine icon="calendar" label="Quand" value={slot ? `${slot.day_label}` : day?.label} sub={slot ? `de ${slot.start_time} à ${slot.end_time} (${zoneNote(timeZone)})` : undefined} />
-            <RecapLine icon="pin" label="Où" value={slot?.location} sub={slot?.service.address ?? undefined} />
-            <RecapLine icon="face" label="Avec" value={slot ? (slot.agent ? `${slot.agent.name} ${slot.agent.last_name}` : 'Un agent du service') : undefined} />
-            <RecapLine icon="bell" label="Rappel" value={slot ? reminderLabel(reminder) : undefined} sub={plan?.when && !plan.immediate ? plan.when : undefined} />
+            <RecapLine icon="hex" label={m.recapService} value={service?.name} />
+            <RecapLine
+              icon="calendar"
+              label={m.recapWhen}
+              value={slot ? `${slot.day_label}` : day?.label}
+              sub={slot ? m.fromTo(slot.start_time, slot.end_time, zoneNote(timeZone, locale)) : undefined}
+            />
+            <RecapLine icon="pin" label={m.recapWhere} value={slot?.location} sub={slot?.service.address ?? undefined} />
+            <RecapLine icon="face" label={m.recapWith} value={slot ? (slot.agent ? `${slot.agent.name} ${slot.agent.last_name}` : m.anAgent) : undefined} />
+            <RecapLine icon="bell" label={m.recapReminder} value={slot ? reminderLabel(reminder, locale) : undefined} sub={plan?.when && !plan.immediate ? plan.when : undefined} />
           </dl>
           {details?.contact_phone && (
             <p className={text.note}>
-              Une question avant de venir ? <a href={`tel:${details.contact_phone.replace(/[^\d+]/g, '')}`}>{details.contact_phone}</a>
+              {m.question} <a href={`tel:${details.contact_phone.replace(/[^\d+]/g, '')}`}>{details.contact_phone}</a>
             </p>
           )}
         </GlassPanel>
@@ -385,19 +521,22 @@ export function BookingFlow({ initialService }: { initialService?: string | null
 /** F38: why some hours of the day cannot be booked, and what to do instead */
 function InterruptionNotice({ slot, timeZone }: { slot: AppointmentSlot; timeZone: string }) {
   const blocked = slot.blocked!
+  const m = useMessages(messages)
+  const locale = useLocale()
   return (
     <p className={styles.interruption}>
       <Icon name="alert" size={16} />
       <span>
-        <strong>Service interrompu sur une partie de la journée.</strong> {blocked.reason}
-        {blocked.back_at && ` Retour prévu ${formatCityMoment(blocked.back_at, timeZone)}.`}
-        {blocked.alternative && ` En attendant : ${blocked.alternative}`}
+        <strong>{m.interruptedPart}</strong> {blocked.reason}
+        {blocked.back_at && m.backAt(formatCityMoment(blocked.back_at, timeZone, locale))}
+        {blocked.alternative && m.meanwhile(blocked.alternative)}
       </span>
     </p>
   )
 }
 
 function RecapLine({ icon, label, value, sub }: { icon: 'hex' | 'calendar' | 'pin' | 'face' | 'bell'; label: string; value?: string | null; sub?: string }) {
+  const m = useMessages(messages)
   return (
     <div className={styles.recapLine} data-filled={value ? true : undefined}>
       <dt>
@@ -412,7 +551,7 @@ function RecapLine({ icon, label, value, sub }: { icon: 'hex' | 'calendar' | 'pi
             {sub && <small>{sub}</small>}
           </>
         ) : (
-          <span className={styles.pending}>À choisir</span>
+          <span className={styles.pending}>{m.toChoose}</span>
         )}
       </dd>
     </div>
@@ -420,15 +559,16 @@ function RecapLine({ icon, label, value, sub }: { icon: 'hex' | 'calendar' | 'pi
 }
 
 function Confirmation({ appointment, onAgain }: { appointment: Appointment; onAgain: () => void }) {
+  const m = useMessages(messages)
   return (
     <div className={styles.confirmed}>
       <p className={styles.confirmedTitle} role="status">
-        <Icon name="check" size={20} /> Rendez-vous confirmé
+        <Icon name="check" size={20} /> {m.confirmed}
       </p>
       <AppointmentTicket appointment={appointment} printed />
       <div className={styles.submitRow}>
         <Button variant="ghost" onClick={onAgain}>
-          Prendre un autre rendez-vous
+          {m.again}
         </Button>
       </div>
     </div>

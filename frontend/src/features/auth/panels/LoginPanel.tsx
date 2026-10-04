@@ -2,9 +2,49 @@ import type { CSSProperties, KeyboardEvent, RefObject } from 'react'
 import { Button } from '../../../ui/Button'
 import { Field } from '../../../ui/Field'
 import { Icon } from '../../../ui/Icon'
+import { defineMessages, useMessages } from '../../../i18n'
 import { LOCK_MS, MAX_ATTEMPTS } from '../accessLock'
 import type { LoginState } from '../loginMachine'
 import styles from '../AccessHologram.module.css'
+
+const messages = defineMessages(
+  {
+    identifier: 'Identifiant',
+    code: "Code d'accès",
+    hide: "Masquer le code d'accès",
+    show: "Afficher le code d'accès",
+    capsLock: 'Majuscules activées',
+    triesLeft: (left: number, max: number) => `${left} essai${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''} sur ${max}`,
+    checkingStatus: 'Vérification…',
+    lockedStatus: (seconds: number) => `Verrouillé · ${seconds} s`,
+    tries: 'Essais',
+    lockedButton: (seconds: number) => `Sas verrouillé · ${seconds} s`,
+    checking: 'Vérification',
+    submit: "Demander l'entrée",
+    face: 'Entrer avec mon visage',
+    pendingLink: 'Votre visage sera associé au compte qui entre maintenant.',
+    forgot: 'Code oublié ? J’ai un code de la mairie',
+    back: 'Retour',
+  },
+  {
+    identifier: 'Identifier',
+    code: 'Access code',
+    hide: 'Hide the access code',
+    show: 'Show the access code',
+    capsLock: 'Caps Lock is on',
+    triesLeft: (left, max) => `${left} of ${max} tries left`,
+    checkingStatus: 'Checking…',
+    lockedStatus: (seconds) => `Locked · ${seconds} s`,
+    tries: 'Tries',
+    lockedButton: (seconds) => `Airlock locked · ${seconds} s`,
+    checking: 'Checking',
+    submit: 'Request entry',
+    face: 'Sign in with my face',
+    pendingLink: 'Your face will be linked to the account signing in now.',
+    forgot: 'Forgot your code? I have a code from the city hall',
+    back: 'Back',
+  },
+)
 
 interface LoginPanelProps {
   identifier: string
@@ -43,16 +83,17 @@ export function LoginPanel({
   onForgot,
   onBack,
 }: LoginPanelProps) {
+  const m = useMessages(messages)
   const checking = state.status === 'checking'
   const locked = state.status === 'locked'
 
   return (
     <div className={`${styles.panel} ${styles.panelEnter}`}>
       <div>
-        <span className={styles.identifierChip} aria-label="Identifiant">{identifier}</span>
+        <span className={styles.identifierChip} aria-label={m.identifier}>{identifier}</span>
       </div>
 
-      <Field label="Code d'accès" htmlFor="access-code">
+      <Field label={m.code} htmlFor="access-code">
         <span ref={codeSightRef} className={styles.sight}>
           <input
             ref={codeRef}
@@ -75,7 +116,7 @@ export function LoginPanel({
             className={styles.reveal}
             aria-controls="access-code"
             aria-pressed={revealed}
-            aria-label={revealed ? "Masquer le code d'accès" : "Afficher le code d'accès"}
+            aria-label={revealed ? m.hide : m.show}
             onMouseDown={(e) => e.preventDefault()}
             onClick={onToggleReveal}
           >
@@ -85,17 +126,17 @@ export function LoginPanel({
       </Field>
       {capsLock && (
         <p id="access-caps" className={styles.caps}>
-          <Icon name="alert" size={14} /> Majuscules activées
+          <Icon name="alert" size={14} /> {m.capsLock}
         </p>
       )}
 
       <div className={styles.status}>
-        <span className={styles.pips} role="img" aria-label={`${MAX_ATTEMPTS - state.strikes} essais restants sur ${MAX_ATTEMPTS}`}>
+        <span className={styles.pips} role="img" aria-label={m.triesLeft(MAX_ATTEMPTS - state.strikes, MAX_ATTEMPTS)}>
           {Array.from({ length: MAX_ATTEMPTS }, (_, i) => (
             <i key={i} data-used={i < state.strikes} />
           ))}
         </span>
-        <span className={styles.statusText}>{checking ? 'Vérification…' : locked ? `Verrouillé · ${secondsLeft} s` : 'Essais'}</span>
+        <span className={styles.statusText}>{checking ? m.checkingStatus : locked ? m.lockedStatus(secondsLeft) : m.tries}</span>
       </div>
 
       {error && (
@@ -108,30 +149,30 @@ export function LoginPanel({
         <Button type="submit" className={styles.submit} disabled={locked} data-nova-look>
           {locked ? (
             <>
-              <LockRing key={state.lock.lockedUntil} /> Sas verrouillé · {secondsLeft} s
+              <LockRing key={state.lock.lockedUntil} /> {m.lockedButton(secondsLeft)}
             </>
           ) : checking ? (
             <>
-              <span className={styles.spinner} aria-hidden="true" /> Vérification
+              <span className={styles.spinner} aria-hidden="true" /> {m.checking}
             </>
           ) : (
-            "Demander l'entrée"
+            m.submit
           )}
         </Button>
         <Button type="button" variant="ghost" className={styles.faceButton} disabled={checking || locked} onClick={onFace}>
-          <Icon name="face" size={20} /> Entrer avec mon visage
+          <Icon name="face" size={20} /> {m.face}
         </Button>
         {pendingFaceLink && (
           <p className={styles.linkHint}>
-            <Icon name="face" size={14} /> Votre visage sera associé au compte qui entre maintenant.
+            <Icon name="face" size={14} /> {m.pendingLink}
           </p>
         )}
         {/* F34: forgotten code, or a lock that will not wait: the city checks who you are and gives you a code */}
         <button type="button" className={styles.forgot} disabled={checking} onClick={onForgot}>
-          Code oublié ? J’ai un code de la mairie
+          {m.forgot}
         </button>
         <Button type="button" variant="ghost" className={styles.back} disabled={checking} onClick={onBack}>
-          Retour
+          {m.back}
         </Button>
       </div>
     </div>

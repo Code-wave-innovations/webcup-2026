@@ -2,12 +2,29 @@ import axios from 'axios'
 import { messageFor, toApiError } from '../../api/errors'
 import { type FormGuardPayload } from '../security/formGuard'
 import { rootApiUrl } from '../../hooks/useHttps'
-import { DEMO_ACCOUNTS, type Account, type Role } from './demoAccounts'
+import { defineMessages, messagesFor } from '../../i18n'
+import { DEMO_ACCOUNTS, type Account, type Role, type RoleKey } from './demoAccounts'
+
+const messages = defineMessages(
+  {
+    triesLeft: (left: number) => ` Encore ${left} essai${left > 1 ? 's' : ''} avant le blocage.`,
+    passwordShort: 'Le mot de passe doit contenir au moins 8 caractères.',
+    emailTaken: 'Un compte existe déjà avec cet e-mail.',
+  },
+  {
+    triesLeft: (left) => ` ${left} ${left === 1 ? 'try' : 'tries'} left before the code is blocked.`,
+    passwordShort: 'The password must be at least 8 characters long.',
+    emailTaken: 'An account already exists with this e-mail.',
+  },
+)
 
 export interface Session {
   accountId: string
   name: string
+  /** the role as opened, in French; shown through `sessionRoleLabel` (roleLabel.ts), which follows the language */
   roleLabel: string
+  /** which role the label names, so it can be said in English too (absent on sessions saved before D14) */
+  roleKey?: RoleKey
   role: Role
   token?: string
   email?: string
@@ -54,7 +71,7 @@ interface AuthResponse {
 }
 
 export function toSession(account: Account): Session {
-  return { accountId: account.id, name: account.name, roleLabel: account.roleLabel, role: account.role, email: account.email }
+  return { accountId: account.id, name: account.name, roleLabel: account.roleLabel, roleKey: account.role, role: account.role, email: account.email }
 }
 
 /** Film chrome session from the citizen JWT slot (DevLogin / API without the demo airlock). */
@@ -63,6 +80,7 @@ export function filmSessionFromCitizen(user: { id: number; name: string; email: 
     accountId: String(user.id),
     name: user.name,
     roleLabel: 'Habitant·e',
+    roleKey: 'resident',
     role: 'resident',
     email: user.email,
   }
@@ -74,6 +92,7 @@ export function sessionFromApi(token: string, user: ApiUser): Session {
     accountId: String(user.id),
     name: user.name,
     roleLabel: citizen ? 'Habitante' : user.role === 'ADMIN' ? 'Administration' : 'Agent',
+    roleKey: citizen ? 'resident' : user.role === 'ADMIN' ? 'admin' : 'agent',
     role: citizen ? 'resident' : 'council',
     token,
     email: user.email,
@@ -182,9 +201,9 @@ export async function recoverAccess(identifier: string, code: string, password: 
     const api = toApiError(error)
     if (api.code === 'INVALID_RESET_CODE') {
       const left = (api.details as { remaining_attempts?: number } | undefined)?.remaining_attempts
-      return { ok: false, field: 'code', error: `${messageFor(api)}${left !== undefined && left <= 2 ? ` Encore ${left} essai${left > 1 ? 's' : ''} avant le blocage.` : ''}` }
+      return { ok: false, field: 'code', error: `${messageFor(api)}${left !== undefined && left <= 2 ? messagesFor(messages).triesLeft(left) : ''}` }
     }
-    if (api.code === 'VALIDATION_ERROR') return { ok: false, field: 'password', error: 'Le mot de passe doit contenir au moins 8 caractères.' }
+    if (api.code === 'VALIDATION_ERROR') return { ok: false, field: 'password', error: messagesFor(messages).passwordShort }
     return { ok: false, error: messageFor(api) }
   }
 }
@@ -208,7 +227,7 @@ export async function registerCitizen(
   } catch (error) {
     const api = toApiError(error)
     if (api.status === 409 || api.code === 'CONFLICT') {
-      return { ok: false, error: 'Un compte existe déjà avec cet e-mail.', conflict: true }
+      return { ok: false, error: messagesFor(messages).emailTaken, conflict: true }
     }
     if (api.code === 'TURNSTILE_REQUIRED') {
       return { ok: false, error: messageFor(api), turnstileRequired: true }

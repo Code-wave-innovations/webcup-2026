@@ -15,8 +15,14 @@ import { useCitizenUser } from '../api/session'
 import { toSession } from '../features/auth/authService'
 import { useAuthStore } from '../features/auth/authStore'
 import { DEMO_ACCOUNTS } from '../features/auth/demoAccounts'
+import { defineMessages, useMessages } from '../i18n'
 import { Toast } from '../ui/Toast'
 import styles from './FilmLayout.module.css'
+
+const messages = defineMessages(
+  { skipToContent: 'Aller au contenu', loading: "Liaison avec le contrôle d'approche", skipArrival: "Passer l'arrivée" },
+  { skipToContent: 'Skip to content', loading: 'Connecting to approach control', skipArrival: 'Skip the arrival' },
+)
 
 /** Keyboard users jump over the navigation to the page itself (the city sections, the chat, the airlock form). */
 function skipToContent(event: MouseEvent<HTMLAnchorElement>) {
@@ -37,6 +43,7 @@ export function FilmLayout() {
   const filmSession = useAuthStore((s) => s.session)
   const citizen = useCitizenUser()
   const debugSignIn = useRef(false)
+  const m = useMessages(messages)
 
   // the letterbox bars retract once the city is reached (or after a return to the cockpit)
   useEffect(() => {
@@ -54,7 +61,7 @@ export function FilmLayout() {
   return (
     <>
       <a className={styles.skipLink} href="#contenu" onClick={skipToContent}>
-        Aller au contenu
+        {m.skipToContent}
       </a>
       <Experience />
       <div className={styles.letterbox} data-active={cinematic} aria-hidden="true">
@@ -62,7 +69,7 @@ export function FilmLayout() {
         <i />
       </div>
       <div className={styles.loading} data-done={status !== 'loading' || consoleOpen} role="status">
-        <b>Liaison avec le contrôle d'approche</b>
+        <b>{m.loading}</b>
         <i />
       </div>
       <Outlet />
@@ -75,7 +82,7 @@ export function FilmLayout() {
       <NovaSpeechBubble />
       {cinematic && (phase === 'entry' || phase === 'descent') && (
         <button type="button" className={styles.skip} onClick={() => director.skip()}>
-          Passer l'arrivée
+          {m.skipArrival}
         </button>
       )}
       <Toast />

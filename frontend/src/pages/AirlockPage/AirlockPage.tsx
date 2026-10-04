@@ -10,8 +10,12 @@ import type { Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { useReducedMotion } from '../../hooks/useMediaQuery'
+import { defineMessages, useMessages } from '../../i18n'
+import { LanguageSwitch } from '../../ui/LanguageSwitch'
 import { useNovaLoginReactions } from './useNovaLoginReactions'
 import styles from './AirlockPage.module.css'
+
+const messages = defineMessages({ deleted: 'Votre compte a été supprimé.' }, { deleted: 'Your account has been deleted.' })
 
 type Step = 'login' | 'granted' | 'departing'
 
@@ -33,6 +37,7 @@ export function AirlockPage() {
   const [step, setStep] = useState<Step>('login')
   const departure = useRef<ReturnType<typeof setTimeout>>(undefined)
   const novaReacts = useNovaLoginReactions()
+  const m = useMessages(messages)
 
   // F33: keep the banner for this visit, drop the query so a refresh is not sticky
   useEffect(() => {
@@ -83,9 +88,11 @@ export function AirlockPage() {
     <section className={styles.airlock} aria-labelledby="airlock-title">
       {showDeleted ? (
         <p className={styles.deletedNotice} role="status">
-          Votre compte a été supprimé.
+          {m.deleted}
         </p>
       ) : null}
+      {/* D14: the visitor picks the language before signing in */}
+      {step === 'login' && <LanguageSwitch variant="floating" />}
       <AccessHologram collapsed={step === 'departing'} onGranted={onGranted} onActivity={novaReacts} />
     </section>
   )

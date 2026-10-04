@@ -1,9 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { useDirectorStore } from '../director/directorStore'
 import { frameBus, frameState } from '../director/frameState'
+import { defineMessages, useMessages } from '../../i18n'
 import { speechProgress } from './behavior/novaBrain'
 import { novaNow, useNovaStore } from './behavior/novaStore'
 import styles from './NovaSpeechBubble.module.css'
+
+const messages = defineMessages({ said: (text: string) => `Nova : ${text}` }, { said: (text) => `Nova: ${text}` })
 
 /** horizontal gap between the head and the right edge of the bubble (always to Nova's left) */
 const SIDE_GAP = 18
@@ -17,6 +20,7 @@ const MARGIN = 12
 export function NovaSpeechBubble() {
   const speech = useNovaStore((s) => s.brain.speech)
   const consoleOpen = useDirectorStore((s) => s.console)
+  const m = useMessages(messages)
   const bubbleRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLParagraphElement>(null)
 
@@ -58,7 +62,7 @@ export function NovaSpeechBubble() {
         <p ref={textRef} />
       </div>
       <p className={styles.srOnly} aria-live="polite">
-        {!consoleOpen && speech ? `Nova : ${speech.text}` : ''}
+        {!consoleOpen && speech ? m.said(speech.text) : ''}
       </p>
     </>
   )

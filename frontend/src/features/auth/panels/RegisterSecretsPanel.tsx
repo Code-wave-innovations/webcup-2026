@@ -1,7 +1,31 @@
 import { useState } from 'react'
 import { Button } from '../../../ui/Button'
 import { Field } from '../../../ui/Field'
+import { defineMessages, useMessages } from '../../../i18n'
 import styles from '../AccessHologram.module.css'
+
+const messages = defineMessages(
+  {
+    step: 'Étape 2 sur 3',
+    password: 'Mot de passe',
+    hide: 'Masquer le mot de passe',
+    show: 'Afficher le mot de passe',
+    confirm: 'Confirmation',
+    creating: 'Création',
+    submit: 'Créer mon accès',
+    back: 'Retour',
+  },
+  {
+    step: 'Step 2 of 3',
+    password: 'Password',
+    hide: 'Hide the password',
+    show: 'Show the password',
+    confirm: 'Confirm',
+    creating: 'Creating',
+    submit: 'Create my access',
+    back: 'Back',
+  },
+)
 
 interface RegisterSecretsPanelProps {
   password: string
@@ -24,17 +48,18 @@ export function RegisterSecretsPanel({
   onConfirmChange,
   onBack,
 }: RegisterSecretsPanelProps) {
+  const m = useMessages(messages)
   const [revealed, setRevealed] = useState(false)
 
   return (
     <div className={`${styles.panel} ${styles.panelEnter}`}>
-      <div className={styles.dots} aria-label="Étape 2 sur 3">
+      <div className={styles.dots} aria-label={m.step}>
         <i data-active="false" />
         <i data-active="true" />
         <i data-active="false" />
       </div>
       <p className={styles.reminder}>{reminder}</p>
-      <Field label="Mot de passe" htmlFor="access-password" error={error}>
+      <Field label={m.password} htmlFor="access-password" error={error}>
         <span className={styles.sight}>
           <input
             id="access-password"
@@ -50,7 +75,7 @@ export function RegisterSecretsPanel({
             className={styles.reveal}
             aria-controls="access-password"
             aria-pressed={revealed}
-            aria-label={revealed ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            aria-label={revealed ? m.hide : m.show}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setRevealed((v) => !v)}
           >
@@ -58,7 +83,7 @@ export function RegisterSecretsPanel({
           </button>
         </span>
       </Field>
-      <Field label="Confirmation" htmlFor="access-password-confirm">
+      <Field label={m.confirm} htmlFor="access-password-confirm">
         <span className={styles.sight}>
           <input
             id="access-password-confirm"
@@ -75,14 +100,14 @@ export function RegisterSecretsPanel({
         <Button type="submit" className={styles.submit} disabled={submitting} data-nova-look>
           {submitting ? (
             <>
-              <span className={styles.spinner} aria-hidden="true" /> Création
+              <span className={styles.spinner} aria-hidden="true" /> {m.creating}
             </>
           ) : (
-            'Créer mon accès'
+            m.submit
           )}
         </Button>
         <Button type="button" variant="ghost" className={styles.back} disabled={submitting} onClick={onBack}>
-          Retour
+          {m.back}
         </Button>
       </div>
     </div>

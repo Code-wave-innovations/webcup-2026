@@ -1,8 +1,11 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useLocation } from 'react-router'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
+import { defineMessages, useMessages } from '../../i18n'
 import { Breadcrumbs, type Crumb } from '../../ui/Breadcrumbs'
 import styles from './ConsoleLayout.module.css'
+
+const messages = defineMessages({ home: 'Accueil' }, { home: 'Home' })
 
 interface ConsolePageProps {
   title: string
@@ -17,6 +20,7 @@ interface ConsolePageProps {
 /** Frame of a console page: trail, title (focused on arrival), lead, then the content. */
 export function ConsolePage({ title, lead, crumbs = [], actions, children }: ConsolePageProps) {
   useDocumentTitle(title)
+  const m = useMessages(messages)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const { pathname } = useLocation()
 
@@ -27,7 +31,7 @@ export function ConsolePage({ title, lead, crumbs = [], actions, children }: Con
   return (
     <>
       <header className={styles.header}>
-        <Breadcrumbs items={[{ label: 'Accueil', to: '/ville' }, ...crumbs, { label: title }]} />
+        <Breadcrumbs items={[{ label: m.home, to: '/ville' }, ...crumbs, { label: title }]} />
         <div className={styles.titleRow}>
           <h1 ref={titleRef} className={styles.title} tabIndex={-1}>
             {title}

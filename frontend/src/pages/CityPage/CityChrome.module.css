@@ -340,6 +340,72 @@
   }
 }
 
+/* D14: the FR / EN switch of the flyover's bar (`.city` is the flyover's bar only, not the console's) */
+.lang {
+  display: flex;
+  flex: none;
+}
+
+/* the switch takes room from the flyover's sections: the clock, then the role and the explore label give way first */
+@media (max-width: 1440px) {
+  .city .links a {
+    padding: 0 8px;
+  }
+}
+
+@media (max-width: 1400px) {
+  .city .clock {
+    display: none;
+  }
+}
+
+@media (max-width: 1280px) {
+  .city .badge small,
+  .city .explore span {
+    display: none;
+  }
+
+  .city .explore {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .city .shell {
+    gap: 8px;
+  }
+
+  .city .end {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .city .badge {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .city .badge span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lang [role='group'] button {
+    min-width: 36px;
+    padding: 0 6px;
+  }
+}
+
+@media (max-width: 380px) {
+  .city .brand span {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .links a,
   .round,

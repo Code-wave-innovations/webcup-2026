@@ -1,4 +1,10 @@
 import { useEffect, useRef, type RefObject } from 'react'
+import { defineMessages, messagesFor } from '../../i18n'
+
+const messages = defineMessages(
+    { unavailable: 'Caméra indisponible', refused: 'Accès caméra refusé ou indisponible' },
+    { unavailable: 'Camera unavailable', refused: 'Camera access refused or unavailable' },
+)
 
 type WebcamProps = {
     videoRef: RefObject<HTMLVideoElement | null>
@@ -37,14 +43,14 @@ export default function Webcam({ videoRef, onReady, onError, className = 'aspect
                 const video = videoRef.current
                 if (!video) {
                     stream.getTracks().forEach((track) => track.stop())
-                    onErrorRef.current('Caméra indisponible')
+                    onErrorRef.current(messagesFor(messages).unavailable)
                     return
                 }
                 video.srcObject = stream
                 await video.play()
                 if (!cancelled) onReadyRef.current()
             } catch {
-                if (!cancelled) onErrorRef.current('Accès caméra refusé ou indisponible')
+                if (!cancelled) onErrorRef.current(messagesFor(messages).refused)
             }
         }
 

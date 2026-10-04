@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { turnstileSiteKey } from './formGuard'
 import styles from './Turnstile.module.css'
 
@@ -8,6 +9,8 @@ type TurnstileApi = {
     opts: {
       sitekey: string
       theme?: 'dark' | 'light' | 'auto'
+      /** widget language (ISO code, or 'auto' for the browser's) */
+      language?: string
       callback?: (token: string) => void
       'expired-callback'?: () => void
       'error-callback'?: () => void
@@ -22,6 +25,17 @@ declare global {
     turnstile?: TurnstileApi
   }
 }
+
+const messages = defineMessages(
+  {
+    missing: 'Vérification anti-robot indisponible (clé Turnstile manquante).',
+    hint: 'Confirmez que vous n’êtes pas un robot, puis continuez.',
+  },
+  {
+    missing: 'Anti-robot check unavailable (Turnstile key missing).',
+    hint: 'Confirm that you are not a robot, then continue.',
+  },
+)
 
 const SCRIPT_ID = 'cf-turnstile-script'
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
@@ -60,6 +74,8 @@ export function Turnstile({ onToken }: TurnstileProps) {
   })
 
   const sitekey = turnstileSiteKey()
+  const locale = useLocale()
+  const m = useMessages(messages)
 
   useEffect(() => {
     if (!sitekey || !hostRef.current) return
@@ -71,6 +87,8 @@ export function Turnstile({ onToken }: TurnstileProps) {
         widgetId.current = window.turnstile.render(hostRef.current, {
           sitekey,
           theme: 'dark',
+          // D14: the challenge speaks the visitor's language (a switch renders it again)
+          language: locale,
           callback: (token) => onTokenRef.current(token),
           'expired-callback': () => onTokenRef.current(null),
           'error-callback': () => onTokenRef.current(null),
@@ -85,19 +103,19 @@ export function Turnstile({ onToken }: TurnstileProps) {
         widgetId.current = null
       }
     }
-  }, [sitekey])
+  }, [sitekey, locale])
 
   if (!sitekey) {
     return (
       <p className={styles.missing} role="status">
-        Vérification anti-robot indisponible (clé Turnstile manquante).
+        {m.missing}
       </p>
     )
   }
 
   return (
     <div className={styles.wrap}>
-      <p className={styles.hint}>Confirmez que vous n’êtes pas un robot, puis continuez.</p>
+      <p className={styles.hint}>{m.hint}</p>
       <div ref={hostRef} className={styles.widget} />
     </div>
   )
