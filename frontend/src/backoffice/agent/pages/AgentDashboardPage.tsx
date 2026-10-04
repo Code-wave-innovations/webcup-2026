@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { Link } from 'react-router'
-import { useDashboardStats, useDashboardTrends, useStaffActivity } from '../../../api/dashboard'
+import { useAuditLogs } from '../../../api/audit'
+import { useDashboardStats, useDashboardTrends } from '../../../api/dashboard'
 import { messageFor } from '../../../api/errors'
 import { useUpdateRequest } from '../../../api/requests'
 import { useActor } from '../../layout/persona'
@@ -10,7 +11,7 @@ import { useNow } from '../../lib/useNow'
 import { RadialGauge } from '../../charts/RadialGauge'
 import { DashboardViewToggle } from '../../shared/DashboardViewToggle'
 import { SimpleDashboard } from '../../shared/SimpleDashboard'
-import { StaffActivityFeed } from '../../shared/StaffActivityFeed'
+import { AuditFeed } from '../../shared/AuditFeed'
 import { TerraNovaGlance } from '../../shared/TerraNovaGlance'
 import { toast } from '../../stores/toastStore'
 import { PriorityTag, Ref, StatusPill } from '../../ui/Badges'
@@ -36,7 +37,7 @@ export default function AgentDashboardPage() {
   // The queue holds the 10 most pressing requests: the urgent new ones are among them
   const urgentAwaiting = queue.filter((r) => r.status === 'SUBMITTED' && r.priority === 'URGENT').length
   const appointmentsSeries = trends.data?.daily.map((d) => d.appointments)
-  const activity = useStaffActivity(6)
+  const activity = useAuditLogs({ limit: 6 }, { live: true })
   const update = useUpdateRequest()
   // the radar turns red when an urgent request has nobody yet
   const urgentUnassigned = queue.some((r) => r.priority === 'URGENT' && r.assigned_agent_id === null)
@@ -168,9 +169,20 @@ export default function AgentDashboardPage() {
           </div>
 
           <div className={[layout.grid, layout.split].join(' ')}>
-            <Panel kicker="F22 · Traitement des demandes" title="Activité de l’équipe" actions={<LiveDot />}>
+            <Panel
+              kicker="F47 · F48"
+              title="Activité de l’équipe"
+              actions={
+                <>
+                  <LiveDot />
+                  <ButtonLink to="/agent/activite" size="sm" variant="ghost">
+                    Tout voir
+                  </ButtonLink>
+                </>
+              }
+            >
               {activity.data ? (
-                <StaffActivityFeed events={activity.data} base="/agent" />
+                <AuditFeed entries={activity.data.data} live />
               ) : activity.isError ? (
                 <EmptyState title={messageFor(activity.error)} icon="alert" />
               ) : (

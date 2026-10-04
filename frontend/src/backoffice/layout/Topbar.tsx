@@ -276,6 +276,10 @@ export function Topbar({ persona, onOpenMenu, onOpenPalette }: TopbarProps) {
                   </>
                 )}
                 <hr className={styles.popRule} />
+                <Link className={styles.popItem} to={`${homePath(persona)}/compte`} onClick={close}>
+                  <Icon name="shield" size={16} />
+                  Mon compte
+                </Link>
                 <Link className={styles.popItem} to="/ville" onClick={close}>
                   <Icon name="globe" size={16} />
                   Voir l’espace citoyen

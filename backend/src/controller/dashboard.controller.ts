@@ -4,13 +4,12 @@ import prisma from "../lib/prisma";
 import { ACTION_NEEDED_STATUSES, OPEN_STATUSES, requestListInclude } from "../model/citizenRequest.model";
 import { activeAlertWhere } from "../model/alert.model";
 import { visibleAnnouncementWhere } from "../model/announcement.model";
-import { activity, appointmentsToday, overdueWhere, summary, trends } from "../model/dashboard.model";
+import { appointmentsToday, overdueWhere, summary, trends } from "../model/dashboard.model";
 
 // D17 workload at a glance, F22 / D19 agent workspace, F50 simplified dashboard
 
 const trendsQuerySchema = z.object({ days: z.coerce.number().int().min(1).max(90).default(14) });
 const summaryQuerySchema = z.object({ period: z.enum(["today", "7d", "30d"]).default("7d") });
-const activityQuerySchema = z.object({ limit: z.coerce.number().int().min(1).max(50).default(10) });
 
 const dashboardController = {
   stats: async (req: Request, res: Response) => {
@@ -117,12 +116,6 @@ const dashboardController = {
   trends: async (req: Request, res: Response) => {
     const { days } = trendsQuerySchema.parse(req.query);
     res.json(await trends(days));
-  },
-
-  // F22 / D19: what the staff did lately on the requests (until the audit log, BO-03)
-  activity: async (req: Request, res: Response) => {
-    const { limit } = activityQuerySchema.parse(req.query);
-    res.json(await activity(limit));
   },
 
   // F50: a few indicators compared with the previous period, plus what needs attention

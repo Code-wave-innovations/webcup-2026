@@ -1,11 +1,12 @@
+import { useState } from 'react'
 import { motion } from 'motion/react'
-import { useActor } from '../../layout/persona'
-import { PERMISSIONS } from '../../mocks/config'
-import type { Role } from '../../mocks/types'
-import { togglePermission, useConfigStore } from '../../stores/configStore'
-import { useUserStore } from '../../stores/userStore'
+import { messageFor } from '../../../api/errors'
+import { usePermissions } from '../../../api/permissions'
+import type { Permission, PermissionRoute, Role } from '../../../api/types'
+import { useUserStats } from '../../../api/users'
 import { Flag } from '../../ui/Badges'
-import { Toggle } from '../../ui/Controls'
+import { Select } from '../../ui/Controls'
+import { EmptyState, Skeleton } from '../../ui/Feedback'
 import { Icon } from '../../ui/Icon'
 import { PageHeader } from '../../ui/PageHeader'
 import { Panel } from '../../ui/Panel'
@@ -20,19 +21,29 @@ const ROLES: { role: Role; label: string }[] = [
   { role: 'ADMIN', label: 'Admin' },
 ]
 
-/** D08 / D09: which profile can do what. Admin keeps every right so the platform can't be locked out. */
+/** What the server answers to each role for a route, given its guard (D09) */
+function expected(route: PermissionRoute, role: Role | 'ANONYMOUS'): string {
+  if (role === 'ANONYMOUS') return '401'
+  const allowed = route.guard === 'authenticated' || (route.guard === 'staff' && role !== 'CITIZEN') || (route.guard === 'admin' && role === 'ADMIN')
+  if (!allowed) return '403'
+  return route.method === 'POST' ? '200 / 201' : '200'
+}
+
+/** D08 / D09: who can do what, as the server applies it. Read-only: the matrix describes, it does not change rights. */
 export default function RolesPage() {
-  const actor = useActor()
-  const matrix = useConfigStore((s) => s.rolePermissions)
-  const users = useUserStore((s) => s.users)
-  const groups = [...new Set(PERMISSIONS.map((p) => p.group))]
+  const permissions = usePermissions()
+  const stats = useUserStats().data
+  const [checking, setChecking] = useState('')
+  const list = permissions.data ?? []
+  const groups = [...new Set(list.map((p) => p.group))]
+  const checked = list.find((p) => p.key === checking) ?? list.find((p) => p.sensitive) ?? list[0]
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader simulated
+      <PageHeader
         title="Rôles & permissions"
         codes={['D08', 'D09']}
-        lead="Chaque profil n’accède qu’aux outils de sa responsabilité. Les droits sensibles sont signalés ; tout changement est tracé dans le journal d’audit."
+        lead="Les droits sont appliqués par le serveur. Ce tableau les décrit, il ne les modifie pas : un test vérifie qu’il reste conforme aux routes."
       />
 
       <motion.div className={layout.stats} variants={stagger}>
@@ -40,41 +51,96 @@ export default function RolesPage() {
           <StatTile
             key={role}
             label={`${label}s`}
-            value={users.filter((u) => u.role === role).length * (role === 'CITIZEN' ? 124 : 1)}
+            value={stats?.by_role[role] ?? null}
             icon={role === 'ADMIN' ? 'key' : role === 'AGENT' ? 'user' : 'users'}
             tone={role === 'ADMIN' ? 'ember' : role === 'AGENT' ? 'ice' : 'neutral'}
-            hint={`${matrix[role].length} permission${matrix[role].length > 1 ? 's' : ''}`}
+            hint={permissions.data ? `${list.filter((p) => p.roles.includes(role)).length} permission(s)` : undefined}
           />
         ))}
       </motion.div>
 
       <Panel kicker="Matrice" title="Permissions par rôle" flush>
-        <div style={{ overflowX: 'auto' }}>
-          <table className={styles.matrix}>
-            <caption className="bo-sr-only">Permissions accordées à chaque rôle</caption>
-            <thead>
-              <tr>
-                <th scope="col">Permission</th>
-                {ROLES.map((r) => (
-                  <th key={r.role} scope="col">
-                    {r.label}
-                  </th>
+        {!permissions.data ? (
+          permissions.isError ? <EmptyState title={messageFor(permissions.error)} icon="alert" /> : <Skeleton lines={10} />
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className={styles.matrix}>
+              <caption className="bo-sr-only">Permissions accordées à chaque rôle, telles que le serveur les applique</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Permission</th>
+                  {ROLES.map((r) => (
+                    <th key={r.role} scope="col">
+                      {r.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((group) => (
+                  <PermissionGroup key={group} group={group} permissions={list.filter((p) => p.group === group)} />
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((group) => (
-                <PermissionGroup key={group} group={group} matrix={matrix} actorId={actor.id} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        )}
       </Panel>
+
+      {checked && (
+        <Panel kicker="D09 · Vérifier un droit" title="Ce que répond le serveur">
+          <Select aria-label="Permission à vérifier" value={checked.key} onChange={(e) => setChecking(e.target.value)}>
+            {list.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.group} · {p.label}
+              </option>
+            ))}
+          </Select>
+          {checked.rule && <p className={layout.muted}>{checked.rule}</p>}
+          <div style={{ overflowX: 'auto' }}>
+            <table className={styles.matrix}>
+              <caption className="bo-sr-only">Réponse attendue pour chaque rôle et chaque route de « {checked.label} »</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Route</th>
+                  <th scope="col">Sans session</th>
+                  {ROLES.map((r) => (
+                    <th key={r.role} scope="col">
+                      {r.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {checked.routes.map((route) => (
+                  <tr key={`${route.method} ${route.path}`}>
+                    <th scope="row">
+                      <code>
+                        {route.method} {route.path}
+                      </code>
+                    </th>
+                    {(['ANONYMOUS', 'CITIZEN', 'AGENT', 'ADMIN'] as const).map((role) => {
+                      const code = expected(route, role)
+                      const ok = code.startsWith('2')
+                      return (
+                        <td key={role}>
+                          <span className={layout.row} style={{ color: ok ? 'var(--color-ok)' : 'var(--color-alert)' }}>
+                            <Icon name={ok ? 'check' : 'close'} size={14} /> {code} {ok ? 'autorisé' : 'refusé'}
+                          </span>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
     </motion.div>
   )
 }
 
-function PermissionGroup({ group, matrix, actorId }: { group: string; matrix: Record<Role, string[]>; actorId: number }) {
+function PermissionGroup({ group, permissions }: { group: string; permissions: Permission[] }) {
   return (
     <>
       <tr className={styles.group}>
@@ -82,38 +148,28 @@ function PermissionGroup({ group, matrix, actorId }: { group: string; matrix: Re
           {group}
         </th>
       </tr>
-      {PERMISSIONS.filter((p) => p.group === group).map((permission) => (
+      {permissions.map((permission) => (
         <tr key={permission.key}>
           <th scope="row">
             <span className={styles.permName}>
               <span className={layout.row}>
                 {permission.label}
-                {permission.sensitive && <Flag icon="lock" tone="alert">Sensible</Flag>}
+                {permission.sensitive && (
+                  <Flag icon="lock" tone="alert">
+                    Sensible
+                  </Flag>
+                )}
               </span>
               <small>{permission.description}</small>
             </span>
           </th>
-          {ROLES.map(({ role }) => {
-            const granted = matrix[role].includes(permission.key)
-            if (role === 'ADMIN') {
-              return (
-                <td key={role}>
-                  <span className={styles.locked} title="Toujours accordé aux administrateurs">
-                    <Icon name="lock" size={14} /> Toujours
-                  </span>
-                </td>
-              )
-            }
-            if (role === 'CITIZEN') {
-              return (
-                <td key={role}>
-                  <span className={styles.locked}>—</span>
-                </td>
-              )
-            }
+          {ROLES.map(({ role, label }) => {
+            const granted = permission.roles.includes(role)
             return (
               <td key={role}>
-                <Toggle hideLabel checked={granted} onChange={() => togglePermission(role, permission.key, actorId)} label={`${permission.label} pour le rôle ${role}`} />
+                <span className={styles.locked} style={{ color: granted ? 'var(--color-ok)' : undefined }} aria-label={`${label} : ${granted ? 'oui' : 'non'}`}>
+                  <Icon name={granted ? 'check' : 'close'} size={14} /> {granted ? 'Oui' : 'Non'}
+                </span>
               </td>
             )
           })}

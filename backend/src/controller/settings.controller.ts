@@ -1,3 +1,4 @@
+import { audit, fieldsOf } from "../lib/audit";
 import type { Request, Response } from "express";
 import {
   getSettings,
@@ -27,7 +28,10 @@ const settingsController = {
   },
   update: async (req: Request, res: Response) => {
     const patch = settingsPatchSchema.parse(req.body);
-    res.json(await adminView(await updateSettings(patch, req.user!.id)));
+    const before = await getSettings();
+    const after = await updateSettings(patch, req.user!.id);
+    await audit(req, { action: "settings.updated", entity: "PlatformSetting", label: "Paramètres de la plateforme", before, after, fields: fieldsOf(patch) });
+    res.json(await adminView(after));
   },
 };
 

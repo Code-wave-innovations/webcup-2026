@@ -1,11 +1,12 @@
 import type { Request, Response } from "express";
+import { audit, fieldsOf } from "../lib/audit";
+import { warnAppointments } from "../lib/interruptions";
 import { InterruptionImpact, InterruptionType, type Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { badRequest, notFound } from "../lib/errors";
-import { notifyUser } from "../lib/notify";
 import { notEndedWhere } from "../lib/availability";
-import { parseId, zDate, zId } from "../lib/validation";
+import { fieldError, parseId, zDate, zId } from "../lib/validation";
 import { resolveLocale, translate } from "../lib/translations";
 
 // F38: maintenance windows and incidents making a service unavailable.
@@ -34,7 +35,7 @@ const createSchema = z.object({
 const updateSchema = createSchema.omit({ service_id: true }).partial();
 
 const checkDates = (startsAt?: Date, endsAt?: Date | null) => {
-  if (startsAt && endsAt && endsAt <= startsAt) throw badRequest("ends_at must be after starts_at");
+  if (startsAt && endsAt && endsAt <= startsAt) throw fieldError("ends_at", "ends_at must be after starts_at");
 };
 
 const scopeWhere = (scope: string): Prisma.ServiceInterruptionWhereInput => {
@@ -66,31 +67,16 @@ const serviceInterruptionController = {
     });
 
     // Citizens with an appointment during the interruption are warned right away.
-    let notified = 0;
-    if (interruption.impact === "UNAVAILABLE") {
-      const appointments = await prisma.appointment.findMany({
-        where: {
-          service_id: interruption.service_id,
-          status: "BOOKED",
-          citizen_id: { not: null },
-          slot: {
-            ends_at: { gt: interruption.starts_at },
-            ...(interruption.ends_at ? { starts_at: { lt: interruption.ends_at } } : {}),
-          },
-        },
-        select: { id: true, reference: true, citizen_id: true },
-      });
-      for (const appointment of appointments) {
-        await notifyUser(appointment.citizen_id!, {
-          type: "SERVICE_INTERRUPTION",
-          title: `${interruption.service.name} indisponible pendant votre rendez-vous ${appointment.reference}`,
-          body: [interruption.reason, interruption.alternative].filter(Boolean).join("\n"),
-          link: `/appointments/${appointment.id}`,
-          data: { interruption_id: interruption.id, appointment_id: appointment.id },
-        });
-      }
-      notified = appointments.length;
-    }
+    const notified = await warnAppointments(interruption);
+    await audit(req, {
+      action: "interruption.created",
+      entity: "ServiceInterruption",
+      entityId: interruption.id,
+      label: interruption.service.name,
+      after: interruption,
+      fields: ["type", "impact", "reason", "alternative", "starts_at", "ends_at"],
+      metadata: { service_id: interruption.service_id, notified },
+    });
     res.status(201).json({ ...interruption, notified });
   },
 
@@ -100,22 +86,26 @@ const serviceInterruptionController = {
     const current = await prisma.serviceInterruption.findUnique({ where: { id } });
     if (!current) throw notFound("Interruption not found");
     checkDates(input.starts_at ?? current.starts_at, input.ends_at === undefined ? current.ends_at : input.ends_at);
-    res.json(await prisma.serviceInterruption.update({ where: { id }, data: input, include }));
+    const interruption = await prisma.serviceInterruption.update({ where: { id }, data: input, include });
+    await audit(req, { action: "interruption.updated", entity: "ServiceInterruption", entityId: id, label: interruption.service.name, before: current, after: interruption, fields: fieldsOf(input) });
+    res.json(interruption);
   },
 
   // The service is back: close the interruption now.
   end: async (req: Request, res: Response) => {
-    res.json(
-      await prisma.serviceInterruption.update({
-        where: { id: parseId(req.params.id) },
-        data: { ends_at: new Date() },
-        include,
-      })
-    );
+    const interruption = await prisma.serviceInterruption.update({
+      where: { id: parseId(req.params.id) },
+      data: { ends_at: new Date() },
+      include,
+    });
+    await audit(req, { action: "interruption.ended", entity: "ServiceInterruption", entityId: interruption.id, label: interruption.service.name });
+    res.json(interruption);
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await prisma.serviceInterruption.delete({ where: { id: parseId(req.params.id) }, select: { id: true } }));
+    const deleted = await prisma.serviceInterruption.delete({ where: { id: parseId(req.params.id) }, include });
+    await audit(req, { action: "interruption.deleted", entity: "ServiceInterruption", entityId: deleted.id, label: deleted.service.name, metadata: { reason: deleted.reason } });
+    res.json({ id: deleted.id });
   },
 };
 

@@ -27,13 +27,22 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 
 | Method & path | Access | Feature |
 |---|---|---|
-| `POST /api/auth/register` (JSON or multipart; optional file `profile`) · `POST /api/auth/login` · `GET /api/auth/exists?email=` (`{ exists }`, no session) · `GET /api/auth/by-email?email=` (passwordless session, same payload as login) | public | D01, D03 |
+| `POST /api/auth/register` (JSON or multipart; optional file `profile`) · `POST /api/auth/login` · `GET /api/auth/exists?email=` (`{ exists }`, no session) · `GET /api/auth/by-email?email=` (passwordless session, same payload as login; still asks the code when the account has a second factor) | public | D01, D03 |
+| `POST /api/auth/2fa/verify { challenge_token, code \| recovery_code }` · `POST /api/auth/2fa/setup { setup_token }` · `POST /api/auth/2fa/activate { setup_token, code }` | public (step tokens) | F53 |
+| `POST /api/auth/passkey/options { email? }` · `POST /api/auth/passkey/verify { challenge_token, response }` | public | D02 |
 | `GET/PATCH /api/me` · `PATCH /api/me/password` · `POST /api/me/onboarding/complete` | logged in | D03, D12, D14, F23/F24 (`preferences`) |
+| `GET /api/me/security` · `DELETE /api/me/devices/:id` · `POST /api/me/sessions/revoke` (new token) · `POST /api/me/2fa/setup\|enable\|disable` · `POST /api/me/passkeys/register/options\|verify` · `GET /api/me/passkeys` · `DELETE /api/me/passkeys/:id` | logged in | D02, F53, F54 |
 | `DELETE /api/me` body `{ password, confirm: true }` | citizen | F33 |
 | `GET /api/users` · `GET/PATCH/DELETE /api/users/:id` · `POST /api/users/:id/unlock-login` | staff (agents: citizens only, no email/password/role changes) | D08, D09, F34 |
 | `GET /api/users/staff` | staff | F22 (active agents and admins a request can be assigned to) |
 | `POST /api/users` | admin | D08 |
-| `GET /api/security/overview` · `GET /api/security/login-attempts` | admin | F37 |
+| `GET /api/security/overview` (adds `locked_accounts`, `two_factor`) · `GET /api/security/login-attempts` · `GET /api/security/new-devices?hours=24` | admin | F37, F53, F54 |
+| `GET /api/users/stats` · `GET /api/users/:id/security` · `GET /api/users/:id/devices` · `POST /api/users/:id/revoke-sessions` · `POST /api/users/:id/2fa/reset` · `DELETE /api/users/:id/passkeys` | admin | D08, F53, F54, D02 |
+| `GET /api/audit-logs?actor_id=&entity=&entity_id=&action=&from=&to=&q=&page=` | staff (agents: no `security.*`/`auth.*` entry, no IP) | F47, F48 |
+| `GET /api/audit-logs/export.csv` (same filters, UTF-8 with BOM, `;`) · `GET /api/audit-logs/stats?days=14` | admin | F47 |
+| `GET /api/permissions` | staff | D08, D09 (the roles matrix of `src/lib/permissions.ts`) |
+| `GET /api/services/:id/impact` | staff | F63 |
+| `POST /api/services/:id/disable { reason, alternative?, back_at?, notify_open_requests? }` · `POST /api/services/:id/enable` | admin | F63 (an INCIDENT/UNAVAILABLE interruption; the service stays visible) |
 | `GET /api/home` | public | D07 (alerts, featured services, categories, news) |
 | `GET /api/search?q=` | public (+ own requests when logged in) | F32 |
 | `GET /api/services?category=&featured=&q=&sort=` · `GET /api/services/:idOrSlug` | public | D05, F28 |
@@ -81,6 +90,21 @@ Keys, validation and defaults are defined in `src/lib/settings.ts`. When an admi
 - `INCIDENT`: `location_label` or `latitude` + `longitude`; optional `category`, `district_id`, `attachment` file.
 
 The response contains `reference` (e.g. `NT-261003-4F9A2C`) and a confirmation `message`. A request on a service that is currently interrupted returns `409 SERVICE_UNAVAILABLE` with `reason`, `alternative` and `back_at`.
+
+### Audit (F47, F48)
+
+Every staff mutation calls `audit(req, { action, entity, entityId, label, before, after, fields, metadata })` from `src/lib/audit.ts` after it succeeded. Only the listed `fields` are compared; secrets are never copied and a citizen's phone and address are only marked as changed. Writing an entry never makes the action fail. The table is immutable: no route updates or deletes an entry, and nothing purges it. The seed adds a few entries flagged `metadata.demo`.
+
+### Roles matrix (D08, D09)
+
+`src/lib/permissions.ts` describes who can do what and which routes apply it. `npm run check:permissions` reads the routers and fails when a route guarded by `requireStaff`/`requireAdmin` is missing from the matrix or declared with another guard: add the route there whenever you add one.
+
+### Sign-in security (D02, F53, F54)
+
+- **Sessions:** the JWT carries the account's `token_version` (`tv`); bumping it (« déconnecter tous les appareils ») makes older tokens fail with `401 SESSION_REVOKED`. Step tokens (`purpose`: 2FA challenge, setup, passkey ceremony) are never accepted as sessions.
+- **Devices (F54):** the front sends `X-Device-Id` (random id kept in `localStorage`); a sign-in from an unknown device on an account that already has one sends a `SECURITY` notification and writes `security.new_device`.
+- **Second factor (F53):** TOTP (`otplib`, one period of drift) with 8 single-use recovery codes. A password sign-in on an account with a second factor answers `{ two_factor_required, challenge_token }` (5 min); the setting `two_factor_required_roles` (empty by default) forces an account of those roles to set it up first (`{ two_factor_setup_required, setup_token }`). Wrong codes count as failed logins (F37).
+- **Passkeys (D02):** `@simplewebauthn/server` (Node ≥ 20), configured with `WEBAUTHN_RP_ID` and `WEBAUTHN_ORIGIN`. A passkey requires user verification and satisfies the second-factor policy.
 
 ### Security (F37)
 

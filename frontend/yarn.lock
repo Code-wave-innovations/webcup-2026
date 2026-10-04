@@ -732,6 +732,11 @@
   resolved "https://registry.yarnpkg.com/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz#e3fcee093fbb5ce765e1ad088ff4de2889f6f9be"
   integrity sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==
 
+"@simplewebauthn/browser@^14.0.0":
+  version "14.0.0"
+  resolved "https://registry.yarnpkg.com/@simplewebauthn/browser/-/browser-14.0.0.tgz#4b65e1d1c9d4dbe37b15a97897d797fe6b1b8d68"
+  integrity sha512-1odWVqeEBTl7lJ9zMKLEsmTlnyrDO5iRcTvfMKKk1WThUnp/i8JJdffdj2icP+tty159s4PgwE3BiMoEW9NFow==
+
 "@solid-primitives/event-listener@^2.2.14", "@solid-primitives/event-listener@^2.4.6":
   version "2.4.6"
   resolved "https://registry.yarnpkg.com/@solid-primitives/event-listener/-/event-listener-2.4.6.tgz#95704ae633b92551334e48399ad8785aa7f9f426"

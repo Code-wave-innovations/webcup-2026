@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { audit, fieldsOf } from "../lib/audit";
 import { AppointmentStatus, type Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "../lib/prisma";
@@ -133,7 +134,9 @@ const appointmentController = {
   createSlot: async (req: Request, res: Response) => {
     const input = slotSchema.parse(req.body);
     if (input.ends_at <= input.starts_at) throw badRequest("ends_at must be after starts_at");
-    res.status(201).json(await prisma.appointmentSlot.create({ data: input, include: slotInclude }));
+    const slot = await prisma.appointmentSlot.create({ data: input, include: slotInclude });
+    await audit(req, { action: "slot.created", entity: "AppointmentSlot", entityId: slot.id, label: `${slot.service.name} · ${formatSlotLabel(slot.starts_at, slot.ends_at)}` });
+    res.status(201).json(slot);
   },
 
   // Publishes a series of slots, e.g. every 30 min from 09:00 to 12:00, Monday to Friday.
@@ -175,6 +178,13 @@ const appointmentController = {
     if (data.length === 0) throw badRequest("No slot matches these settings");
     if (data.length > 1000) throw badRequest("Too many slots at once (max 1000)");
     const { count } = await prisma.appointmentSlot.createMany({ data });
+    // A series is one entry, with the number of slots
+    await audit(req, {
+      action: "slot.created",
+      entity: "AppointmentSlot",
+      label: `Série de ${count} créneau(x) du ${input.from_date} au ${input.to_date}`,
+      metadata: { count, service_id: input.service_id, from: input.from_date, to: input.to_date, start: input.start_time, end: input.end_time },
+    });
     res.status(201).json({ created: count });
   },
 
@@ -191,7 +201,9 @@ const appointmentController = {
     if (input.capacity !== undefined && input.capacity < booked) {
       throw conflict(`Capacity cannot be lower than the ${booked} existing booking(s)`);
     }
-    res.json(await prisma.appointmentSlot.update({ where: { id }, data: input, include: slotInclude }));
+    const updated = await prisma.appointmentSlot.update({ where: { id }, data: input, include: slotInclude });
+    await audit(req, { action: "slot.updated", entity: "AppointmentSlot", entityId: id, label: `${updated.service.name} · ${formatSlotLabel(updated.starts_at, updated.ends_at)}`, before: slot, after: updated, fields: fieldsOf(input) });
+    res.json(updated);
   },
 
   // Removes a free slot, or deactivates a booked one and cancels its bookings (citizens are notified).
@@ -202,8 +214,10 @@ const appointmentController = {
       include: { ...slotInclude, appointments: { where: { status: "BOOKED" } } },
     });
     if (!slot) throw notFound("Slot not found");
+    const slotLabel = `${slot.service.name} · ${formatSlotLabel(slot.starts_at, slot.ends_at)}`;
     if (slot.appointments.length === 0) {
       await prisma.appointmentSlot.delete({ where: { id } });
+      await audit(req, { action: "slot.deleted", entity: "AppointmentSlot", entityId: id, label: slotLabel });
       res.json({ id, deleted: true });
       return;
     }
@@ -224,6 +238,7 @@ const appointmentController = {
         data: { appointment_id: appointment.id },
       });
     }
+    await audit(req, { action: "slot.deleted", entity: "AppointmentSlot", entityId: id, label: slotLabel, metadata: { cancelled: slot.appointments.length } });
     res.json({ id, deleted: false, deactivated: true, cancelled: slot.appointments.length });
   },
 
@@ -389,12 +404,17 @@ const appointmentController = {
       data: { ...input, ...(input.status === "CANCELLED" ? { cancelled_at: new Date() } : {}) },
       include: appointmentInclude,
     });
+    const target = { entity: "Appointment", entityId: appointment.id, label: appointment.reference, before: appointment, after: updated };
+    if (input.status !== undefined && input.status !== appointment.status) await audit(req, { ...target, action: "appointment.status", fields: ["status"] });
+    if (input.agent_notes !== undefined && input.agent_notes !== appointment.agent_notes) await audit(req, { ...target, action: "appointment.notes", fields: ["agent_notes"] });
     res.json(present(req, updated));
   },
 
   // Admin/demo: run the reminder job now instead of waiting for the next minute
-  runReminders: async (_req: Request, res: Response) => {
-    res.json({ sent: await sendDueReminders() });
+  runReminders: async (req: Request, res: Response) => {
+    const sent = await sendDueReminders();
+    await audit(req, { action: "reminders.run", entity: "Appointment", label: "Envoi des rappels", metadata: { sent } });
+    res.json({ sent });
   },
 };
 

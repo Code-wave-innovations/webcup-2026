@@ -25,6 +25,7 @@ export const AGENT_NAV: NavGroup[] = [
       { path: '/agent/signalements', label: 'Signalements', icon: 'pin', codes: ['F25'] },
       { path: '/agent/rendez-vous', label: 'Rendez-vous', icon: 'calendar', codes: ['F39'], badge: 'appointmentsToday' },
       { path: '/agent/citoyens', label: 'Citoyens', icon: 'users', codes: ['F34'] },
+      { path: '/agent/interruptions', label: 'Interruptions', icon: 'wrench', codes: ['F38'], badge: 'interruptions' },
     ],
   },
   {
@@ -49,14 +50,15 @@ export const ADMIN_NAV: NavGroup[] = [
     label: 'Comptes & droits',
     items: [
       { path: '/admin/utilisateurs', label: 'Utilisateurs', icon: 'users', codes: ['F34', 'D08'] },
-      { path: '/admin/roles', label: 'Rôles & permissions', icon: 'key', codes: ['D08'] },
+      { path: '/admin/roles', label: 'Rôles & permissions', icon: 'key', codes: ['D08', 'D09'] },
+      { path: '/admin/securite', label: 'Sécurité', icon: 'shield', codes: ['F37', 'F53', 'F54', 'D02'] },
     ],
   },
   {
     label: 'Contenus',
     items: [
-      { path: '/admin/services', label: 'Catalogue de services', icon: 'grid', codes: ['D05', 'F28'] },
-      { path: '/admin/maintenance', label: 'Interruptions', icon: 'wrench', codes: ['F38'], badge: 'interruptions' },
+      { path: '/admin/services', label: 'Catalogue de services', icon: 'grid', codes: ['D05', 'F28', 'F63', 'F64'] },
+      { path: '/admin/maintenance', label: 'Interruptions', icon: 'wrench', codes: ['F38', 'F64'], badge: 'interruptions' },
       { path: '/admin/annonces', label: 'Annonces', icon: 'megaphone', codes: ['D06', 'D18'] },
       { path: '/admin/alertes', label: 'Alertes', icon: 'siren', codes: ['D18', 'F29', 'F31'], badge: 'activeAlerts' },
       { path: '/admin/notifications', label: 'Notifications', icon: 'bell', codes: ['F30'] },

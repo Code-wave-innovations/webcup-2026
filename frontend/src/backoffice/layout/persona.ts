@@ -39,10 +39,10 @@ export const homePath = (persona: Persona) => (persona === 'ADMIN' ? '/admin' : 
 export const personaOf = (role: Role): Persona => (role === 'ADMIN' ? 'ADMIN' : 'AGENT')
 
 /** /agent/connexion?retour=…&expiree=1 */
-export function loginPath(persona: Persona, retour?: string, expired = false): string {
+export function loginPath(persona: Persona, retour?: string, ended: 'expired' | 'revoked' | null = null): string {
   const params = new URLSearchParams()
   if (retour) params.set('retour', retour)
-  if (expired) params.set('expiree', '1')
+  if (ended) params.set('expiree', ended === 'revoked' ? 'revoquee' : '1')
   const query = params.toString()
   return `${homePath(persona)}/connexion${query ? `?${query}` : ''}`
 }

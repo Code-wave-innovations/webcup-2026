@@ -3,7 +3,6 @@ import { motion } from 'motion/react'
 import { isApiError, messageFor } from '../../../api/errors'
 import { useAdminSettings, useUpdateSettings } from '../../../api/settings'
 import type { HomeSection, PlatformSettings, SettingsAdminView } from '../../../api/types'
-import { useActor } from '../../layout/persona'
 import { formatRelative } from '../../lib/format'
 import { useNow } from '../../lib/useNow'
 import { LOCALES } from '../../mocks/config'
@@ -34,7 +33,7 @@ export default function SettingsPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Paramètres de la plateforme"
-        codes={['D07', 'D08', 'F37']}
+        codes={['D07', 'D08', 'F37', 'F53']}
         lead="Réglages globaux, appliqués dès l’enregistrement. Chaque réglage indique qui l’a modifié en dernier."
       />
       {settings.isPending ? (
@@ -94,7 +93,6 @@ function LastChange({ view, keys, now }: { view: SettingsAdminView; keys: (keyof
 
 function SettingsForm({ view }: { view: SettingsAdminView }) {
   const now = useNow()
-  const actor = useActor()
   const update = useUpdateSettings()
   const simulated = useConfigStore((s) => s.settings)
   const { settings, security } = view
@@ -143,6 +141,20 @@ function SettingsForm({ view }: { view: SettingsAdminView }) {
           ))}
         </ol>
         <LastChange view={view} keys={['home_sections']} now={now} />
+        <p className={layout.sectionLabel}>Aperçu de l’accueil</p>
+        <div className={styles.homePreview} aria-label="Aperçu schématique de la page d’accueil de l’habitant">
+          {settings.maintenance_mode && (
+            <div className={styles.homeBanner}>
+              <Icon name="alert" size={14} /> {settings.maintenance_message}
+            </div>
+          )}
+          {sections.map((section) => (
+            <div key={section.key} className={[styles.homeBlock, !section.enabled && styles.homeBlockHidden].filter(Boolean).join(' ')}>
+              {section.label}
+              {!section.enabled && <small> · masqué</small>}
+            </div>
+          ))}
+        </div>
       </Panel>
 
       <div className={layout.stack}>
@@ -177,12 +189,32 @@ function SettingsForm({ view }: { view: SettingsAdminView }) {
           <LastChange view={view} keys={['registration_open', 'maintenance_mode', 'maintenance_message']} now={now} />
         </Panel>
 
-        <Panel kicker="F37 · F40" title="Sécurité et rappels">
+        <Panel kicker="F37 · F53 · F40" title="Sécurité et rappels" id="securite">
           <p className={layout.small}>
             Un compte est bloqué après <strong>{security.max_account_failures} mots de passe erronés</strong> en {security.window_minutes} minutes, pendant{' '}
             {security.lock_minutes} minutes au plus. Une adresse IP est bloquée après {security.max_ip_failures} échecs.
           </p>
           <p className={[layout.muted, layout.small].join(' ')}>Seuils fixés par le serveur.</p>
+          <p className={layout.sectionLabel}>Double vérification obligatoire (F53)</p>
+          <div className={styles.localeChips}>
+            {(['ADMIN', 'AGENT', 'CITIZEN'] as const).map((role) => {
+              const required = settings.two_factor_required_roles ?? []
+              return (
+                <Toggle
+                  key={role}
+                  label={{ ADMIN: 'Administrateurs', AGENT: 'Agents', CITIZEN: 'Habitants' }[role]}
+                  checked={required.includes(role)}
+                  onChange={(on) =>
+                    save({ two_factor_required_roles: on ? [...required, role] : required.filter((r) => r !== role) }, 'Double vérification obligatoire')
+                  }
+                />
+              )
+            })}
+          </div>
+          <p className={[layout.muted, layout.small].join(' ')}>
+            À sa prochaine connexion par mot de passe, un compte concerné sans double vérification devra l’activer avant tout accès. Une clé d’accès la remplace.
+          </p>
+          <LastChange view={view} keys={['two_factor_required_roles']} now={now} />
           <Field label="Rappel de rendez-vous proposé par défaut (F40)">
             {(id) => (
               <Select
@@ -204,7 +236,7 @@ function SettingsForm({ view }: { view: SettingsAdminView }) {
         <Panel kicker="D14 · F27" title="Langues" actions={<DemoNote>Simulé, multilingue hors périmètre</DemoNote>}>
           <Field label="Langue par défaut">
             {(id) => (
-              <Select id={id} value={simulated.default_locale} onChange={(e) => updateSimulated({ default_locale: e.target.value }, actor.id, 'Langue par défaut')}>
+              <Select id={id} value={simulated.default_locale} onChange={(e) => updateSimulated({ default_locale: e.target.value }, 'Langue par défaut')}>
                 {LOCALES.filter((l) => simulated.enabled_locales.includes(l.code)).map((l) => (
                   <option key={l.code} value={l.code}>
                     {l.label}
@@ -224,7 +256,6 @@ function SettingsForm({ view }: { view: SettingsAdminView }) {
                 onChange={(on) =>
                   updateSimulated(
                     { enabled_locales: on ? [...simulated.enabled_locales, l.code] : simulated.enabled_locales.filter((c) => c !== l.code) },
-                    actor.id,
                     'Langues proposées',
                   )
                 }

@@ -40,14 +40,143 @@ export interface User {
   last_login_at: string | null
   /** included by /api/users and /api/me */
   district?: District | null
+  /** F53: when the second factor was turned on */
+  two_factor_enabled_at?: string | null
+}
+
+/** An account as the staff screens list it (GET /api/users, /api/users/:id) */
+export interface ManagedUser extends User {
+  /** F37: too many wrong passwords lately */
+  login_locked: boolean
+  locked_until: string | null
+}
+
+/** GET /api/users/stats (admin) */
+export interface UserStats {
+  by_role: Partial<Record<Role, number>>
+  active: number
+  inactive: number
+  locked: number
+}
+
+export interface DeviceInfo {
+  id: number
+  label: string
+  first_seen: string
+  last_seen: string
+  last_ip: string | null
+  /** /api/me/security only: the device this session runs on */
+  current?: boolean
+}
+
+export interface PasskeyInfo {
+  id: number
+  label: string
+  created_at: string
+  last_used_at: string | null
+}
+
+/** GET /api/users/:id/security (admin) */
+export interface UserSecurity {
+  login_locked: boolean
+  locked_until: string | null
+  two_factor_enabled_at: string | null
+  passkeys: PasskeyInfo[]
+  devices: DeviceInfo[]
+}
+
+/** GET /api/permissions: the roles matrix, as the server applies it (D08, D09) */
+export interface PermissionRoute {
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
+  path: string
+  guard: 'authenticated' | 'staff' | 'admin'
+}
+
+export interface Permission {
+  key: string
+  label: string
+  description: string
+  group: string
+  sensitive: boolean
+  roles: Role[]
+  rule?: string
+  routes: PermissionRoute[]
 }
 
 /** POST /api/auth/login and /api/auth/register */
 export interface AuthResponse {
   token: string
   user: User
-  /** F37: login only */
-  security?: { failed_attempts_since_last_login: number }
+  /** F37 / F54: login only */
+  security?: { failed_attempts_since_last_login: number; new_device?: boolean; device_id?: number }
+  /** F53: after an enforced setup, shown once */
+  recovery_codes?: string[]
+}
+
+/** F53: the password was right but a code is needed (5-minute challenge, no session yet) */
+export interface TwoFactorChallenge {
+  two_factor_required: true
+  challenge_token: string
+}
+
+/** F53: the policy requires a second factor this account has not set up yet */
+export interface TwoFactorSetupRequired {
+  two_factor_setup_required: true
+  setup_token: string
+}
+
+/** What POST /api/auth/login answers */
+export type LoginStep = AuthResponse | TwoFactorChallenge | TwoFactorSetupRequired
+
+/** What an authenticator app scans, plus the key to type by hand */
+export interface TwoFactorSetup {
+  otpauth_url: string
+  qr_data_url: string
+  secret: string
+}
+
+/** GET /api/me/security: the signed-in person's own sign-in security */
+export interface MySecurity {
+  two_factor: { enabled_at: string | null; required: boolean; recovery_codes_left: number }
+  passkeys: PasskeyInfo[]
+  devices: DeviceInfo[]
+}
+
+/** GET /api/security/overview (admin, F37 / F53) */
+export interface SecurityOverview {
+  last_hour: { failed: number; succeeded: number }
+  last_24h: { failed: number; blocked: number }
+  targeted_accounts: { email: string; failures: number }[]
+  top_ips: { ip: string; failures: number }[]
+  locked_accounts: { email: string; locked_until: string | null; user: Pick<User, 'id' | 'email' | 'name' | 'last_name' | 'role'> | null }[]
+  two_factor: { staff_enabled: number; staff_total: number; citizens_enabled: number; passkey_users: number }
+}
+
+export interface LoginAttempt {
+  id: number
+  created_at: string
+  email: string
+  ip: string
+  user_agent: string | null
+  success: boolean
+  reason: string
+  user_id: number | null
+}
+
+/** GET /api/security/new-devices (F54) */
+export interface NewDevice {
+  id: number
+  label: string
+  first_seen: string
+  last_ip: string | null
+  user: Pick<User, 'id' | 'name' | 'last_name' | 'email' | 'role'>
+}
+
+export interface ClientIpCheck {
+  ip: string | null
+  socket_address: string | null
+  x_forwarded_for: string | null
+  trust_proxy: boolean | number | string
 }
 
 /* ─── Platform settings (D07, D08; backend/src/lib/settings.ts) ─────────── */
@@ -66,6 +195,8 @@ export interface PlatformSettings {
   support_contact: { phone: string; email: string; hours: string; address: string }
   emergency_numbers: { label: string; number: string }[]
   reminder_default_minutes: number
+  /** F53: roles that must use a second factor (admin view only, not public) */
+  two_factor_required_roles?: Role[]
 }
 
 /** F37: login protection thresholds, fixed on the server. */
@@ -191,19 +322,6 @@ export interface UpdatedRequest extends RequestListItem {
 
 /** A member of staff a request can be assigned to (GET /api/users/staff) */
 export type StaffMember = Pick<User, 'id' | 'name' | 'last_name' | 'email' | 'role'>
-
-/** What a member of staff did on a request (GET /api/dashboard/activity) */
-export interface StaffActivity {
-  id: number
-  created_at: string
-  type: RequestEventType
-  from_status: RequestStatus | null
-  to_status: RequestStatus | null
-  message: string | null
-  is_internal: boolean
-  author: Pick<User, 'id' | 'name' | 'last_name' | 'role'>
-  request: { id: number; reference: string; subject: string }
-}
 
 /* ─── Staff dashboard (D17, D19, F50) ────────────────────────────────────── */
 
@@ -368,4 +486,143 @@ export interface ServiceInterruption {
   ends_at: string | null
   service: { id: number; slug: string; name: string }
   created_by: Pick<User, 'id' | 'name' | 'last_name'> | null
+}
+
+/* ─── Audit journal (F47, F48) ───────────────────────────────────────────── */
+
+/** before → after of one field; personal data (phone, address) is only said to have changed */
+export type AuditChange = { field: string; from: unknown; to: unknown } | { field: string; masked: true }
+
+/** GET /api/audit-logs: one action. Immutable on the server. */
+export interface AuditEntry {
+  id: number
+  created_at: string
+  /** null: the system (scheduler, cron job) */
+  actor_id: number | null
+  actor_role: Role | null
+  /** frozen at the time of the action */
+  actor_name: string | null
+  /** request.status_changed, service.updated… */
+  action: string
+  entity: string
+  entity_id: number | null
+  entity_label: string | null
+  changes: AuditChange[] | null
+  metadata: Record<string, unknown> | null
+  /** null for agents and when unknown */
+  ip: string | null
+}
+
+/** GET /api/audit-logs/stats (admin) */
+export interface AuditStats {
+  days: number
+  total: number
+  per_day: { date: string; count: number }[]
+  per_actor: { actor_id: number | null; name: string; count: number }[]
+}
+
+/* ─── Service catalogue (D05, F28, F38, F63, F64) ────────────────────────── */
+
+export interface ServiceCategory {
+  id: number
+  slug: string
+  name: string
+  icon: string | null
+  sort_order: number
+  _count?: { services: number }
+}
+
+type InterruptionBrief = Pick<ServiceInterruption, 'id' | 'type' | 'impact' | 'reason' | 'alternative' | 'starts_at' | 'ends_at'>
+
+/** F38 / F64: what a citizen sees about a service right now */
+export interface Availability {
+  status: 'AVAILABLE' | 'DEGRADED' | 'UNAVAILABLE'
+  current: InterruptionBrief | null
+  /** null: until further notice */
+  back_at: string | null
+  upcoming: InterruptionBrief[]
+}
+
+export interface CityService {
+  id: number
+  created_at: string
+  updated_at: string
+  slug: string
+  category_id: number | null
+  name: string
+  summary: string
+  description: string | null
+  /** F32: comma-separated search terms */
+  keywords: string | null
+  icon: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  address: string | null
+  opening_hours: string | null
+  external_url: string | null
+  /** F28 */
+  is_featured: boolean
+  priority: number
+  view_count: number
+  /** false: withdrawn from the catalogue (invisible to citizens), not the same as cut (F63) */
+  is_active: boolean
+  category: Pick<ServiceCategory, 'id' | 'slug' | 'name' | 'icon'> | null
+  _count?: { procedures: number }
+  availability: Availability
+}
+
+export interface ServiceInput {
+  name?: string
+  summary?: string
+  description?: string | null
+  keywords?: string | null
+  category_id?: number | null
+  contact_email?: string | null
+  contact_phone?: string | null
+  address?: string | null
+  opening_hours?: string | null
+  external_url?: string | null
+  is_featured?: boolean
+  priority?: number
+  is_active?: boolean
+}
+
+/** GET /api/services/:id/impact: what cutting it would touch */
+export interface ServiceImpact {
+  upcoming_appointments: number
+  open_requests: number
+  open_procedures: number
+}
+
+/** D05 / D11: one field of a procedure's form */
+export interface FormField {
+  name: string
+  label: string
+  type: 'text' | 'textarea' | 'number' | 'date' | 'email' | 'tel' | 'select' | 'checkbox'
+  required: boolean
+  options?: string[]
+  help?: string
+}
+
+export interface Procedure {
+  id: number
+  created_at: string
+  updated_at: string
+  service_id: number
+  slug: string
+  title: string
+  description: string | null
+  required_documents: string[] | null
+  form_schema: FormField[] | null
+  estimated_days: number | null
+  is_active: boolean
+}
+
+export type ProcedureInput = Partial<Pick<Procedure, 'title' | 'description' | 'required_documents' | 'form_schema' | 'estimated_days' | 'is_active'>> & {
+  service_id?: number
+}
+
+/** GET /api/home: only what the back-office previews (F28) */
+export interface HomePreview {
+  featured_services: Pick<CityService, 'id' | 'name' | 'is_featured' | 'priority' | 'view_count'>[]
 }

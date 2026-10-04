@@ -8,6 +8,7 @@ import citizenRequestModel, {
   OPEN_STATUSES,
   STATUS_LABELS,
 } from "../model/citizenRequest.model";
+import { audit } from "../lib/audit";
 import { badRequest, notFound } from "../lib/errors";
 import { notifyUser } from "../lib/notify";
 import { saveUpload } from "../lib/upload";
@@ -157,13 +158,15 @@ const citizenRequestController = {
       if (!input.procedure_id) throw badRequest("procedure_id is required for a PROCEDURE request");
       const procedure = await prisma.procedure.findFirst({ where: { id: input.procedure_id, is_active: true } });
       if (!procedure) throw badRequest("Unknown or inactive procedure");
+      // F38 / F63: a service that is down is said first, with when to come back and what to do instead
+      await assertServiceAvailable(procedure.service_id);
       const missing = missingRequiredFields(procedure.form_schema, input.data);
       if (missing.length) throw badRequest("Missing required procedure fields", { missing });
       serviceId = procedure.service_id;
+    } else if (serviceId) {
+      // F38: refuse new requests while the service is down, with when to come back and what to do instead
+      await assertServiceAvailable(serviceId);
     }
-
-    // F38: refuse new requests while the service is down, with when to come back and what to do instead
-    if (serviceId) await assertServiceAvailable(serviceId);
 
     const attachment = await saveUpload(req, "attachment", "request");
     const { data, ...fields } = input;
@@ -280,6 +283,34 @@ const citizenRequestController = {
 
     const request = await citizenRequestModel.update(id, data, events);
 
+    // F47 / F48: one entry per kind of change
+    const previousAgent =
+      current.assigned_agent_id && changes.assigned_agent_id !== undefined
+        ? await prisma.user.findUnique({ where: { id: current.assigned_agent_id }, select: { name: true, last_name: true } })
+        : null;
+    const target = { entity: "CitizenRequest", entityId: id, label: request.reference };
+    if (statusChanged) {
+      await audit(req, { ...target, action: "request.status_changed", before: current, after: request, fields: ["status"], metadata: note ? { note, internal: internal_note } : undefined });
+    }
+    if (changes.assigned_agent_id !== undefined && changes.assigned_agent_id !== current.assigned_agent_id) {
+      await audit(req, {
+        ...target,
+        action: "request.assigned",
+        changes: [{ field: "assigned_agent", from: previousAgent ? `${previousAgent.name} ${previousAgent.last_name}` : null, to: agentName ?? null }],
+      });
+    }
+    if (changes.priority !== undefined && changes.priority !== current.priority) {
+      await audit(req, { ...target, action: "request.priority_changed", before: current, after: request, fields: ["priority"] });
+    }
+    for (const field of ["service_id", "district_id", "category"] as const) {
+      if (changes[field] !== undefined && changes[field] !== current[field]) {
+        await audit(req, { ...target, action: "request.updated", before: current, after: request, fields: [field] });
+      }
+    }
+    if (!statusChanged && note) {
+      await audit(req, { ...target, action: internal_note ? "request.internal_note" : "request.commented", metadata: { note } });
+    }
+
     // F49: a citizen with an account is told about every public change
     const citizenNotified = Boolean(current.citizen_id && (statusChanged || (note && !internal_note)));
     if (citizenNotified) {
@@ -320,6 +351,16 @@ const citizenRequestController = {
       }
       if (events.length) await citizenRequestModel.update(current.id, data, events);
     }
+    await audit(req, {
+      action: "request.bulk_updated",
+      entity: "CitizenRequest",
+      label: `${requests.length} demande(s)`,
+      changes: [
+        ...(assigned_agent_id !== undefined ? [{ field: "assigned_agent", from: null, to: agentName }] : []),
+        ...(priority !== undefined ? [{ field: "priority", from: null, to: priority }] : []),
+      ],
+      metadata: { references: requests.map((r) => r.reference) },
+    });
     res.json({ updated: requests.length });
   },
 
@@ -342,6 +383,15 @@ const citizenRequestController = {
       events.push({ type: "STATUS_CHANGED", author_id: authorId, from_status: request.status, to_status: "IN_REVIEW" });
     }
     await citizenRequestModel.update(id, data, events);
+    if (staff) {
+      await audit(req, {
+        action: internal ? "request.internal_note" : "request.commented",
+        entity: "CitizenRequest",
+        entityId: id,
+        label: request.reference,
+        metadata: { note: message },
+      });
+    }
 
     const notification = {
       title: `Nouveau message sur la demande ${request.reference}`,
@@ -359,7 +409,9 @@ const citizenRequestController = {
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await citizenRequestModel.delete(parseId(req.params.id)));
+    const deleted = await citizenRequestModel.delete(parseId(req.params.id));
+    await audit(req, { action: "request.deleted", entity: "CitizenRequest", entityId: deleted.id, label: deleted.reference });
+    res.json(deleted);
   },
 };
 

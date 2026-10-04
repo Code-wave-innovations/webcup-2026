@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import prisma from "../lib/prisma";
+import { audit, fieldsOf } from "../lib/audit";
 import serviceCategoryModel from "../model/serviceCategory.model";
 import { notFound } from "../lib/errors";
 import { parseId, slugify, zSlug } from "../lib/validation";
@@ -30,13 +32,22 @@ const serviceCategoryController = {
   },
   create: async (req: Request, res: Response) => {
     const input = createSchema.parse(req.body);
-    res.status(201).json(await serviceCategoryModel.create({ ...input, slug: input.slug ?? slugify(input.name) }));
+    const category = await serviceCategoryModel.create({ ...input, slug: input.slug ?? slugify(input.name) });
+    await audit(req, { action: "category.created", entity: "ServiceCategory", entityId: category.id, label: category.name });
+    res.status(201).json(category);
   },
   update: async (req: Request, res: Response) => {
-    res.json(await serviceCategoryModel.update(parseId(req.params.id), updateSchema.parse(req.body)));
+    const id = parseId(req.params.id);
+    const input = updateSchema.parse(req.body);
+    const before = await prisma.serviceCategory.findUnique({ where: { id } });
+    const category = await serviceCategoryModel.update(id, input);
+    await audit(req, { action: "category.updated", entity: "ServiceCategory", entityId: id, label: category.name, before, after: category, fields: fieldsOf(input) });
+    res.json(category);
   },
   delete: async (req: Request, res: Response) => {
-    res.json(await serviceCategoryModel.delete(parseId(req.params.id)));
+    const category = await serviceCategoryModel.delete(parseId(req.params.id));
+    await audit(req, { action: "category.deleted", entity: "ServiceCategory", entityId: category.id, label: category.name });
+    res.json(category);
   },
 };
 

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRequests } from '../../api/requests'
+import { useAdminServices } from '../../api/services'
 import { flatNav } from '../nav'
 import type { Persona } from '../mocks/types'
 import { STATUS_LABEL } from '../lib/labels'
@@ -37,6 +38,9 @@ export function CommandPalette({ persona, open, onClose }: { persona: Persona; o
   }, [query])
   const found = useRequests(search ? { q: search, limit: 5 } : { scope: 'needs_action', sort: 'priority', limit: 4 }, open)
   const requests = useMemo(() => found.data?.data ?? [], [found.data])
+  // F63: « Couper « État civil » » straight from the palette (admin)
+  const services = useAdminServices(open && persona === 'ADMIN' && role === 'ADMIN').data
+  const typing = query.trim().length > 0
 
   const commands = useMemo<Command[]>(() => {
     const base = persona === 'ADMIN' ? '/admin' : '/agent'
@@ -70,8 +74,21 @@ export function CommandPalette({ persona, open, onClose }: { persona: Persona; o
             },
           ]
         : []
-    return [...screens, ...requestItems, ...switchView]
-  }, [persona, requests, role])
+    const cutItems =
+      persona === 'ADMIN' && typing
+        ? (services ?? [])
+            .filter((s) => s.is_active && s.availability.status !== 'UNAVAILABLE')
+            .map((s) => ({
+              id: `cut-${s.id}`,
+              label: `Couper « ${s.name} »`,
+              hint: 'F63 · couper un service',
+              icon: 'power' as const,
+              group: 'Actions',
+              to: `/admin/services?couper=${s.id}`,
+            }))
+        : []
+    return [...screens, ...requestItems, ...switchView, ...cutItems]
+  }, [persona, requests, role, services, typing])
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()

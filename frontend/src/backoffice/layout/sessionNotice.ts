@@ -1,22 +1,24 @@
 import { create } from 'zustand'
+import type { SessionEndReason } from '../../api/session'
 
 /*
-  The API refused the token (expired, account disabled): RequireStaff then sends the person to the
-  login page with ?expiree=1, which explains why. A sign-in clears the note.
+  The API refused the token (expired, account disabled) or every device was signed out: RequireStaff
+  then sends the person to the login page with ?expiree=1 (or =revoquee), which explains why.
+  A sign-in clears the note.
 */
 
 interface SessionNoticeState {
-  expired: boolean
+  reason: SessionEndReason | null
 }
 
-export const useSessionNotice = create<SessionNoticeState>()(() => ({ expired: false }))
+export const useSessionNotice = create<SessionNoticeState>()(() => ({ reason: null }))
 
-export const useSessionExpired = () => useSessionNotice((s) => s.expired)
+export const useSessionExpired = () => useSessionNotice((s) => s.reason)
 
-export function noteSessionExpired(): void {
-  useSessionNotice.setState({ expired: true })
+export function noteSessionExpired(reason: SessionEndReason = 'expired'): void {
+  useSessionNotice.setState({ reason })
 }
 
 export function clearSessionExpired(): void {
-  useSessionNotice.setState({ expired: false })
+  useSessionNotice.setState({ reason: null })
 }

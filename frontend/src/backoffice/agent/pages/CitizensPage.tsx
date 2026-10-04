@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { motion } from 'motion/react'
 import { messageFor } from '../../../api/errors'
 import { useRequests } from '../../../api/requests'
@@ -6,8 +7,10 @@ import { useCitizens } from '../../../api/users'
 import { formatRelative } from '../../lib/format'
 import { useNow } from '../../lib/useNow'
 import { RequestTable } from '../../shared/RequestTable'
+import { AccountDrawer } from '../../shared/AccountDrawer'
 import { CitizenCard } from '../../shared/CitizenCard'
 import { Flag } from '../../ui/Badges'
+import { Button } from '../../ui/Button'
 import { SearchInput } from '../../ui/Controls'
 import { Avatar, EmptyState, Skeleton } from '../../ui/Feedback'
 import { PageHeader } from '../../ui/PageHeader'
@@ -22,6 +25,19 @@ export default function CitizensPage() {
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  // ?compte=<id>: the account drawer (also reached from the audit log)
+  const [params, setParams] = useSearchParams()
+  const openId = Number(params.get('compte')) || null
+  const openAccount = (id: number | null) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (id) next.set('compte', String(id))
+        else next.delete('compte')
+        return next
+      },
+      { replace: true },
+    )
 
   // The directory is searched on the server once typing pauses
   useEffect(() => {
@@ -68,7 +84,11 @@ export default function CitizensPage() {
                         {c.district?.name ?? 'Quartier non renseigné'} · {c.last_login_at ? `vu·e ${formatRelative(c.last_login_at, now)}` : 'jamais connecté·e'}
                       </small>
                     </span>
-                    <span className={layout.row}>{c.is_vulnerable && <Flag icon="alert" tone="progress">Vulnérable</Flag>}</span>
+                    <span className={layout.row}>
+                      {c.login_locked && <Flag icon="lock" tone="alert">Verrouillé</Flag>}
+                      {!c.is_active && <Flag icon="lock" tone="alert">Désactivé</Flag>}
+                      {c.is_vulnerable && <Flag icon="alert" tone="progress">Vulnérable</Flag>}
+                    </span>
                   </button>
                 </li>
               ))}
@@ -77,7 +97,16 @@ export default function CitizensPage() {
         </Panel>
 
         {selected && (
-          <Panel kicker="Fiche" title={`${selected.name} ${selected.last_name}`} accent="ice">
+          <Panel
+            kicker="Fiche"
+            title={`${selected.name} ${selected.last_name}`}
+            accent="ice"
+            actions={
+              <Button size="sm" icon="edit" onClick={() => openAccount(selected.id)}>
+                Gérer le compte
+              </Button>
+            }
+          >
             <CitizenCard citizen={selected} requests={theirRequests.data?.meta.total} />
           </Panel>
         )}
@@ -92,6 +121,8 @@ export default function CitizensPage() {
           )}
         </Panel>
       )}
+
+      <AccountDrawer userId={openId} onClose={() => openAccount(null)} />
     </motion.div>
   )
 }

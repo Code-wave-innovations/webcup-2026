@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { badRequest } from "./errors";
+import { HttpError, badRequest } from "./errors";
 
 // Multipart bodies (express-fileupload) only contain strings, so numeric,
 // boolean and JSON fields are coerced to accept both JSON and form-data input.
@@ -69,3 +69,7 @@ export const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 180);
+
+// A 400 shaped like a zod error, so the front shows it next to the field (F42)
+export const fieldError = (field: string, message: string) =>
+  new HttpError(400, "VALIDATION_ERROR", "Invalid input", { formErrors: [], fieldErrors: { [field]: [message] } });

@@ -1,9 +1,11 @@
 import { motion } from 'motion/react'
 import { Link } from 'react-router'
 import { useActiveAlerts } from '../../../api/alerts'
-import { useDashboardStats, useDashboardSummary, useDashboardTrends, useStaffActivity } from '../../../api/dashboard'
+import { useAuditLogs } from '../../../api/audit'
+import { useDashboardStats, useDashboardSummary, useDashboardTrends } from '../../../api/dashboard'
 import { messageFor } from '../../../api/errors'
 import { useInterruptions } from '../../../api/interruptions'
+import { useAdminServices } from '../../../api/services'
 import { IMPACT_LABEL, SEVERITY_LABEL, SEVERITY_TONE, STATUS_LABEL, STATUS_ORDER } from '../../lib/labels'
 import { formatRelative } from '../../lib/format'
 import { useDashboardView } from '../../lib/dashboardView'
@@ -13,8 +15,9 @@ import { BarChart } from '../../charts/BarChart'
 import { DonutRing } from '../../charts/DonutRing'
 import { Heatmap } from '../../charts/Heatmap'
 import { DashboardViewToggle } from '../../shared/DashboardViewToggle'
+import { ServicesStatus } from '../../shared/ServiceState'
 import { SimpleDashboard } from '../../shared/SimpleDashboard'
-import { StaffActivityFeed } from '../../shared/StaffActivityFeed'
+import { AuditFeed } from '../../shared/AuditFeed'
 import { Tag } from '../../ui/Badges'
 import { ButtonLink } from '../../ui/Button'
 import { EmptyState, LiveDot, Skeleton } from '../../ui/Feedback'
@@ -66,7 +69,8 @@ export default function AdminOverviewPage() {
   const trendsQuery = useDashboardTrends(14)
   const alerts = useActiveAlerts().data ?? []
   const interruptions = useInterruptions('current').data ?? []
-  const activity = useStaffActivity(8)
+  const activity = useAuditLogs({ limit: 8 }, { live: true })
+  const services = useAdminServices()
   const stats = statsQuery.data
   const trends = trendsQuery.data
   const daily = trends?.daily
@@ -161,6 +165,18 @@ export default function AdminOverviewPage() {
             </Panel>
           )}
 
+          <Panel
+            kicker="F64 · En ce moment"
+            title="État des services"
+            actions={
+              <ButtonLink to="/admin/services" size="sm" variant="ghost">
+                Catalogue
+              </ButtonLink>
+            }
+          >
+            {services.data ? <ServicesStatus services={services.data} /> : <Skeleton lines={2} />}
+          </Panel>
+
           <div className={[layout.grid, layout.split].join(' ')}>
             <Panel kicker="14 derniers jours" title="Demandes reçues et résolues">
               {daily ? (
@@ -221,19 +237,19 @@ export default function AdminOverviewPage() {
           </div>
 
           <Panel
-            kicker="F22 · Traitement des demandes"
-            title="Activité du personnel en direct"
+            kicker="F47 · Traçabilité"
+            title="Flux d’audit en direct"
             actions={
               <>
                 <LiveDot />
-                <ButtonLink to="/admin/demandes" size="sm" variant="ghost">
-                  Supervision
+                <ButtonLink to="/admin/audit" size="sm" variant="ghost">
+                  Tout voir
                 </ButtonLink>
               </>
             }
           >
             {activity.data ? (
-              <StaffActivityFeed events={activity.data} base="/admin" />
+              <AuditFeed entries={activity.data.data} live showIp />
             ) : activity.isError ? (
               <EmptyState title={messageFor(activity.error)} icon="alert" />
             ) : (

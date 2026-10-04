@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { audit, fieldsOf } from "../lib/audit";
 import districtModel from "../model/district.model";
 import { notFound } from "../lib/errors";
 import { parseId } from "../lib/validation";
@@ -23,13 +24,22 @@ const districtController = {
     res.json(await translateOne("District", district, resolveLocale(req)));
   },
   create: async (req: Request, res: Response) => {
-    res.status(201).json(await districtModel.create(createSchema.parse(req.body)));
+    const district = await districtModel.create(createSchema.parse(req.body));
+    await audit(req, { action: "district.created", entity: "District", entityId: district.id, label: district.name });
+    res.status(201).json(district);
   },
   update: async (req: Request, res: Response) => {
-    res.json(await districtModel.update(parseId(req.params.id), updateSchema.parse(req.body)));
+    const id = parseId(req.params.id);
+    const input = updateSchema.parse(req.body);
+    const before = await districtModel.getOne(id);
+    const district = await districtModel.update(id, input);
+    await audit(req, { action: "district.updated", entity: "District", entityId: id, label: district.name, before, after: district, fields: fieldsOf(input) });
+    res.json(district);
   },
   delete: async (req: Request, res: Response) => {
-    res.json(await districtModel.delete(parseId(req.params.id)));
+    const district = await districtModel.delete(parseId(req.params.id));
+    await audit(req, { action: "district.deleted", entity: "District", entityId: district.id, label: district.name });
+    res.json(district);
   },
 };
 

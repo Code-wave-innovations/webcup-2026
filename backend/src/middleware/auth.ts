@@ -1,12 +1,15 @@
 import type { NextFunction, Request, Response } from "express";
 import type { Role } from "@prisma/client";
 import prisma from "../lib/prisma";
-import { forbidden, unauthorized } from "../lib/errors";
+import { HttpError, forbidden, unauthorized } from "../lib/errors";
 import { verifyToken } from "../services/services";
 
 export type AuthUser = {
   id: number;
   email: string;
+  // for the audit log (actor_name)
+  name: string;
+  last_name: string;
   role: Role;
   locale: string;
   district_id: number | null;
@@ -30,10 +33,15 @@ const resolveUser = async (req: Request, strict: boolean): Promise<AuthUser | un
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) return undefined;
 
-  let payload: { id: number };
+  let payload: { id: number; tv?: number; purpose?: string };
   try {
     payload = verifyToken(header.slice(7));
   } catch {
+    if (strict) throw unauthorized("Invalid or expired token");
+    return undefined;
+  }
+  // A step token (2FA challenge, passkey ceremony) is never a session
+  if (payload.purpose) {
     if (strict) throw unauthorized("Invalid or expired token");
     return undefined;
   }
@@ -43,19 +51,27 @@ const resolveUser = async (req: Request, strict: boolean): Promise<AuthUser | un
     select: {
       id: true,
       email: true,
+      name: true,
+      last_name: true,
       role: true,
       locale: true,
       district_id: true,
       is_vulnerable: true,
       is_active: true,
+      token_version: true,
     },
   });
   if (!user || !user.is_active) {
     if (strict) throw unauthorized("Account not found or disabled");
     return undefined;
   }
+  // BO-05: "sign out every device" bumped token_version; older sessions are refused
+  if ((payload.tv ?? 0) !== user.token_version) {
+    if (strict) throw new HttpError(401, "SESSION_REVOKED", "This session has been signed out");
+    return undefined;
+  }
 
-  const { is_active: _active, ...authUser } = user;
+  const { is_active: _active, token_version: _version, ...authUser } = user;
   return authUser;
 };
 

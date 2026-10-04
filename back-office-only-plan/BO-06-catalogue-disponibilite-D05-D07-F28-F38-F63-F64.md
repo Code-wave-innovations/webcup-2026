@@ -148,14 +148,14 @@ Sont supprimés :
 
 ## 6. Étapes
 
-- [ ] Backend : `GET /:id/impact`, `POST /:id/disable` et `/enable` (admin, audités)
-- [ ] `src/api/services.ts`, `procedures.ts`, `interruptions.ts`
-- [ ] `ServicesPage` : liste avec l'état, bascules optimistes, tiroir (informations, démarches, état, aperçu habitant), nouveau service
-- [ ] Coupure en 3 clics et rétablissement, plus l'action dans la palette ⌘K
-- [ ] `MaintenancePage` sur la frise réelle, avec le nombre de personnes prévenues
-- [ ] Bloc « État des services » et badge `interruptions`
-- [ ] Aperçu de l'accueil dans Paramètres
-- [ ] Nettoyage
+- [x] Backend : `GET /:id/impact`, `POST /:id/disable` et `/enable` (admin, audités)
+- [x] `src/api/services.ts`, `procedures.ts`, `interruptions.ts`
+- [x] `ServicesPage` : liste avec l'état, bascules optimistes, tiroir (informations, démarches, état, aperçu habitant), nouveau service
+- [x] Coupure en 3 clics et rétablissement, plus l'action dans la palette ⌘K
+- [x] `MaintenancePage` sur la frise réelle, avec le nombre de personnes prévenues
+- [x] Bloc « État des services » et badge `interruptions`
+- [x] Aperçu de l'accueil dans Paramètres
+- [ ] Nettoyage : partiel, `catalogStore` et `mocks/catalog` restent pour `SlotsPage` (BO-08) et `lib/lookups`
 
 ## 7. Critères d'acceptation
 
@@ -191,3 +191,10 @@ Peut attendre :
 
 - **Désactiver n'est pas couper.** Ne pas implémenter F63 avec `is_active: false` : le service disparaîtrait, et l'habitant ne saurait ni pourquoi, ni quoi faire (le contraire de F63 et F64).
 - **Heure de retour :** `back_at` est affiché avec le fuseau du serveur (`TZ`), comme les rendez-vous.
+
+## Réalisé (4 octobre 2026)
+
+- **Backend :** `GET /services/:id/impact`, `POST /services/:id/disable` et `/enable` (admin, audités, prévenance partagée dans `lib/interruptions.ts`). Une démarche sur un service coupé reçoit maintenant le `409 SERVICE_UNAVAILABLE` avant le contrôle des champs. Les erreurs de date arrivent sur leur champ (`fieldError`).
+- **Écrans :** `ServicesPage` (état, étoile et priorité optimistes, clics de priorité regroupés en un seul enregistrement, coupure en 3 clics, tiroir Informations / Démarches avec éditeur de champs / État / Aperçu habitant / Historique, ordre réel de l'accueil), `MaintenancePage` aussi ouverte aux agents (`/agent/interruptions`), bloc « État des services » (vue globale, interruptions, catalogue), action « Couper « … » » dans la palette ⌘K, aperçu de l'accueil dans Paramètres.
+- **Nettoyage partiel :** `catalogStore` est réduit à la liste des services, car `lib/lookups` et `SlotsPage` (BO-08) la lisent encore ; `mocks/catalog` perd ses interruptions.
+- **Vérifié dans Chrome :** critères 1 à 3 (coupure en 3 s, refus 409, maintenance déclarée par un agent).
