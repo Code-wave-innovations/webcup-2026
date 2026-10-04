@@ -18,13 +18,15 @@ export const useUnreadCount = () =>
     refetchInterval: REFRESH.notifications,
   })
 
-/** The latest notifications, fetched only while they are on screen. */
+/**
+ * The latest notifications, fetched only while they are on screen. F95: no polling of its own, the unread
+ * counter already polls; opening the panel again after `staleTime` fetches a fresh list.
+ */
 export const useNotifications = (limit: number, enabled = true) =>
   useQuery({
     queryKey: notificationKeys.list(limit),
     queryFn: () => http.get<NotificationPage>('/notifications', { params: { limit } }).then((r) => r.data),
     enabled,
-    refetchInterval: enabled ? REFRESH.notifications : false,
   })
 
 const refresh = () => queryClient.invalidateQueries({ queryKey: notificationKeys.all })

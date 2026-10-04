@@ -14,10 +14,11 @@ export function useNovaCityReactions(): void {
   useEffect(
     () =>
       useReportStore.subscribe((state, previous) => {
+        if (state.confirmation && !previous.confirmation) novaScenes.reportSent(state.confirmation.reference)
         const report = state.report
         if (!report) return
-        if (!previous.report) novaScenes.reportSent(report.code)
-        else if (report.status !== previous.report.status) novaScenes.reportProgress(STATUSES[report.status].name)
+        if (!previous.report && !previous.confirmation) novaScenes.reportSent(report.code)
+        else if (previous.report && report.status !== previous.report.status) novaScenes.reportProgress(STATUSES[report.status].name)
       }),
     [],
   )

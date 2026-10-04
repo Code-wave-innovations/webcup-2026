@@ -1,0 +1,5 @@
+/* the panel fills its frame (it was laid out for the Observatory) */
+.chat {
+  height: min(70vh, 640px);
+  min-height: 360px;
+}

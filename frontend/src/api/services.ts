@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { homeKeys } from './home'
 import { http } from './client'
 import { interruptionKeys } from './interruptions'
 import { queryClient, REFRESH } from './queryClient'
@@ -13,7 +14,7 @@ export const serviceKeys = {
   detail: (slug: string) => [...serviceKeys.all, 'detail', slug] as const,
   impact: (id: number) => [...serviceKeys.all, 'impact', id] as const,
   categories: () => ['service-categories'] as const,
-  home: () => ['home'] as const,
+  home: () => homeKeys.all,
 }
 
 export interface CatalogueFilters {

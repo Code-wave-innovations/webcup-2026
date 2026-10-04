@@ -59,7 +59,8 @@ const refreshSecurity = () => void queryClient.invalidateQueries({ queryKey: myS
 
 export const useUpdateMe = () =>
   useMutation({
-    mutationFn: (changes: Partial<Pick<User, 'name' | 'last_name' | 'phone'>>) => http.patch<User>('/me', changes).then((r) => r.data),
+    /** `preferences` replaces the stored object: merge it with the current one first */
+    mutationFn: (changes: Partial<Pick<User, 'name' | 'last_name' | 'phone' | 'preferences'>>) => http.patch<User>('/me', changes).then((r) => r.data),
     onSuccess: (user) => {
       useSessionStore.getState().setUser(toSessionUser(user))
       void queryClient.invalidateQueries({ queryKey: meKeys.all })

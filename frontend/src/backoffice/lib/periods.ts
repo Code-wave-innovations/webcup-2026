@@ -9,9 +9,12 @@ export const PERIODS: { value: Period; label: string; ms: number | null }[] = [
   { value: 'tout', label: 'Tout', ms: null },
 ]
 
-/** ISO start of a period, rounded to the minute so the query key stays stable */
+/** F95: the start moves by steps of 5 minutes, so the query keys (and their cache entries) change 5 times less often */
+const PERIOD_STEP_MS = 5 * 60_000
+
+/** ISO start of a period, rounded down to the step so the query key stays stable */
 export function periodFrom(period: Period, now: number): string | undefined {
   const ms = PERIODS.find((p) => p.value === period)?.ms
   if (!ms) return undefined
-  return new Date(Math.floor((now - ms) / 60_000) * 60_000).toISOString()
+  return new Date(Math.floor((now - ms) / PERIOD_STEP_MS) * PERIOD_STEP_MS).toISOString()
 }

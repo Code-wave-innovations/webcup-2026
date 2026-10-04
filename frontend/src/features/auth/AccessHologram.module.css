@@ -703,3 +703,9 @@
     min-height: 248px;
   }
 }
+
+/* F96: registration without the face step (light version) */
+.plainRegister {
+  display: grid;
+  gap: 12px;
+}

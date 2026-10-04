@@ -29,15 +29,17 @@ export default function AgentDashboardPage() {
   const actor = useActor()
   const now = useNow()
   const [view, setView] = useDashboardView()
+  // F95: the simple view reads its own summary; the detailed panels only load when they are shown
+  const detailed = view !== 'simple'
   const statsQuery = useDashboardStats()
-  const trends = useDashboardTrends(14)
+  const trends = useDashboardTrends(14, detailed)
   const stats = statsQuery.data
   const requests = stats?.requests
   const queue = stats?.queue ?? []
   // The queue holds the 10 most pressing requests: the urgent new ones are among them
   const urgentAwaiting = queue.filter((r) => r.status === 'SUBMITTED' && r.priority === 'URGENT').length
   const appointmentsSeries = trends.data?.daily.map((d) => d.appointments)
-  const activity = useAuditLogs({ limit: 6 }, { live: true })
+  const activity = useAuditLogs({ limit: 6 }, { live: true, enabled: detailed })
   const update = useUpdateRequest()
   // the radar turns red when an urgent request has nobody yet
   const urgentUnassigned = queue.some((r) => r.priority === 'URGENT' && r.assigned_agent_id === null)

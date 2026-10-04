@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, useEffect } from 'react'
 import { MotionConfig } from 'motion/react'
 import { Navigate, Route, Routes } from 'react-router'
 import { RequireStaff } from './layout/RequireStaff'
@@ -8,30 +8,33 @@ import { usePersona } from './layout/persona'
 import { noteSessionExpired } from './layout/sessionNotice'
 import { Toaster } from './ui/Toaster'
 import { onSessionExpired } from '../api/session'
-import AgentDashboardPage from './agent/pages/AgentDashboardPage'
-import RequestsPage from './agent/pages/RequestsPage'
-import RequestDetailPage from './agent/pages/RequestDetailPage'
-import ReportsPage from './agent/pages/ReportsPage'
-import AppointmentsPage from './agent/pages/AppointmentsPage'
-import CitizensPage from './agent/pages/CitizensPage'
-import ActivityPage from './agent/pages/ActivityPage'
-import NovaTerraPage from './agent/pages/NovaTerraPage'
-import AdminOverviewPage from './admin/pages/AdminOverviewPage'
-import UsersPage from './admin/pages/UsersPage'
-import RolesPage from './admin/pages/RolesPage'
-import ServicesPage from './admin/pages/ServicesPage'
-import MaintenancePage from './admin/pages/MaintenancePage'
-import AnnouncementsPage from './admin/pages/AnnouncementsPage'
-import AlertsPage from './admin/pages/AlertsPage'
-import NotificationsPage from './admin/pages/NotificationsPage'
-import TranslationsPage from './admin/pages/TranslationsPage'
-import SlotsPage from './admin/pages/SlotsPage'
-import AuditPage from './admin/pages/AuditPage'
-import RequestsSupervisionPage from './admin/pages/RequestsSupervisionPage'
-import SettingsPage from './admin/pages/SettingsPage'
-import SecurityPage from './admin/pages/SecurityPage'
-import AccountPage from './shared/AccountPage'
 import './backoffice.css'
+
+// F95: one chunk per screen, so a visit downloads only the pages it opens (Shell suspends on the outlet)
+const AgentDashboardPage = lazy(() => import('./agent/pages/AgentDashboardPage'))
+const RequestsPage = lazy(() => import('./agent/pages/RequestsPage'))
+const RequestDetailPage = lazy(() => import('./agent/pages/RequestDetailPage'))
+const ReportsPage = lazy(() => import('./agent/pages/ReportsPage'))
+const AppointmentsPage = lazy(() => import('./agent/pages/AppointmentsPage'))
+const CitizensPage = lazy(() => import('./agent/pages/CitizensPage'))
+const ActivityPage = lazy(() => import('./agent/pages/ActivityPage'))
+const NovaTerraPage = lazy(() => import('./agent/pages/NovaTerraPage'))
+const AdminOverviewPage = lazy(() => import('./admin/pages/AdminOverviewPage'))
+const UsersPage = lazy(() => import('./admin/pages/UsersPage'))
+const RolesPage = lazy(() => import('./admin/pages/RolesPage'))
+const ServicesPage = lazy(() => import('./admin/pages/ServicesPage'))
+const MaintenancePage = lazy(() => import('./admin/pages/MaintenancePage'))
+const AnnouncementsPage = lazy(() => import('./admin/pages/AnnouncementsPage'))
+const AlertsPage = lazy(() => import('./admin/pages/AlertsPage'))
+const NotificationsPage = lazy(() => import('./admin/pages/NotificationsPage'))
+const TranslationsPage = lazy(() => import('./admin/pages/TranslationsPage'))
+const SlotsPage = lazy(() => import('./admin/pages/SlotsPage'))
+const AuditPage = lazy(() => import('./admin/pages/AuditPage'))
+const RequestsSupervisionPage = lazy(() => import('./admin/pages/RequestsSupervisionPage'))
+const SettingsPage = lazy(() => import('./admin/pages/SettingsPage'))
+const SecurityPage = lazy(() => import('./admin/pages/SecurityPage'))
+const TransportsPage = lazy(() => import('./admin/pages/TransportsPage'))
+const AccountPage = lazy(() => import('./shared/AccountPage'))
 
 /*
   Staff back-office. Screens are bound to the API plan by plan (back-office-only-plan/); the others still
@@ -65,6 +68,7 @@ export default function BackofficeApp() {
               <Route path="activite" element={<ActivityPage />} />
               <Route path="nova-terra" element={<NovaTerraPage />} />
               <Route path="interruptions" element={<MaintenancePage />} />
+              <Route path="transports" element={<TransportsPage />} />
               <Route path="compte" element={<AccountPage />} />
             </>
           ) : (
@@ -77,6 +81,7 @@ export default function BackofficeApp() {
               <Route path="roles" element={<RolesPage />} />
               <Route path="services" element={<ServicesPage />} />
               <Route path="maintenance" element={<MaintenancePage />} />
+              <Route path="transports" element={<TransportsPage />} />
               <Route path="annonces" element={<AnnouncementsPage />} />
               <Route path="alertes" element={<AlertsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />

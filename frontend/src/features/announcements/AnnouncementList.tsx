@@ -1,30 +1,55 @@
-import { useDirectorStore } from '../../experience/director/directorStore'
-import { Button } from '../../ui/Button'
+import { Link } from 'react-router'
+import { ANNOUNCEMENT_CATEGORY_LABEL, useAnnouncements } from '../../api/announcements'
+import { messageFor } from '../../api/errors'
+import { formatPublished } from '../../lib/format'
+import { ButtonRouteLink } from '../../ui/Button'
+import { Pill } from '../../ui/Badges'
 import { Row, RowList } from '../../ui/Rows'
-import { ALERT_ANNOUNCEMENT, ANNOUNCEMENTS } from './announcements'
+import text from '../../ui/text.module.css'
 
-/** One channel for the whole city: announcements, instructions, alerts. */
+/** The three latest publications, on the High Council section of the flyover (D06). */
 export function AnnouncementList() {
-  const alert = useDirectorStore((s) => s.alert)
-  const setAlert = useDirectorStore((s) => s.setAlert)
-  const items = alert ? [ALERT_ANNOUNCEMENT, ...ANNOUNCEMENTS] : ANNOUNCEMENTS
+  const list = useAnnouncements({ limit: 3 })
+
+  if (list.isPending) return <p className={text.note}>Chargement des annonces…</p>
+  if (list.isError) return <p className={text.error}>{messageFor(list.error)}</p>
+
+  const items = list.data?.data ?? []
+  if (items.length === 0) {
+    return (
+      <>
+        <p className={text.note}>Aucune annonce pour le moment.</p>
+        <ButtonRouteLink to="/ville/annonces" variant="ghost" small>
+          Toutes les annonces
+        </ButtonRouteLink>
+      </>
+    )
+  }
 
   return (
     <>
       <RowList>
-        {items.map((a) => (
-          <Row key={a.title}>
-            <span>
-              <small>{a.source}</small>
-              <strong>{a.title}</strong>
-              {a.detail && <small>{a.detail}</small>}
-            </span>
-          </Row>
-        ))}
+        {items.map((announcement) => {
+          const when = announcement.published_at ? formatPublished(announcement.published_at) : ANNOUNCEMENT_CATEGORY_LABEL[announcement.category]
+          const source = announcement.service?.name ?? ANNOUNCEMENT_CATEGORY_LABEL[announcement.category]
+          return (
+            <Row key={announcement.id}>
+              <Link to={`/ville/annonces/${announcement.id}`}>
+                <small>
+                  {source}, {when}
+                  {announcement.is_important ? ' · Importante' : ''}
+                </small>
+                <strong>{announcement.title}</strong>
+                {announcement.summary && <small>{announcement.summary}</small>}
+              </Link>
+              {announcement.is_important && <Pill tone="alert">Importante</Pill>}
+            </Row>
+          )
+        })}
       </RowList>
-      <Button variant="ghost" small onClick={() => setAlert(!alert)}>
-        {alert ? "Lever l'alerte" : 'Simuler une alerte'}
-      </Button>
+      <ButtonRouteLink to="/ville/annonces" variant="ghost" small>
+        Toutes les annonces
+      </ButtonRouteLink>
     </>
   )
 }

@@ -34,8 +34,10 @@ export default function ReportsPage() {
   const stats = useDashboardStats().data?.requests
   const update = useUpdateRequest()
   // Open reports, most urgent first, then the oldest
-  const list = useRequests({ type: 'INCIDENT', scope: 'open', district_id: district ?? undefined, sort: 'priority', limit: 50 })
+  // F95: without a district the list is the same as `all`: it is only asked for when a district is chosen
   const all = useRequests({ type: 'INCIDENT', scope: 'open', sort: 'priority', limit: 100 })
+  const inDistrict = useRequests({ type: 'INCIDENT', scope: 'open', district_id: district ?? undefined, sort: 'priority', limit: 50 }, district !== null)
+  const list = district === null ? all : inDistrict
   const resolved = useRequests({ type: 'INCIDENT', status: ['RESOLVED'], limit: 1 })
 
   const byDistrict = stats?.incidents_by_district ?? {}

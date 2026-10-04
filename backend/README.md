@@ -68,8 +68,8 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 | `GET /api/notifications` · `GET /unread-count` · `PATCH /:id/read` · `POST /read-all` · `DELETE /:id` | logged in | F30 |
 | `GET /api/service-interruptions?service_id=&scope=current\|upcoming\|active\|all` | public | F38 |
 | `POST /api/service-interruptions` · `PATCH /:id` · `POST /:id/end` · `DELETE /:id` | staff | F38 |
-| `GET /api/transit/lines` · `/lines/:idOrCode?day=` · `/stops?district_id=&q=` · `/stops/:id?day=&at=` · `/disruptions` | public | F36 |
-| `POST/PATCH/DELETE /api/transit/lines[/:id]` · `PATCH /lines/:id/status` · `PUT /lines/:id/stops` · `PUT /lines/:id/timetable` · stops CRUD | staff | F36 |
+| `GET /api/transit/lines` · `/lines/:idOrCode?day=` (stops with `times` and `times_by_direction`) · `/stops?district_id=&q=` · `/stops/:id?day=&at=` · `/disruptions` | public | F36 |
+| `POST/PATCH/DELETE /api/transit/lines[/:id]` · `PATCH /lines/:id/status` · `PUT /lines/:id/stops` · `PUT /lines/:id/timetable` (`departures` list, or `first`/`last`/`every_minutes`/`minutes_between_stops`/`return_trip` generated in both directions by default) · stops CRUD | staff | F36 |
 | `GET /api/appointments/slots?service_id=&from=&to=` | public | F39 |
 | `POST /api/appointments/slots` · `POST /slots/bulk` · `PATCH/DELETE /slots/:id` | staff | F39 |
 | `POST /api/appointments` · `GET /api/appointments` · `GET /:id` · `GET /:id/ics` · `POST /:id/cancel` · `PATCH /:id/reminder` | logged in (own) / staff | F39, F40 |

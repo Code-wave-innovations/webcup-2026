@@ -1,0 +1,32 @@
+.airlock {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 16px;
+  min-height: 100svh;
+  padding: 24px var(--gutter);
+}
+
+/* the panel is placed for the orbit (absolute, beside Nova, tilted in): here it simply sits in the column */
+.airlock > form {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: min(460px, 100%);
+  transform: none;
+  animation: none;
+}
+
+.complete {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  font: inherit;
+}
+
+.complete:hover {
+  color: var(--color-text);
+}

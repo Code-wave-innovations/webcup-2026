@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { isLightScene } from '../a11y/sceneMode'
 
 export const PHONE_QUERY = '(max-width: 860px)'
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
@@ -19,6 +20,7 @@ export function useMediaQuery(query: string): boolean {
   )
 }
 
+/** Also true in the light version (F96), which drops every animation. */
 export function useReducedMotion(): boolean {
-  return useMediaQuery(REDUCED_MOTION_QUERY)
+  return useMediaQuery(REDUCED_MOTION_QUERY) || isLightScene
 }

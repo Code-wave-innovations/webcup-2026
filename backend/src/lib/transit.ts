@@ -32,3 +32,20 @@ export const buildDepartures = (
   }
   return rows;
 };
+
+// F36: the regular service of a line in both directions (or one): each run is named after the stop it
+// ends at, so residents read "towards X". The return trip uses the same times from the other end.
+export const buildRegularService = (
+  lineId: number,
+  stops: { id: number; name: string }[],
+  options: { dayType: DayType; first: string; last: string; everyMinutes: number; minutesBetweenStops: number; returnTrip: boolean }
+) => {
+  const orders = options.returnTrip ? [stops, [...stops].reverse()] : [stops];
+  return orders.flatMap((order) =>
+    buildDepartures(
+      lineId,
+      order.map((s) => s.id),
+      { ...options, direction: order[order.length - 1].name }
+    )
+  );
+};

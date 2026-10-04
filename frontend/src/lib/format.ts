@@ -16,3 +16,10 @@ export function formatLocalTime(dusk: number): string {
 export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
+
+const publishedFormat = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+
+/** Publication date shown to residents, e.g. "2 octobre 2026". */
+export function formatPublished(iso: string): string {
+  return publishedFormat.format(new Date(iso))
+}

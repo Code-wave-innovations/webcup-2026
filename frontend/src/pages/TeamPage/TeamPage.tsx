@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import logo from '../../assets/logo/code-wave-logo.png'
 import logo2 from '../../assets/logo/code-wave-high-resolution-logo-transparent.png'
+import { useSignedIn } from '../../api/session'
 import useHttps from '../../hooks/useHttps'
 
 type User = {
@@ -13,11 +14,14 @@ type User = {
 
 function TeamPage() {
   const { http } = useHttps()
+  // F95: GET /api/users is reserved to the staff; without a session it could only answer 401
+  const signedIn = useSignedIn()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!signedIn) return
     const controller = new AbortController()
 
     http
@@ -36,7 +40,7 @@ function TeamPage() {
       })
 
     return () => controller.abort()
-  }, [http])
+  }, [http, signedIn])
 
   return (
     <main className="relative isolate flex min-h-svh flex-col overflow-hidden bg-white">
@@ -88,7 +92,7 @@ function TeamPage() {
         </h1>
 
         <div className="mt-10 w-full max-w-3xl">
-          {loading ? (
+          {!signedIn ? null : loading ? (
             <p className="text-sm text-[#0A2342]/60">Chargement des membres…</p>
           ) : error ? (
             <p className="text-sm text-red-600">{error}</p>

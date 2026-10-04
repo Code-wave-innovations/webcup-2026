@@ -30,6 +30,7 @@ Ces plans décrivent comment brancher chaque fonctionnalité sur l'API pour la r
 | [PLAN-08](08-accessibilite-D20-F21-F23-F24-F41-F42-F43-F44.md) | Accessibilité et confort de lecture | D20 · F21 · F23 · F24 · F41 · F42 · F43 · F44 | 4 710 | 00, puis toutes les pages livrées | ≈ 6 h |
 | [PLAN-09](09-accompagnement-D12-D13-F35.md) | Accompagnement des nouveaux habitants | D12 · D13 · F35 | 1 140 | 01, 02, 03 (08) | ≈ 4 h |
 | [PLAN-10](10-espace-agents-tracabilite-D19-F47-F48.md) | Espace agents, API Nova Terra et traçabilité | D19 · F47 · F48 | 2 350 | 00, 01 (03) | ≈ 5 h |
+| [PLAN-11](11-sobriete-F95.md) | Sobriété numérique : ressources chargées et requêtes inutiles | F95 | 1 320 | 00 (08 : version légère F96) | ≈ 6 h |
 
 Au total, 22 120 XP sont couverts par ces plans ; les 1 080 XP du multilingue sont exclus. Les efforts sont estimés pour une personne. Chaque plan a une section « Version minimale » à suivre si le temps manque.
 
@@ -54,6 +55,7 @@ Au total, 22 120 XP sont couverts par ces plans ; les 1 080 XP du multilingue so
 | D17 | 03 | | | F46 | 07 |
 | D18 | 04 | | | F47 | 10 |
 | | | | | F48 | 10 |
+| | | | | F95 | 11 |
 
 ## Dépendances
 
@@ -75,6 +77,8 @@ graph LR
   P03 --> P09
   P03 --> P10[10 Espace agents & traçabilité]
   P10a --> P10
+  P00 --> P11[11 Sobriété]
+  P08 -.-> P11
 ```
 
 ## Ordre recommandé
@@ -128,11 +132,12 @@ Ces règles sont détaillées dans le PLAN-00 et s'appliquent à tous les plans 
 | 03 | À faire | |
 | 04 | À faire | |
 | 05 | À faire | |
-| 06 | À faire | |
+| 06 | Fait (4 oct.) | `/ville/transports` (réseau, mes arrêts et favoris, recherche, fiche ligne par sens), bloc Transports de l'accueil, `/admin` et `/agent/transports`, horaires aller-retour. Écarts : § 9 du plan |
 | 07 | À faire | |
 | 08 | À faire | |
 | 09 | À faire | |
 | 10 | À faire | |
+| 11 | En cours | Étapes 0–1 faites : mesure de référence, bundles (back-office et pages hors film −79 %) |
 
 ## Quand une nouvelle vague arrive
 

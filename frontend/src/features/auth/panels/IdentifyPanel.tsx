@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import { isLightScene } from '../../../a11y/sceneMode'
 import { Button, ButtonRouteLink } from '../../../ui/Button'
 import { Field } from '../../../ui/Field'
 import styles from '../AccessHologram.module.css'
@@ -15,8 +16,9 @@ export function IdentifyPanel({ identifier, error, checking, identifierRef, onCh
   return (
     <div className={`${styles.panel} ${styles.panelEnter}`}>
       <p className={styles.lead}>
-        <strong>Nova</strong> reste à votre gauche. Entrez l’e-mail ou l’identifiant rattaché à votre dossier citoyen —
-        inscription ou entrée, le sas décidera.
+        {/* F96: no Nova beside the panel in the light version */}
+        {isLightScene ? 'Entrez' : <><strong>Nova</strong> reste à votre gauche. Entrez</>} l’e-mail ou l’identifiant rattaché à votre
+        dossier citoyen — inscription ou entrée, le sas décidera.
       </p>
       <Field label="E-mail ou identifiant" htmlFor="access-id" error={error}>
         <span className={styles.sight}>

@@ -1,0 +1,89 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+}
+
+.search {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.chips legend {
+  width: 100%;
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.chips button {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-line);
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+}
+
+.chips button[aria-pressed='true'] {
+  background: var(--color-text);
+  color: var(--color-ink);
+  border-color: var(--color-text);
+  font-weight: 600;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.article {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.article p {
+  margin: 0;
+  max-width: 70ch;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.rowTitle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.rowTitle span {
+  min-width: 0;
+}

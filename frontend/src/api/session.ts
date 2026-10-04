@@ -1,3 +1,4 @@
+import type { Query, QueryKey } from '@tanstack/react-query'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { queryClient } from './queryClient'
@@ -46,16 +47,39 @@ function resetServerCache(): void {
   void queryClient.resetQueries({ type: 'active' })
 }
 
+/** Data that the API gives without a session, by the first two parts of the query key (`admin` and `impact` are staff views). */
+const PUBLIC_QUERY_ROOTS = new Set(['home', 'announcements', 'transit', 'services', 'service-categories', 'settings', 'districts', 'procedures', 'alerts', 'interruptions'])
+const STAFF_QUERY_PARTS = new Set(['admin', 'impact'])
+
+const isPublicQuery = (key: QueryKey) => PUBLIC_QUERY_ROOTS.has(String(key[0])) && !STAFF_QUERY_PARTS.has(String(key[1]))
+
+/**
+ * F95: after a sign-out, only the public data on screen is loaded again. Reloading the rest would send
+ * requests without a token, each refused with a 401, while their screens are already leaving behind
+ * their guard (RequireStaff, RequireSession). Removing a query does not refetch it.
+ */
+function dropAccountCache(): void {
+  void queryClient.cancelQueries()
+  queryClient.removeQueries({ predicate: (query: Query) => !isPublicQuery(query.queryKey) })
+  queryClient.removeQueries({ type: 'inactive' })
+  void queryClient.resetQueries({ type: 'active' })
+}
+
 /** Opens the session after a login or a registration. */
 export function signIn(auth: AuthResponse): void {
   useSessionStore.getState().setSession(auth.token, auth.user)
   resetServerCache()
 }
 
+/** The airlock already holds a JWT: the HTTP client can send it without a second login. */
+export function attachToken(token: string): void {
+  useSessionStore.setState({ token })
+}
+
 /** Closes the session. */
 export function signOut(): void {
   useSessionStore.getState().clear()
-  resetServerCache()
+  dropAccountCache()
 }
 
 export const SESSION_EXPIRED_EVENT = 'nova:session-expired'

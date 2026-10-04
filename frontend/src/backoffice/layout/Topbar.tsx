@@ -76,6 +76,8 @@ function staffLink(link: string | null, persona: Persona): string | null {
   const request = link?.match(/^\/requests\/(\d+)/)
   if (request) return `${homePath(persona)}/demandes/${request[1]}`
   if (link?.startsWith('/appointments')) return `${homePath(persona)}/rendez-vous`
+  const line = link?.match(/^\/transport\/lines\/([^/?#]+)/)
+  if (line) return `${homePath(persona)}/transports?ligne=${line[1]}`
   return null
 }
 

@@ -26,6 +26,7 @@ export const AGENT_NAV: NavGroup[] = [
       { path: '/agent/rendez-vous', label: 'Rendez-vous', icon: 'calendar', codes: ['F39'], badge: 'appointmentsToday' },
       { path: '/agent/citoyens', label: 'Citoyens', icon: 'users', codes: ['F34'] },
       { path: '/agent/interruptions', label: 'Interruptions', icon: 'wrench', codes: ['F38'], badge: 'interruptions' },
+      { path: '/agent/transports', label: 'Transports', icon: 'bus', codes: ['F36'] },
     ],
   },
   {
@@ -59,6 +60,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { path: '/admin/services', label: 'Catalogue de services', icon: 'grid', codes: ['D05', 'F28', 'F63', 'F64'] },
       { path: '/admin/maintenance', label: 'Interruptions', icon: 'wrench', codes: ['F38', 'F64'], badge: 'interruptions' },
+      { path: '/admin/transports', label: 'Transports', icon: 'bus', codes: ['F36'] },
       { path: '/admin/annonces', label: 'Annonces', icon: 'megaphone', codes: ['D06', 'D18'] },
       { path: '/admin/alertes', label: 'Alertes', icon: 'siren', codes: ['D18', 'F29', 'F31'], badge: 'activeAlerts' },
       { path: '/admin/notifications', label: 'Notifications', icon: 'bell', codes: ['F30'] },

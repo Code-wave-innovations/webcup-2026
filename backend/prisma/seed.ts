@@ -5,7 +5,7 @@
 require("dotenv").config();
 import { PrismaClient, type Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { buildDepartures } from "../src/lib/transit";
+import { buildRegularService } from "../src/lib/transit";
 import { ACCOUNTS, seedDemoScenario } from "./demoScenario";
 
 const prisma = new PrismaClient();
@@ -313,6 +313,8 @@ async function main() {
     { code: "ECO", name: "Campus Nord", district: "NORD", address: "Allée du Savoir" },
     { code: "ENE", name: "Centrale énergétique", district: "EST", address: "Boulevard de l'Énergie" },
     { code: "SER", name: "Serres agricoles", district: "OUEST", address: "Chemin des Serres" },
+    // F21: no step-free access, shown as such to residents
+    { code: "PAN", name: "Pont de l'Anneau", district: "NORD", address: "Anneau nord, passerelle haute", accessible: false },
   ];
   const stopIds: Record<string, number> = {};
   for (const { district, ...stop } of stops) {
@@ -333,6 +335,16 @@ async function main() {
       status: "DISRUPTED" as const,
       status_message: "Travaux sur le chemin des Serres : retards d'environ 10 minutes. Le tram T1 reste une alternative depuis le Grand Dôme.",
     },
+    {
+      code: "A1",
+      name: "Navette Anneau nord",
+      mode: "SHUTTLE" as const,
+      color: "#bd10e0",
+      stops: ["ECO", "PAN", "SAN", "ENE"],
+      every: 20,
+      status: "INTERRUPTED" as const,
+      status_message: "Travaux sur l'anneau nord : navette suspendue. Reprise à 20:00. En attendant, prenez le bus B2 depuis le Campus Nord ou le Centre de santé.",
+    },
   ];
   for (const { stops: lineStops, every, ...line } of lines) {
     const row = await prisma.transitLine.upsert({ where: { code: line.code }, create: line, update: line });
@@ -345,15 +357,13 @@ async function main() {
       ["SATURDAY", "06:30", "23:00", 2],
       ["SUNDAY", "07:30", "21:00", 2],
     ] as const) {
+      // both directions: towards the last stop, then back towards the first one
       await prisma.transitDeparture.createMany({
-        data: buildDepartures(row.id, ids, {
-          dayType,
-          first,
-          last,
-          everyMinutes: every * factor,
-          minutesBetweenStops: 4,
-          direction: stops.find((s) => s.code === lineStops[lineStops.length - 1])!.name,
-        }),
+        data: buildRegularService(
+          row.id,
+          lineStops.map((code) => ({ id: stopIds[code], name: stops.find((s) => s.code === code)!.name })),
+          { dayType, first, last, everyMinutes: every * factor, minutesBetweenStops: 4, returnTrip: true }
+        ),
       });
     }
   }

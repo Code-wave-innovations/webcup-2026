@@ -2,6 +2,32 @@
   display: contents;
 }
 
+.confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.confirmationTitle {
+  margin: 0;
+  font: 600 17px/1.25 var(--font-body);
+}
+
+.confirmationTitle:focus {
+  outline: none;
+}
+
+.confirmationTitle:focus-visible {
+  outline: 2px solid var(--color-ice-bright);
+  outline-offset: 4px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .line {
   display: flex;
   align-items: center;

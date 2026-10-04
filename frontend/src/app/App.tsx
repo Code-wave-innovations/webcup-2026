@@ -1,11 +1,38 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
-import { AirlockPage } from '../pages/AirlockPage/AirlockPage'
-import { CityPage } from '../pages/CityPage/CityPage'
+import { isLightScene } from '../a11y/sceneMode'
 import { ConsoleLayout } from '../pages/Console/ConsoleLayout'
 import { NotFoundPage } from '../pages/Console/NotFoundPage'
-import { FilmLayout } from './FilmLayout'
+import { FilmLoadingScreen } from './FilmLoadingScreen'
+import { LightLayout } from './LightLayout'
 
+/*
+ * F96: the film (three.js, Nova's model, the director) is only reached through these imports, so the light
+ * version never downloads it. Arriving on a film route of the complete version, they all start downloading
+ * together at once, as when they were static imports, instead of one after the other. Elsewhere (back-office,
+ * team page) the film loads on the first visit to one of its routes, like any lazy page.
+ */
+const loadFilmLayout = () => import('./FilmLayout')
+const loadAirlockPage = () => import('../pages/AirlockPage/AirlockPage')
+const loadCityPage = () => import('../pages/CityPage/CityPage')
+/** the film routes: the airlock (/), the city (/ville/*) and the chat (/nova) */
+const onFilmRoute = typeof window !== 'undefined' && /^\/(?:ville(?:\/|$)|nova(?:\/|$)|$)/.test(window.location.pathname)
+if (!isLightScene && onFilmRoute) {
+  void loadFilmLayout()
+  void loadAirlockPage()
+  void loadCityPage()
+}
+const FilmLayout = lazy(() => loadFilmLayout().then((m) => ({ default: m.FilmLayout })))
+const AirlockPage = lazy(() => loadAirlockPage().then((m) => ({ default: m.AirlockPage })))
+const CityPage = lazy(() => loadCityPage().then((m) => ({ default: m.CityPage })))
+/** F96: the light version's own pages (airlock, home, chat); the console pages are shared */
+const LightAirlockPage = lazy(() => import('../pages/LightAirlock/LightAirlockPage'))
+const LightHomePage = lazy(() => import('../pages/LightHome/LightHomePage'))
+const LightChatPage = lazy(() => import('../pages/LightChat/LightChatPage'))
+
+const AnnouncementsPage = lazy(() => import('../pages/Announcements/AnnouncementsPage'))
+const AnnouncementPage = lazy(() => import('../pages/Announcements/AnnouncementPage'))
+const TransportsPage = lazy(() => import('../pages/Transports/TransportsPage'))
 const ChatPage = lazy(() => import('../pages/ChatPage/ChatPage'))
 const TeamPage = lazy(() => import('../pages/TeamPage/TeamPage'))
 const FaceUnlock = lazy(() => import('../components/Face/FaceUnlock'))
@@ -21,12 +48,45 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<FilmLayout />}>
-          <Route index element={<AirlockPage />} />
+        {/* F96: same URLs in both versions; the light one never mounts the film */}
+        <Route
+          element={
+            isLightScene ? (
+              <LightLayout />
+            ) : (
+              <Suspense fallback={<FilmLoadingScreen />}>
+                <FilmLayout />
+              </Suspense>
+            )
+          }
+        >
+          <Route
+            index
+            element={<Suspense fallback={null}>{isLightScene ? <LightAirlockPage /> : <AirlockPage />}</Suspense>}
+          />
           <Route path="ville">
-            <Route index element={<CityPage />} />
+            {!isLightScene && (
+              <Route
+                index
+                element={
+                  <Suspense fallback={null}>
+                    <CityPage />
+                  </Suspense>
+                }
+              />
+            )}
             {/* pages beyond the flyover, over the dimmed city */}
             <Route element={<ConsoleLayout />}>
+              {isLightScene && (
+                <Route
+                  index
+                  element={
+                    <Suspense fallback={null}>
+                      <LightHomePage />
+                    </Suspense>
+                  }
+                />
+              )}
               {ConsoleTestPage && (
                 <Route
                   path="test"
@@ -37,17 +97,54 @@ function App() {
                   }
                 />
               )}
+              <Route
+                path="annonces"
+                element={
+                  <Suspense fallback={null}>
+                    <AnnouncementsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="annonces/:id"
+                element={
+                  <Suspense fallback={null}>
+                    <AnnouncementPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="transports"
+                element={
+                  <Suspense fallback={null}>
+                    <TransportsPage />
+                  </Suspense>
+                }
+              />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Route>
-          <Route
-            path="nova"
-            element={
-              <Suspense fallback={null}>
-                <ChatPage />
-              </Suspense>
-            }
-          />
+          {isLightScene ? (
+            <Route element={<ConsoleLayout />}>
+              <Route
+                path="nova"
+                element={
+                  <Suspense fallback={null}>
+                    <LightChatPage />
+                  </Suspense>
+                }
+              />
+            </Route>
+          ) : (
+            <Route
+              path="nova"
+              element={
+                <Suspense fallback={null}>
+                  <ChatPage />
+                </Suspense>
+              }
+            />
+          )}
         </Route>
         <Route
           path="equipe"

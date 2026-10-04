@@ -9,13 +9,23 @@ export default defineConfig({
   // SWIFTASK_API_KEY (Nova's voice) is read by the browser too, so it ends up in the public bundle
   envPrefix: ['VITE_', 'SWIFTASK_'],
   build: {
-    // three.js + postprocessing + R3F + drei are one deliberate vendor chunk (≈ 300 kB gzipped)
-    chunkSizeWarningLimit: 1200,
+    // three.js is one deliberate vendor chunk (≈ 250 kB gzipped); the face detector (tfjs) is the other big one
+    chunkSizeWarningLimit: 1400,
     rolldownOptions: {
       output: {
-        // The 3D engine changes far less often than the app code: keep it in its own long-cached chunk
+        // Vendor code changes far less often than the app code: keep it in long-cached chunks.
+        // F95: a group only takes the modules its test matches. With the default (true), the 3D group also swallowed
+        // React and zustand, so every page, the back-office included, preloaded the 3D engine to get React.
         codeSplitting: {
-          groups: [{ name: 'three', test: /node_modules[\\/](three|postprocessing|@react-three)[\\/]/ }],
+          includeDependenciesRecursively: false,
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/, priority: 20 },
+            { name: 'three', test: /node_modules[\\/]three[\\/]/, priority: 10 },
+            { name: 'r3f', test: /node_modules[\\/](postprocessing|@react-three|three-stdlib|three-mesh-bvh|troika-[\w-]+|camera-controls|maath)[\\/]/, priority: 10 },
+            // without these two, the shared data layer and back-office primitives came as ~20 chunks of 1 kB each
+            { name: 'api', test: /src[\\/]api[\\/]|node_modules[\\/](@tanstack[\\/]query-core|@tanstack[\\/]react-query|axios|zustand)[\\/]/, priority: 5 },
+            { name: 'bo-ui', test: /src[\\/]backoffice[\\/](ui|charts|shared|lib)[\\/]/, priority: 5 },
+          ],
         },
       },
     },

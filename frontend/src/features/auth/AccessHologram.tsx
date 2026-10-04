@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
 import { useDistricts } from '../../api/districts'
 import { useReducedMotion } from '../../hooks/useMediaQuery'
+import { Button } from '../../ui/Button'
 import { Icon, NovaMark } from '../../ui/Icon'
 import { hexBurst } from '../../ui/hexBurst'
 import {
@@ -19,7 +20,6 @@ import type { LoginActivity } from './loginActivity'
 import type { LoginState } from './loginMachine'
 import { IdentifyPanel } from './panels/IdentifyPanel'
 import { LoginPanel } from './panels/LoginPanel'
-import { RegisterFacePanel } from './panels/RegisterFacePanel'
 import { RegisterIdentityPanel } from './panels/RegisterIdentityPanel'
 import { RegisterSecretsPanel } from './panels/RegisterSecretsPanel'
 import { useAccessControl } from './useAccessControl'
@@ -33,9 +33,13 @@ interface AccessHologramProps {
   onGranted: (session: Session) => void
   onActivity?: (activity: LoginActivity) => void
   formRef?: RefObject<HTMLFormElement | null>
+  /** F96: false in the light version, which skips the camera and its models (login by code, account without a face) */
+  faceLogin?: boolean
 }
 
 const FaceScan = lazy(() => import('./FaceScan').then((module) => ({ default: module.FaceScan })))
+/** F95: the face enrolment step (and its detection worker client) only loads when a registration reaches it */
+const RegisterFacePanel = lazy(() => import('./panels/RegisterFacePanel').then((module) => ({ default: module.RegisterFacePanel })))
 
 /** Linking a face never holds the departure longer than this. */
 const LINK_TIMEOUT_MS = 3000
@@ -63,7 +67,7 @@ function loginErrorMessage(state: LoginState, secondsLeft: number): string | nul
  * Access control of Terra Nova: identifier first, then login or citizen registration.
  * Known accounts open login with code + face; registration enrolls the face then `POST /api/auth/register`.
  */
-export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: AccessHologramProps) {
+export function AccessHologram({ collapsed, onGranted, onActivity, formRef, faceLogin = true }: AccessHologramProps) {
   const reduced = useReducedMotion()
   const [step, setStep] = useState<AccessStep>('identify')
   const [loginMode, setLoginMode] = useState<'code' | 'face'>('code')
@@ -180,6 +184,8 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
     if (v === 'mismatch') return setFormError('Les codes ne correspondent pas.')
     setFormError(null)
     setStep('register-3')
+    // without the face step, the account is created at once (register-3 still shows its progress and errors)
+    if (!faceLogin) void registerOnBackend()
   }
 
   const registerOnBackend = async () => {
@@ -280,9 +286,11 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
                 <span className={styles.dot} aria-hidden="true" /> Liaison sécurisée · Sas 01
               </p>
               <h1 className={styles.title} id="airlock-title">
-                {stepTitle(step)}
+                {faceLogin || step !== 'register-3' ? stepTitle(step) : 'Création du compte'}
               </h1>
-              <p className={styles.subtitle}>{stepSubtitle(step, { face: scanning })}</p>
+              <p className={styles.subtitle}>
+                {faceLogin || step !== 'register-3' ? stepSubtitle(step, { face: scanning }) : 'Terra Nova ouvre votre dossier citoyen.'}
+              </p>
               <div className={styles.meta} aria-hidden="true">
                 <span>Canal 7</span>
                 <span>Orbitale</span>
@@ -334,7 +342,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
                 }}
                 onToggleReveal={() => setRevealed((v) => !v)}
                 onCaps={readCapsLock}
-                onFace={() => setLoginMode('face')}
+                onFace={faceLogin ? () => setLoginMode('face') : undefined}
                 onBack={backToIdentify}
               />
             )}
@@ -386,14 +394,30 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
             )}
             {step === 'register-3' && (
               <>
-                <RegisterFacePanel
-                  email={resolveAuthEmail(identifier)}
-                  name={name.trim() || 'citoyen'}
-                  busy={registering}
-                  onEnrolled={() => void registerOnBackend()}
-                  onSkip={() => void registerOnBackend()}
-                  onBack={() => setStep('register-2')}
-                />
+                {faceLogin ? (
+                  <Suspense fallback={<p className={styles.statusText}>Ouverture du lecteur…</p>}>
+                    <RegisterFacePanel
+                      email={resolveAuthEmail(identifier)}
+                      name={name.trim() || 'citoyen'}
+                      busy={registering}
+                      onEnrolled={() => void registerOnBackend()}
+                      onSkip={() => void registerOnBackend()}
+                      onBack={() => setStep('register-2')}
+                    />
+                  </Suspense>
+                ) : (
+                  <div className={styles.plainRegister}>
+                    <p className={styles.statusText} role="status">
+                      {registering ? 'Création de votre compte…' : formError ? 'Le compte n’a pas pu être créé.' : 'Votre compte est prêt.'}
+                    </p>
+                    <Button type="button" disabled={registering} onClick={() => void registerOnBackend()}>
+                      {formError ? 'Réessayer' : 'Créer mon compte'}
+                    </Button>
+                    <Button type="button" variant="ghost" disabled={registering} onClick={() => setStep('register-2')}>
+                      Retour
+                    </Button>
+                  </div>
+                )}
                 {turnstileNeeded && (
                   <Turnstile
                     onToken={(token) => {

@@ -20,9 +20,21 @@
   width: 100%;
 }
 
-button.row:hover {
+button.row:hover,
+a.row:hover {
   border-color: var(--color-line);
   background: var(--color-hover);
+}
+
+a.row {
+  color: inherit;
+  text-decoration: none;
+}
+
+.row a {
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
 }
 
 .row strong {

@@ -11,11 +11,13 @@ interface ConsolePageProps {
   crumbs?: Crumb[]
   /** buttons next to the title */
   actions?: ReactNode
+  /** the home page itself (light version, F96): no trail */
+  home?: boolean
   children: ReactNode
 }
 
 /** Frame of a console page: trail, title (focused on arrival), lead, then the content. */
-export function ConsolePage({ title, lead, crumbs = [], actions, children }: ConsolePageProps) {
+export function ConsolePage({ title, lead, crumbs = [], actions, home = false, children }: ConsolePageProps) {
   useDocumentTitle(title)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const { pathname } = useLocation()
@@ -27,7 +29,7 @@ export function ConsolePage({ title, lead, crumbs = [], actions, children }: Con
   return (
     <>
       <header className={styles.header}>
-        <Breadcrumbs items={[{ label: 'Accueil', to: '/ville' }, ...crumbs, { label: title }]} />
+        {!home && <Breadcrumbs items={[{ label: 'Accueil', to: '/ville' }, ...crumbs, { label: title }]} />}
         <div className={styles.titleRow}>
           <h1 ref={titleRef} className={styles.title} tabIndex={-1}>
             {title}

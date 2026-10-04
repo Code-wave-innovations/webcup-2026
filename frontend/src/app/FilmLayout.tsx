@@ -3,6 +3,7 @@ import { Outlet } from 'react-router'
 import { Experience } from '../experience/Experience'
 import { SoundDirector } from '../experience/audio/SoundDirector'
 import { SoundToggle } from '../experience/audio/SoundToggle'
+import { LAST_POSE } from '../experience/city/cameraPath'
 import { debugJump } from '../experience/director/debugParams'
 import { director } from '../experience/director/director'
 import { NovaHitZone } from '../experience/nova/NovaHitZone'
@@ -12,6 +13,7 @@ import { toSession } from '../features/auth/authService'
 import { useAuthStore } from '../features/auth/authStore'
 import { DEMO_ACCOUNTS } from '../features/auth/demoAccounts'
 import { Toast } from '../ui/Toast'
+import { FilmLoadingScreen } from './FilmLoadingScreen'
 import styles from './FilmLayout.module.css'
 
 /** Keyboard users jump over the navigation to the page itself (the city sections, the chat, the airlock form). */
@@ -38,6 +40,18 @@ export function FilmLayout() {
     if (phase === 'city' || phase === 'explore' || phase === 'approach') useDirectorStore.getState().setCinematic(false)
   }, [phase])
 
+  // console pages (/ville/*), even on a deep link or a reload: the film lands on the city's overview
+  useEffect(() => {
+    if (!consoleOpen) return
+    const store = useDirectorStore.getState()
+    if (status === 'ready') {
+      if (director.phase === 'approach') director.land(LAST_POSE)
+      else director.setScroll(LAST_POSE)
+    } else if (status === 'unsupported' && store.phase !== 'city') {
+      store.setPhase('city')
+    }
+  }, [consoleOpen, status])
+
   // `?vue` / `?arrivee` land in the city without a login: use the resident demo account, as the prototype did
   useEffect(() => {
     if (!debugJump || debugSignIn.current || session || phase === 'approach' || phase === 'entry') return
@@ -55,10 +69,7 @@ export function FilmLayout() {
         <i />
         <i />
       </div>
-      <div className={styles.loading} data-done={status !== 'loading' || consoleOpen} role="status">
-        <b>Liaison avec le contrôle d'approche</b>
-        <i />
-      </div>
+      <FilmLoadingScreen done={status !== 'loading' || consoleOpen} />
       <Outlet />
       <NovaHitZone />
       <NovaSpeechBubble />

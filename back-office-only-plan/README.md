@@ -181,7 +181,7 @@ Le détail est dans le BO-00.
 | BO-06 | À faire | |
 | BO-07 | À faire | |
 | BO-08 | À faire | |
-| BO-09 | À faire | |
+| BO-09 | En cours | Transports faits (4 oct., avec le PLAN-06) ; lieux et lexique à faire |
 | BO-10 | À faire | |
 
 ## Quand une nouvelle vague arrive

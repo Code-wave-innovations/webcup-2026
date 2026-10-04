@@ -20,7 +20,8 @@ interface LoginPanelProps {
   onCodeChange: (value: string) => void
   onToggleReveal: () => void
   onCaps: (event: KeyboardEvent<HTMLInputElement>) => void
-  onFace: () => void
+  /** absent in the light version (F96): no face login */
+  onFace?: () => void
   onBack: () => void
 }
 
@@ -116,9 +117,11 @@ export function LoginPanel({
             "Demander l'entrée"
           )}
         </Button>
-        <Button type="button" variant="ghost" className={styles.faceButton} disabled={checking || locked} onClick={onFace}>
-          <Icon name="face" size={20} /> Entrer avec mon visage
-        </Button>
+        {onFace && (
+          <Button type="button" variant="ghost" className={styles.faceButton} disabled={checking || locked} onClick={onFace}>
+            <Icon name="face" size={20} /> Entrer avec mon visage
+          </Button>
+        )}
         {pendingFaceLink && (
           <p className={styles.linkHint}>
             <Icon name="face" size={14} /> Votre visage sera associé au compte qui entre maintenant.

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { director } from '../../experience/director/director'
 import { useDirectorStore } from '../../experience/director/directorStore'
 import { novaScenes } from '../../experience/nova/behavior/scenes'
+import { attachToken } from '../../api/session'
 import { AccessHologram } from '../../features/auth/AccessHologram'
 import type { Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
@@ -46,6 +47,7 @@ export function AirlockPage() {
 
   const onGranted = (granted: Session) => {
     signIn(granted)
+    if (granted.token) attachToken(granted.token)
     setStep('granted')
     departure.current = setTimeout(
       () => {

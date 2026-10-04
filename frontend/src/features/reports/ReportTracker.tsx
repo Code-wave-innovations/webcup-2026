@@ -1,4 +1,3 @@
-import type { Session } from '../auth/authService'
 import { Pill, Plate } from '../../ui/Badges'
 import { Button } from '../../ui/Button'
 import { Icon } from '../../ui/Icon'
@@ -7,11 +6,11 @@ import { RESOLVED, STATUSES, type Report } from './reportModel'
 import { useReportStore } from './reportStore'
 import styles from './ReportPanel.module.css'
 
-/** Where the report stands, on a four-station lifeline. The council account processes it for real. */
-export function ReportTracker({ report, session }: { report: Report; session: Session | null }) {
+/** Where the report stands, on a four-station lifeline. */
+export function ReportTracker({ report }: { report: Report }) {
+  const fromApi = useReportStore((s) => s.fromApi)
   const { advance, reset } = useReportStore.getState()
   const status = STATUSES[report.status]
-  const council = session?.role === 'council'
   const resolved = report.status === RESOLVED
 
   return (
@@ -42,21 +41,18 @@ export function ReportTracker({ report, session }: { report: Report; session: Se
           )
         })}
       </ol>
-      {resolved ? (
+      {fromApi ? (
+        <Button variant="ghost" small onClick={reset}>
+          Signaler autre chose
+        </Button>
+      ) : resolved ? (
         <Button variant="ghost" small onClick={reset}>
           Signaler autre chose
         </Button>
       ) : (
-        <>
-          <Button variant={council ? 'solid' : 'ghost'} small onClick={advance}>
-            {council ? status.councilAction : 'Faire avancer la démonstration'}
-          </Button>
-          {!council && (
-            <p className={text.note}>
-              Ce bouton joue le rôle du Haut Conseil. Connectez-vous avec le compte Haut Conseil pour traiter la demande vous-même.
-            </p>
-          )}
-        </>
+        <Button variant="ghost" small onClick={advance}>
+          Faire avancer la démonstration
+        </Button>
       )}
     </>
   )

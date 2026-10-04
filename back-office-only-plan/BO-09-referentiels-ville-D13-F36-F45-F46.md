@@ -104,11 +104,11 @@ Fichiers front : `src/api/transit.ts`, `src/api/places.ts`, `src/api/glossary.ts
 
 ## 5. Étapes
 
-- [ ] Transports :
-  - [ ] audit des routes de gestion ;
-  - [ ] `src/api/transit.ts` ;
-  - [ ] page avec les onglets Lignes, Arrêts et Détail, et la saisie des horaires par fréquence ;
-  - [ ] accès agent limité à l'état des lignes.
+- [x] Transports (4 oct., détail et écarts : `project-plan/06-transports-F36.md` § 9) :
+  - [x] audit des routes de gestion (déjà présent) ;
+  - [x] `src/api/transit.ts` ;
+  - [x] page avec les onglets Lignes, Arrêts et Détail, et la saisie des horaires par fréquence (aperçu, aller et retour) ;
+  - [x] accès agent limité à l'état des lignes.
 - [ ] Lieux :
   - [ ] `Place`, migration, endpoints, seed, `map_x` et `map_y` sur les arrêts, `emergency_numbers` ;
   - [ ] `src/api/places.ts` ;
@@ -118,7 +118,7 @@ Fichiers front : `src/api/transit.ts`, `src/api/places.ts`, `src/api/glossary.ts
   - [ ] `GlossaryTerm`, migration, endpoints, seed ;
   - [ ] `src/api/glossary.ts` ;
   - [ ] page admin et lecture agent.
-- [ ] `nav.ts` : trois entrées Admin, deux entrées Agent
+- [ ] `nav.ts` : trois entrées Admin, deux entrées Agent (Transports fait dans les deux espaces)
 
 ## 6. Critères d'acceptation
 

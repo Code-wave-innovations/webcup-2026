@@ -5,7 +5,7 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { badRequest, notFound } from "../lib/errors";
 import { notifyUsers } from "../lib/notify";
-import { buildDepartures } from "../lib/transit";
+import { buildRegularService } from "../lib/transit";
 import { HHMM_RE, dayTypeOf, hhmmToMinutes, toHHMM } from "../lib/datetime";
 import { parseId, zBool, zId } from "../lib/validation";
 import { resolveLocale, translate, translateOne } from "../lib/translations";
@@ -80,7 +80,8 @@ const timetableSchema = z.union([
     last: zTime,
     every_minutes: z.coerce.number().int().min(1).max(240),
     minutes_between_stops: z.coerce.number().int().min(0).max(60).default(3),
-    direction: z.string().max(191).optional(),
+    // also run from the last stop back to the first one, with the same times
+    return_trip: zBool.default(true),
   }),
 ]);
 
@@ -139,11 +140,13 @@ const transitController = {
     res.json({
       ...rest,
       day_type: day,
-      stops: stops.map(({ position, stop }) => ({
-        position,
-        ...stop,
-        times: departures.filter((d) => d.stop_id === stop.id).map((d) => d.time),
-      })),
+      stops: stops.map(({ position, stop }) => {
+        const atStop = departures.filter((d) => d.stop_id === stop.id);
+        // the same times split by direction, so each direction reads as its own timetable
+        const times_by_direction: Record<string, string[]> = {};
+        for (const d of atStop) (times_by_direction[d.direction ?? ""] ??= []).push(d.time);
+        return { position, ...stop, times: atStop.map((d) => d.time), times_by_direction };
+      }),
     });
   },
 
@@ -272,18 +275,23 @@ const transitController = {
     if ("departures" in input) {
       rows = input.departures.map((d) => ({ ...d, line_id: id, day_type: input.day_type }));
     } else {
-      const stops = await prisma.transitLineStop.findMany({ where: { line_id: id }, orderBy: { position: "asc" } });
+      const stops = await prisma.transitLineStop.findMany({
+        where: { line_id: id },
+        orderBy: { position: "asc" },
+        select: { stop: { select: { id: true, name: true } } },
+      });
       if (stops.length === 0) throw badRequest("Set the line's stops before generating a timetable");
-      rows = buildDepartures(
+      if (hhmmToMinutes(input.last) < hhmmToMinutes(input.first)) throw badRequest("The last departure must be after the first one");
+      rows = buildRegularService(
         id,
-        stops.map((s) => s.stop_id),
+        stops.map((s) => s.stop),
         {
           dayType: input.day_type,
           first: input.first,
           last: input.last,
           everyMinutes: input.every_minutes,
           minutesBetweenStops: input.minutes_between_stops,
-          direction: input.direction,
+          returnTrip: input.return_trip,
         }
       );
     }

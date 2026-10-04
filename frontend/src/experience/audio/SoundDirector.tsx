@@ -4,7 +4,7 @@ import type { FlightPhase } from '../city/explore/flightPath'
 import { director } from '../director/director'
 import { useDirectorStore } from '../director/directorStore'
 import { speechProgress } from '../nova/behavior/novaBrain'
-import { isSpeaking, isVoiceBusy, speakMessage, stopSpeaking, subscribeSpeaking, warmSpeech } from '../../hooks/useSpeakMessage'
+import { isSpeaking, isVoiceBusy, speakMessage, stopSpeaking, subscribeSpeaking, unlockSpeech, warmSpeech } from '../../hooks/useSpeakMessage'
 import { DISTRICTS } from '../city/districts'
 import { POKE_QUIPS } from '../nova/behavior/quips'
 import { nova, novaNow, useNovaStore } from '../nova/behavior/novaStore'
@@ -74,15 +74,19 @@ export function SoundDirector() {
       soundEngine.cue('key')
     }
     const onVisibility = () => soundEngine.pause(document.hidden)
+    // sound starts on, so the first gesture (not only the Son switch) unlocks Nova's voice
+    const onUnlock = () => unlockSpeech()
     document.addEventListener('pointerover', onOver, { passive: true })
     document.addEventListener('pointerdown', onDown, {
       passive: true,
       capture: true,
     })
+    document.addEventListener('pointerdown', onUnlock, { once: true, capture: true })
     document.addEventListener('keydown', onKey, {
       passive: true,
       capture: true,
     })
+    document.addEventListener('keydown', onUnlock, { once: true, capture: true })
     document.addEventListener('visibilitychange', onVisibility)
 
     // the film's ambience, and Nova murmuring while it speaks
@@ -141,7 +145,9 @@ export function SoundDirector() {
       cancelAnimationFrame(frame)
       document.removeEventListener('pointerover', onOver)
       document.removeEventListener('pointerdown', onDown, { capture: true })
+      document.removeEventListener('pointerdown', onUnlock, { capture: true })
       document.removeEventListener('keydown', onKey, { capture: true })
+      document.removeEventListener('keydown', onUnlock, { capture: true })
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [enabled])

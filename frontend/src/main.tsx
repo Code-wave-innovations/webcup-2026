@@ -8,6 +8,10 @@ import '@fontsource/chakra-petch/latin-600.css'
 import './index.css'
 import App from './app/App.tsx'
 import { queryClient } from './api/queryClient'
+import { SCENE } from './a11y/sceneMode'
+
+// F96: the light version restyles the whole page (system fonts, opaque panels) from the first paint
+document.documentElement.dataset.scene = SCENE.mode
 
 /** Server-state inspector, compiled out of production builds. */
 const QueryDevtools = import.meta.env.DEV

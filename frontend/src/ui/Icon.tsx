@@ -14,6 +14,7 @@ const PATHS = {
     </>
   ),
   hex: <path d="M12 2 20.7 7v10L12 22 3.3 17V7z" />,
+  star: <path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" />,
   close: <path d="M18 6 6 18M6 6l12 12" />,
   chevron: <path d="m9 18 6-6-6-6" />,
   search: (

@@ -2,17 +2,18 @@ import { create } from 'zustand'
 
 const STORAGE_KEY = 'nova:son'
 
+/** Sound plays unless this browser stored an explicit mute. */
 function remembered(): boolean {
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === '1'
+    return window.localStorage.getItem(STORAGE_KEY) !== '0'
   } catch {
-    return false
+    return true
   }
 }
 
-/** The visitor's choice: sound is off until asked for, and remembered on this browser. */
+/** The visitor's choice: sound plays by default, and a mute is remembered on this browser. */
 export const useSoundStore = create<{ enabled: boolean; toggle: () => void }>()((set, get) => ({
-  enabled: typeof window !== 'undefined' && remembered(),
+  enabled: typeof window === 'undefined' || remembered(),
   toggle: () => {
     const enabled = !get().enabled
     try {

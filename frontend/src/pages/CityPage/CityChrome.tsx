@@ -1,4 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
+import { switchScene } from '../../a11y/sceneMode'
 import { frameBus, frameState } from '../../experience/director/frameState'
 import type { Session } from '../../features/auth/authService'
 import { formatLocalTime } from '../../lib/format'
@@ -60,6 +61,10 @@ export function TopBar({ session, active, alert, exploring, onQuit, onToggleExpl
           <span>{session.name}</span>
           <small>{session.roleLabel}</small>
         </div>
+        {/* F96: the essentials without the 3D (reloads the page in the light version) */}
+        <button type="button" className={styles.light} onClick={() => switchScene('light')}>
+          <span>Version </span>légère
+        </button>
         <button
           type="button"
           className={styles.explore}

@@ -125,3 +125,20 @@ export const useCreateContact = () =>
     mutationFn: createContact,
     onSuccess: () => refreshAround(),
   })
+
+/** D16: a signed-in resident sends an incident report. */
+export type CreateIncidentInput = {
+  subject: string
+  message: string
+  category?: string
+  district_id?: number
+  location_label?: string
+  data?: Record<string, unknown>
+}
+
+export const useCreateRequest = () =>
+  useMutation({
+    mutationFn: (input: CreateIncidentInput) =>
+      http.post<CreatedContact>('/requests', { type: 'INCIDENT' as const, ...input }).then((r) => r.data),
+    onSuccess: (created) => refreshAround(created.request.id),
+  })

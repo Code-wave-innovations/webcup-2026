@@ -64,13 +64,15 @@ const series = (values: (number | null)[] | undefined) => {
 export default function AdminOverviewPage() {
   const now = useNow()
   const [view, setView] = useDashboardView()
+  // F95: the simple view reads its own summary; the detailed panels only load when they are shown
+  const detailed = view !== 'simple'
   const statsQuery = useDashboardStats()
-  const week = useDashboardSummary('7d').data?.indicators
-  const trendsQuery = useDashboardTrends(14)
+  const week = useDashboardSummary('7d', detailed).data?.indicators
+  const trendsQuery = useDashboardTrends(14, detailed)
   const alerts = useActiveAlerts().data ?? []
   const interruptions = useInterruptions('current').data ?? []
-  const activity = useAuditLogs({ limit: 8 }, { live: true })
-  const services = useAdminServices()
+  const activity = useAuditLogs({ limit: 8 }, { live: true, enabled: detailed })
+  const services = useAdminServices(detailed)
   const stats = statsQuery.data
   const trends = trendsQuery.data
   const daily = trends?.daily

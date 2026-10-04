@@ -415,6 +415,23 @@ export interface DashboardSummary {
   watch: { kind: WatchKind; severity: 'critical' | 'warning'; label: string; link: string | null }[]
 }
 
+/* ─── Announcements (D06) ────────────────────────────────────────────────── */
+
+export type AnnouncementCategory = 'NEWS' | 'SERVICE_CHANGE' | 'PRACTICAL_INFO' | 'EVENT'
+
+/** GET /api/announcements and /api/announcements/:id (published, public) */
+export interface Announcement {
+  id: number
+  title: string
+  summary: string | null
+  content: string
+  category: AnnouncementCategory
+  is_important: boolean
+  is_pinned: boolean
+  published_at: string | null
+  service: { id: number; slug: string; name: string } | null
+}
+
 /* ─── Alerts (D18, F29, F31) ─────────────────────────────────────────────── */
 
 export interface ActiveAlert {
@@ -628,7 +645,98 @@ export type ProcedureInput = Partial<Pick<Procedure, 'title' | 'description' | '
   service_id?: number
 }
 
+/** The citizen's next booked appointment (F39), as `GET /api/home` and `GET /api/me` give it */
+export interface NextAppointment {
+  id: number
+  reference: string
+  slot: { starts_at: string; ends_at: string; location: string | null; service: { name: string } | null }
+}
+
+/** GET /api/home (D07): everything the home page needs in one call, most urgent first */
+export interface Home {
+  alerts: (ActiveAlert & { concerns_me: boolean })[]
+  service_disruptions: Omit<ServiceInterruption, 'created_by'>[]
+  transit_disruptions: TransitLineSummary[]
+  featured_services: CityService[]
+  categories: ServiceCategory[]
+  announcements: Announcement[]
+  /** null when signed out */
+  me: { unread_notifications: number; open_requests: number; next_appointment: NextAppointment | null } | null
+}
+
 /** GET /api/home: only what the back-office previews (F28) */
-export interface HomePreview {
-  featured_services: Pick<CityService, 'id' | 'name' | 'is_featured' | 'priority' | 'view_count'>[]
+export type HomePreview = Pick<Home, 'featured_services'>
+
+/* ─── F36: municipal transport ───────────────────────────────────────────── */
+
+export type TransitMode = 'BUS' | 'TRAM' | 'METRO' | 'SHUTTLE' | 'CABLE'
+export type TransitLineStatus = 'NORMAL' | 'DISRUPTED' | 'INTERRUPTED'
+export type DayType = 'WEEKDAY' | 'SATURDAY' | 'SUNDAY'
+
+/** The line as embedded in stops, departures and the disruption list */
+export interface TransitLineSummary {
+  id: number
+  code: string
+  name: string
+  mode: TransitMode
+  color: string | null
+  status: TransitLineStatus
+  status_message: string | null
+}
+
+/** GET /api/transit/lines */
+export interface TransitLine extends TransitLineSummary {
+  created_at: string
+  updated_at: string
+  description: string | null
+  is_active: boolean
+  _count?: { stops: number }
+}
+
+export interface TransitStopBase {
+  id: number
+  created_at: string
+  code: string
+  name: string
+  district_id: number | null
+  address: string | null
+  latitude: number | null
+  longitude: number | null
+  /** F21: step-free access */
+  accessible: boolean
+}
+
+/** GET /api/transit/stops */
+export interface TransitStop extends TransitStopBase {
+  district: District | null
+  lines: TransitLineSummary[]
+}
+
+/** GET /api/transit/lines/:idOrCode?day=: the line, its ordered stops and their times that day */
+export interface TransitLineDetail extends TransitLine {
+  day_type: DayType
+  /** `times` mixes the directions; `times_by_direction` splits them (key "" = no direction) */
+  stops: (TransitStopBase & { position: number; district: District | null; times: string[]; times_by_direction: Record<string, string[]> })[]
+}
+
+export interface TransitDeparture {
+  id: number
+  line_id: number
+  stop_id: number
+  day_type: DayType
+  /** "HH:MM", server time zone */
+  time: string
+  direction: string | null
+  /** computed by the server from `at` */
+  minutes_until: number
+  line: TransitLineSummary
+}
+
+/** GET /api/transit/stops/:id: lines, their status and the next departures */
+export interface TransitStopDetail extends TransitStopBase {
+  district: District | null
+  lines: TransitLineSummary[]
+  day_type: DayType
+  at: string
+  next_departures: TransitDeparture[]
 }

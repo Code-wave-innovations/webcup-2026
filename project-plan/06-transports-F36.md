@@ -99,12 +99,12 @@ On ne saisit pas les départs un par un. Pour chaque type de jour, on remplit tr
 
 ## 6. Étapes
 
-- [ ] Seed : arrêts dans chaque quartier, horaires, une perturbation
-- [ ] Créer `src/api/transit.ts`
-- [ ] Page `/ville/transports` : état du réseau, prochains départs, recherche, fiche ligne, favoris
-- [ ] Raccourci sur l'accueil et perturbations dans la section État de la ville (avec le PLAN-02)
-- [ ] Page `/admin/transports` : lignes, arrêts, ordre des arrêts, horaires générés ; entrée de menu
-- [ ] Notification de perturbation : vérifier qu'elle mène à la ligne
+- [x] Seed : arrêts dans chaque quartier, horaires, une perturbation
+- [x] Créer `src/api/transit.ts`
+- [x] Page `/ville/transports` : état du réseau, prochains départs, recherche, fiche ligne, favoris
+- [x] Raccourci sur l'accueil et perturbations dans la section État de la ville (avec le PLAN-02)
+- [x] Page `/admin/transports` : lignes, arrêts, ordre des arrêts, horaires générés ; entrée de menu
+- [x] Notification de perturbation : vérifier qu'elle mène à la ligne (lien traduit par `citizenLink` ; la cloche citoyenne arrive avec le PLAN-04)
 
 ## 7. Critères d'acceptation
 
@@ -119,3 +119,34 @@ On ne saisit pas les départs un par un. Pour chaque type de jour, on remplit tr
 Page `/ville/transports` (état du réseau, prochains départs dans mon quartier, fiche ligne) et changement d'état d'une ligne dans le back-office.
 
 Ces éléments peuvent attendre : favoris, gestion des arrêts, éditeur d'horaires.
+
+## 9. Réalisé et écarts au plan
+
+**Vérifié (4 octobre) :**
+- Frontend : `tsc -b`, lint des fichiers touchés, tests vitest (`features/transit`, `lib/links`, `backoffice/lib/timetable`). La suite complète passe à 170 sur 171 et le lint garde 3 erreurs, dans des fichiers que ce plan ne touche pas : `useSpeakMessage.test.ts`, `AccessHologram.tsx` et `useRealtimeTranscription.ts`.
+- Backend : `npm run typecheck`, `npm run check:permissions`, `npm run seed` relancé deux fois.
+- Parcours testés dans Chrome :
+  - `citoyen@` (quartier Sud) sur `/ville/transports?ligne=A1` :
+    - la fiche s'ouvre et prend le focus ;
+    - l'état du réseau montre A1 et N3 ;
+    - les départs de Berges du Sud et Réservoir s'affichent en minutes et en heure ;
+    - l'étoile enregistre un favori, qui passe en tête ;
+    - la recherche « Dôme » trouve les arrêts.
+  - Accueil, section État de la ville : le bloc Transports liste les lignes perturbées.
+  - `agent@` sur `/agent/transports` signale T1 « Perturbée » avec « Prévenir ». Le toast annonce « 4 habitants prévenus », et `citoyen@` reçoit « Ligne T1 : perturbée », lien `/transport/lines/T1`.
+  - `admin@`, horaires de T1 :
+    - passer la fréquence de 10 à 20 min fait tomber l'aperçu de 106 à 53 passages par sens avant l'enregistrement ;
+    - l'enregistrement crée 848 départs ;
+    - « Rétablir » retire T1 des perturbations.
+
+**Écarts :**
+
+| Prévu | Fait | Pourquoi |
+|---|---|---|
+| Seed : 3 à 4 lignes | Ajout de `A1` « Navette Anneau nord » (interrompue, « Reprise à 20:00 ») et de l'arrêt `PAN` « Pont de l'Anneau » (non accessible) | Le critère du BO-09 et le script de Nova parlent de l'anneau nord. L'arrêt non accessible montre la mention F21. |
+| Horaires dans un seul sens | Aller et retour : `buildRegularService` (`lib/transit.ts`), utilisé par le seed et par `PUT /lines/:id/timetable` (`return_trip`, vrai par défaut) | Au terminus, l'écran affichait « vers Berges du Sud », c'est-à-dire des arrivées. Le front masque aussi les passages dont la direction est l'arrêt lui-même. |
+| Fiche ligne : `times` par arrêt | `GET /lines/:idOrCode` renvoie aussi `times_by_direction`, et la fiche affiche un tableau par sens | Les deux sens mélangés dans une même colonne d'horaires étaient illisibles. |
+| « Reprise prévue » | Écrite dans `status_message`, aucune migration | Le message dit déjà quoi faire. Le back-office le demande en aide de saisie. |
+| La notification ouvre la ligne | Pour l'habitant, `citizenLink` (`lib/links.ts`) traduit `/transport/lines/T1` en `/ville/transports?ligne=T1`. Pour le personnel, `staffLink` mène à `/<espace>/transports?ligne=T1` | L'espace citoyen n'a pas encore de cloche (PLAN-04). Elle n'aura qu'à appeler `citizenLink`. |
+| Fiche ligne sur une page à part | Panneau dans `/ville/transports`, ouvert par `?ligne=` | La demande F36 dit « sans parcourir plusieurs écrans ». |
+| `/admin/transports` | Même page pour `/agent/transports` : les agents lisent, signalent et rétablissent, les admins gèrent aussi lignes, arrêts, ordre et horaires | Le backend autorise le changement d'état à tout le personnel. |

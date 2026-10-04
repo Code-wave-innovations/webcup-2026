@@ -14,6 +14,7 @@ import { RegistryPanel } from '../../features/registry/RegistryPanel'
 import { ReportPanel } from '../../features/reports/ReportPanel'
 import { useReportStore } from '../../features/reports/reportStore'
 import { QuickServices, ServiceShowcase } from '../../features/services/ServiceShowcase'
+import { TransitGlance } from '../../features/transit/TransitGlance'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { PHONE_QUERY, useMediaQuery, useReducedMotion } from '../../hooks/useMediaQuery'
 import { ButtonLink } from '../../ui/Button'
@@ -191,6 +192,7 @@ function CityView({ session }: { session: Session }) {
           lead={"Air, eau, énergie\u00a0: les réserves de Terra Nova, lisibles d'un coup d'œil par tous les habitants."}
         >
           <CityGauges visible={active === sectionIndex(STATUS.id)} />
+          <TransitGlance />
         </CitySection>
 
         <CitySection

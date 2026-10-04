@@ -20,6 +20,7 @@ const PLAN: Record<string, string> = {
   D20: '08', F21: '08', F23: '08', F24: '08', F41: '08', F42: '08', F43: '08', F44: '08',
   D12: '09', D13: '09', F35: '09',
   D19: '10', F47: '10', F48: '10',
+  F95: '11',
 }
 
 const BO: Record<string, string> = {

@@ -1,17 +1,10 @@
 import { Canvas } from '@react-three/fiber'
 import { Component, memo, useEffect, type ReactNode } from 'react'
+import { supportsWebGL2 } from '../a11y/sceneMode'
 import { director } from './director/director'
 import { useDirectorStore } from './director/directorStore'
 import { Film } from './Film'
 import styles from './Experience.module.css'
-
-function supportsWebGL2(): boolean {
-  try {
-    return !!document.createElement('canvas').getContext('webgl2')
-  } catch {
-    return false
-  }
-}
 
 function markUnsupported() {
   useDirectorStore.getState().setStatus('unsupported')

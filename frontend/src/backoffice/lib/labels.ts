@@ -12,6 +12,7 @@ import type {
   RequestType,
   Role,
 } from '../mocks/types'
+import type { TransitLineStatus } from '../../api/types'
 
 /** Visual tone shared by pills, dots and timeline stations. */
 export type Tone = 'neutral' | 'ice' | 'ok' | 'progress' | 'taken' | 'alert' | 'ember'
@@ -114,3 +115,6 @@ export const APPOINTMENT_TONE: Record<AppointmentStatus, Tone> = {
   NO_SHOW: 'alert',
 }
 
+
+/** F36: state of a transport line */
+export const LINE_STATUS_TONE: Record<TransitLineStatus, Tone> = { NORMAL: 'ok', DISRUPTED: 'progress', INTERRUPTED: 'alert' }

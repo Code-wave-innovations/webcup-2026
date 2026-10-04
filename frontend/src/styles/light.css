@@ -1,0 +1,22 @@
+/*
+  F96: the light version (`html[data-scene='light']`, set before the first paint by main.tsx).
+  System fonts, so the bundled web fonts are never downloaded (a @font-face only loads when used);
+  opaque panels instead of blurred glass; no animation or transition, so everything shows at once.
+*/
+:root[data-scene='light'] {
+  --font-display: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --color-glass: #070e1a;
+  --color-glass-dense: #060b15;
+  --color-holo-2: #0a1a2a;
+  --color-holo-3: #06101c;
+}
+
+:root[data-scene='light'] *,
+:root[data-scene='light'] *::before,
+:root[data-scene='light'] *::after {
+  animation: none !important;
+  transition: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}

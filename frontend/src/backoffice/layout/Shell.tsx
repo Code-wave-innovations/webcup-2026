@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useLocation, useOutlet } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
+import { Skeleton } from '../ui/Feedback'
 import { pageTransition } from '../ui/motion'
 import { BootSequence } from './BootSequence'
 import { CommandPalette } from './CommandPalette'
@@ -97,7 +98,8 @@ export function Shell() {
         <main id="bo-main" className={styles.content}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={location.pathname} variants={pageTransition} initial="initial" animate="enter" exit="exit">
-              {outlet}
+              {/* F95: the screens are loaded on demand (BackofficeApp) */}
+              <Suspense fallback={<Skeleton lines={6} />}>{outlet}</Suspense>
             </motion.div>
           </AnimatePresence>
         </main>
