@@ -38,13 +38,6 @@ interface Credentials {
 
 const LABELS = { email: 'Adresse e-mail professionnelle', password: 'Mot de passe' }
 
-/** Seed accounts, offered in development only. */
-const DEMO_PASSWORD = 'NovaTerra2026!'
-const DEMO_ACCOUNTS = [
-  { email: 'agent@novaterra.local', label: 'Alex · agent' },
-  { email: 'admin@novaterra.local', label: 'Ada · admin' },
-]
-
 /** F37: says more than "wrong password" when the server tells how close the account is to a lockout. */
 function describeLoginError(error: unknown): string | null {
   const apiError = toApiError(error)
@@ -285,26 +278,6 @@ export default function StaffLoginPage() {
               </Button>
             )}
           </div>
-          {import.meta.env.DEV && (
-            <div className={styles.demo}>
-              <p>Développement : comptes du seed</p>
-              <div className={styles.actions}>
-                {DEMO_ACCOUNTS.map((account) => (
-                  <Button
-                    key={account.email}
-                    size="sm"
-                    variant="subtle"
-                    onClick={() => {
-                      setEmail(account.email)
-                      setPassword(DEMO_PASSWORD)
-                    }}
-                  >
-                    {account.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
         </form>
       )}
     </AccessFrame>

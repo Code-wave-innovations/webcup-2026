@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import styles from './ConfirmDialog.module.css'
 
 const FOCUSABLE =
@@ -55,7 +56,8 @@ export function ConfirmDialog({ open, title, onClose, children, footer, size = '
 
   if (!open) return null
 
-  return (
+  // Portal to body: the airlock hologram uses transform + overflow:hidden, which would clip a local fixed overlay.
+  return createPortal(
     <div className={styles.backdrop} onClick={onClose} role="presentation">
       <div
         ref={panelRef}
@@ -71,6 +73,7 @@ export function ConfirmDialog({ open, title, onClose, children, footer, size = '
         <div className={styles.body}>{children}</div>
         {footer ? <div className={styles.footer}>{footer}</div> : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
