@@ -13,7 +13,7 @@ import { CityGauges } from '../../features/cityStatus/CityGauges'
 import { RegistryPanel } from '../../features/registry/RegistryPanel'
 import { ReportPanel } from '../../features/reports/ReportPanel'
 import { useReportStore } from '../../features/reports/reportStore'
-import { ServiceList } from '../../features/services/ServiceList'
+import { QuickServices, ServiceShowcase } from '../../features/services/ServiceShowcase'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { PHONE_QUERY, useMediaQuery, useReducedMotion } from '../../hooks/useMediaQuery'
 import { ButtonLink } from '../../ui/Button'
@@ -157,6 +157,7 @@ function CityView({ session }: { session: Session }) {
                   Survoler la ville
                 </ButtonLink>
               </div>
+              <QuickServices />
             </div>
             <div className={styles.scrollHint} data-scroll-hint aria-hidden="true">
               <span>Faites défiler</span>
@@ -169,9 +170,9 @@ function CityView({ session }: { session: Session }) {
           info={SERVICES}
           side="right"
           title="Tous les services, sous un même dôme"
-          lead={'Santé, logement, eau, énergie, formation\u00a0: chaque service de la ville a son guichet, ouvert jour et nuit.'}
+          lead={"Les services prioritaires d'abord, leur état en direct. Ouvrez un guichet pour voir ses horaires, ses contacts et ses démarches."}
         >
-          <ServiceList />
+          <ServiceShowcase />
         </CitySection>
 
         <CitySection

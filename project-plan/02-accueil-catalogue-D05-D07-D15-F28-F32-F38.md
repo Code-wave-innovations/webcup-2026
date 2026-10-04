@@ -167,14 +167,18 @@ F32 a deux volets : trouver un service (« les services de santé ») et, quand 
 
 - [ ] Seed : mots-clés et synonymes ; en option, exclure le personnel du compteur de vues
 - [ ] `src/api/home.ts`, `services.ts`, `procedures.ts`, `search.ts`, `interruptions.ts`
-- [ ] Composants `AvailabilityPill`, `AvailabilityNotice` et `ServiceCard`
+- [x] Composants de disponibilité et de carte : `features/services/availability.ts` (texte + icône, jamais la couleur seule), tuiles et cartes dans `ServiceShowcase` et `ServiceTerminal`
 - [ ] Survol : sections Arrivée, Services et État de la ville branchées sur `useHome()` ; raccourcis ; bandeau de maintenance
+  - [x] Section Services (D07, F28, F38) : `ServiceShowcase` lit `GET /api/services` (ordre du backend, rafraîchi toutes les 60 s), hexagones de catégories, pastille de disponibilité par tuile
+  - [x] Arrivée : « Accès rapide aux services » (`QuickServices`, les 4 premiers services) visible sans faire défiler
+  - [x] Terminal des services (`ServiceTerminal`, modal natif) : catalogue par catégorie avec recherche `q`, fiche (contacts, horaires, encart de disponibilité, interruptions prévues, démarches dépliables avec pièces à fournir, services de la même catégorie) et fil d'Ariane interne (D15)
+  - [ ] Alertes, compteurs `me`, bandeau de maintenance, perturbations de la section État de la ville
 - [ ] `/ville/services` et `/ville/services/:slug`
 - [ ] `/ville/recherche` et le champ de recherche dans la barre du haut ; catégorie proposée en premier résultat
 - [ ] Backend `GET /api/me/attention`, puis le bloc « À traiter » dans la recherche, dans « Mon espace » et en badge dans la barre du haut
 - [ ] `Breadcrumbs` et le `handle.crumb` de chaque route `/ville/*`
 - [ ] Back-office : `ServicesPage` (dont l'onglet Démarches), `MaintenancePage`, badge
-- [ ] Suppression de `ServiceList`, `services.ts` et `catalogStore`
+- [ ] Suppression de `ServiceList`, `services.ts` (fait) et `catalogStore`
 
 ## 7. Critères d'acceptation
 

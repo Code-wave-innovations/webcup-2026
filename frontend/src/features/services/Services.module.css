@@ -1,0 +1,569 @@
+/* The "Services" district of the flyover: category hexagons, holographic tiles, the catalogue button. */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ─── category hexagons ─────────────────────────────────────────────────── */
+
+.hexes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hexChip {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 43px;
+  color: var(--color-text-muted);
+  background: var(--color-line-thin);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  transition:
+    color 0.2s,
+    background 0.2s,
+    transform 0.3s var(--ease-out-soft);
+}
+
+/* the inner hexagon, one pixel inside: the outline is the gap between the two */
+.hexChip::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: var(--color-glass-dense);
+  clip-path: inherit;
+  transition: background 0.2s;
+}
+
+.hexChip svg {
+  position: relative;
+}
+
+.hexChip:hover {
+  color: var(--color-ice-bright);
+  background: var(--color-line);
+  transform: translateY(-2px);
+}
+
+.hexChip[aria-pressed='true'] {
+  color: var(--color-ink);
+  background: var(--color-ice-bright);
+}
+
+.hexChip[aria-pressed='true']::before {
+  background: radial-gradient(circle at 50% 40%, var(--color-ice-bright), var(--color-ice));
+}
+
+/* clip-path cuts the focus outline away: the ring is drawn inside */
+.hexChip:focus-visible {
+  outline: none;
+  background: var(--color-ice-bright);
+}
+
+.hexChip:focus-visible::before {
+  inset: 3px;
+}
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.caption strong {
+  font: 600 12px/1.2 var(--font-body);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ice);
+}
+
+/* ─── tiles ─────────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transition: opacity 0.25s;
+}
+
+.grid > li {
+  display: flex;
+  animation: tileIn 0.6s var(--ease-out-soft) both;
+  animation-delay: calc(var(--i) * 60ms);
+}
+
+/* the previous category stays on screen, dimmed, until the new one arrives */
+.stale {
+  opacity: 0.4;
+}
+
+@keyframes tileIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+    filter: blur(5px);
+  }
+}
+
+.tile {
+  --status: var(--color-ok);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 22px 8px 9px;
+  overflow: hidden;
+  text-align: left;
+  background: var(--color-glass-light);
+  border: 1px solid var(--color-line-thin);
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.3s var(--ease-out-soft);
+}
+
+.tile[data-status='DEGRADED'] {
+  --status: var(--color-progress);
+}
+
+.tile[data-status='UNAVAILABLE'] {
+  --status: var(--color-alert);
+}
+
+/* the light under the cursor */
+.tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(170px circle at var(--mx, 50%) var(--my, 50%), var(--color-ice-halo), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* a sheet of light sweeps across on hover */
+.tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(200, 246, 255, 0.2) 50%, transparent 65%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.tile:hover,
+.tile:focus-visible {
+  border-color: var(--color-line);
+  background: var(--color-hover);
+  transform: translateY(-2px);
+}
+
+.tile:hover::before,
+.tile:focus-visible::before {
+  opacity: 1;
+}
+
+.tile:hover::after {
+  transform: translateX(120%);
+  transition: transform 0.8s var(--ease-out-soft);
+}
+
+.tile:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--color-ice-bright);
+}
+
+.tile:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.tileGlyph {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 41px;
+  color: var(--color-ice);
+  background: var(--color-holo-1);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  transition:
+    color 0.25s,
+    background 0.25s;
+}
+
+.tile:hover .tileGlyph,
+.tile:focus-visible .tileGlyph {
+  color: var(--color-ink);
+  background: var(--color-ice);
+}
+
+.tileBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tileBody strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.22;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--status);
+}
+
+.status i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.tile:not([data-status='AVAILABLE']) .status i {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.statusDetail {
+  overflow: hidden;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+}
+
+.featured {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  display: flex;
+  color: var(--color-ember);
+  filter: drop-shadow(0 0 4px var(--color-ember-halo));
+}
+
+.ghost {
+  min-height: 60px;
+  background: linear-gradient(100deg, var(--color-glass-light) 30%, var(--color-hover) 50%, var(--color-glass-light) 70%) 0 0 / 300% 100%;
+  border: 1px solid var(--color-line-thin);
+  animation: shimmer 1.4s linear infinite;
+  animation-delay: calc(var(--i) * 80ms);
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+.empty {
+  padding: 14px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-line-thin);
+}
+
+.offline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  color: var(--color-alert);
+  border: 1px solid currentColor;
+  background: var(--color-alert-veil);
+}
+
+.offline span {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.offline strong {
+  font-size: 14px;
+}
+
+.offline small {
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.offline button {
+  padding: 6px 12px;
+  border: 1px solid currentColor;
+  font-weight: 600;
+}
+
+.offline button:hover {
+  color: var(--color-text);
+}
+
+/* ─── catalogue button ──────────────────────────────────────────────────── */
+
+.explore {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 16px;
+  overflow: hidden;
+  text-align: left;
+  color: var(--color-ice-bright);
+  border: 1px solid var(--color-line);
+  background: linear-gradient(90deg, var(--color-holo-1), transparent);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  transition: background 0.25s;
+}
+
+.explore span {
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.explore small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.explore svg {
+  transition: transform 0.3s var(--ease-out-soft);
+}
+
+/* a scan line runs along the button, as if it were being read */
+.explore::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(143, 233, 255, 0.14), transparent);
+  animation: scan 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes scan {
+  from {
+    transform: translateX(-100%);
+  }
+  60%,
+  to {
+    transform: translateX(260%);
+  }
+}
+
+.explore:hover:not(:disabled) {
+  background: linear-gradient(90deg, var(--color-hover), var(--color-holo-1));
+}
+
+.explore:hover:not(:disabled) svg {
+  transform: translateX(4px);
+}
+
+.explore:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--color-ice-bright);
+}
+
+.explore:disabled {
+  opacity: 0.5;
+}
+
+@media (max-height: 780px) and (min-width: 861px) {
+  .tile,
+  .ghost {
+    min-height: 52px;
+  }
+
+  .tileBody strong {
+    -webkit-line-clamp: 1;
+  }
+}
+
+/* ─── arrival: quick access (D07) ───────────────────────────────────────── */
+
+.quick {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.quickLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 600 11px/1.2 var(--font-body);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-ice);
+  text-shadow: 0 1px 12px var(--color-shade);
+  animation: tileIn 0.7s 1.2s var(--ease-out-soft) both;
+}
+
+.quickLabel::after {
+  content: '';
+  flex: 1;
+  max-width: 160px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--color-line), transparent);
+}
+
+.quick ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quick li {
+  display: flex;
+  /* after the headline and the actions of the hero reveal */
+  animation: tileIn 0.7s var(--ease-out-soft) both;
+  animation-delay: calc(1.3s + var(--i) * 90ms);
+}
+
+.quickItem {
+  --status: var(--color-ok);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 14px;
+  overflow: hidden;
+  text-align: left;
+  color: var(--color-text);
+  background: var(--color-glass);
+  border: 1px solid var(--color-line-thin);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition:
+    border-color 0.2s,
+    transform 0.3s var(--ease-out-soft);
+}
+
+.quickItem[data-status='DEGRADED'] {
+  --status: var(--color-progress);
+}
+
+.quickItem[data-status='UNAVAILABLE'] {
+  --status: var(--color-alert);
+}
+
+.quickItem::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(150px circle at var(--mx, 50%) var(--my, 50%), var(--color-ice-halo), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.quickItem > svg {
+  flex: none;
+  color: var(--color-ice);
+}
+
+.quickItem > span:not(.srOnly) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quickItem > i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status);
+  box-shadow: 0 0 8px var(--status);
+}
+
+.quickItem > small {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--status);
+}
+
+.quickItem:hover,
+.quickItem:focus-visible {
+  border-color: var(--color-line);
+  transform: translateY(-2px);
+}
+
+.quickItem:hover::before,
+.quickItem:focus-visible::before {
+  opacity: 1;
+}
+
+.quickItem:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--color-ice-bright);
+}
+
+@media (max-width: 860px) {
+  .quick ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-height: 700px) and (min-width: 861px) {
+  .quickItem {
+    min-height: 42px;
+  }
+}

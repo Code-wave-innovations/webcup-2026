@@ -1,18 +1,48 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { http } from './client'
 import { interruptionKeys } from './interruptions'
-import { queryClient } from './queryClient'
-import type { CityService, HomePreview, Paginated, ServiceCategory, ServiceImpact, ServiceInput, ServiceInterruption } from './types'
+import { queryClient, REFRESH } from './queryClient'
+import type { CityService, HomePreview, Paginated, ServiceCategory, ServiceDetail, ServiceImpact, ServiceInput, ServiceInterruption } from './types'
 
 // D05 / F28 / F63 / F64: the service catalogue (/api/services), written by admins
 
 export const serviceKeys = {
   all: ['services'] as const,
   admin: () => [...serviceKeys.all, 'admin'] as const,
+  catalogue: (filters: CatalogueFilters) => [...serviceKeys.all, 'catalogue', filters] as const,
+  detail: (slug: string) => [...serviceKeys.all, 'detail', slug] as const,
   impact: (id: number) => [...serviceKeys.all, 'impact', id] as const,
   categories: () => ['service-categories'] as const,
   home: () => ['home'] as const,
 }
+
+export interface CatalogueFilters {
+  /** category slug; null: every category */
+  category: string | null
+  /** F32: name, summary, keywords and category */
+  q?: string
+  limit?: number
+}
+
+/** D05 / F28: the active services as citizens see them, featured first then by priority and views */
+export const useCatalogue = ({ category, q, limit = 50 }: CatalogueFilters) =>
+  useQuery({
+    queryKey: serviceKeys.catalogue({ category, q: q || undefined, limit }),
+    queryFn: () =>
+      http.get<Paginated<CityService>>('/services', { params: { category: category ?? undefined, q: q || undefined, limit } }).then((r) => r.data),
+    // switching category keeps the previous tiles on screen until the new ones arrive
+    placeholderData: keepPreviousData,
+    refetchInterval: REFRESH.catalogue,
+  })
+
+/** D05 / F38: one service with its procedures; each fetch counts as a view (F28) */
+export const useService = (slug: string | null) =>
+  useQuery({
+    queryKey: serviceKeys.detail(slug ?? ''),
+    queryFn: () => http.get<ServiceDetail>(`/services/${slug}`).then((r) => r.data),
+    enabled: slug !== null,
+    staleTime: 60_000,
+  })
 
 /** Every service, withdrawn ones included (staff) */
 export const useAdminServices = (enabled = true) =>
