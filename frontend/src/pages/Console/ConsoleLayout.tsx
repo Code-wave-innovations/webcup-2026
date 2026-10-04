@@ -33,7 +33,7 @@ export function ConsoleLayout() {
   useEffect(() => onSessionExpired(() => announce('Votre session a expiré. Reconnectez-vous pour retrouver votre espace.')), [])
 
   return (
-    <div className={styles.console}>
+    <div className={styles.console} data-light={isLightScene ? '' : undefined}>
       <a className={styles.skip} href="#contenu">
         Aller au contenu
       </a>

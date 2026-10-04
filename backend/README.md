@@ -40,6 +40,7 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 | `POST /api/users/:id/reset-code` `{ verification: ID_DOCUMENT\|IN_PERSON_KNOWN\|PHONE_QUESTIONS, identity_confirmed: true, note? }` → `{ code, expires_at }` shown once (30 min, single use, hash only in DB) · `DELETE /api/users/:id/reset-code` | staff (agents: citizens only) | F34 |
 | `GET /api/users/staff` | staff | F22 (active agents and admins a request can be assigned to) |
 | `POST /api/users` | admin | D08 |
+| `GET /api/security/events?days=7&limit=25&kind=` | staff (agents: sans IP) | F100 |
 | `GET /api/security/overview` (adds `locked_accounts`, `two_factor`) · `GET /api/security/login-attempts` · `GET /api/security/new-devices?hours=24` | admin | F37, F53, F54 |
 | `DELETE /api/users/:id` · `GET /api/users/stats` · `GET /api/users/:id/security` · `GET /api/users/:id/devices` · `POST /api/users/:id/revoke-sessions` · `POST /api/users/:id/2fa/reset` · `DELETE /api/users/:id/passkeys` | admin | D08, F53, F54, D02 |
 | `GET /api/audit-logs?actor_id=&entity=&entity_id=&action=&from=&to=&q=&page=` | staff (agents: no `security.*`/`auth.*` entry, no IP) | F47, F48 |
@@ -116,6 +117,7 @@ Every staff mutation calls `audit(req, { action, entity, entityId, label, before
 - 5 wrong passwords for an email within 15 min lock it for 15 min; 20 from one IP block the IP. Responses: `401 INVALID_CREDENTIALS` with `remaining_attempts`, then `429 ACCOUNT_LOCKED`/`IP_BLOCKED` with `Retry-After`.
 - The account owner gets a `SECURITY` notification, and the login response includes `security.failed_attempts_since_last_login`.
 - Staff can lift a lock with `POST /api/users/:id/unlock-login`. Register, login and request creation are also rate limited per IP.
+- Agents consult the same lock and audit data through `GET /api/security/events` (F100), without IP addresses; refused logins are grouped by e-mail and reason.
 
 ### Form anti-bot (anonymous CONTACT + register)
 

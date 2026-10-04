@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveScene, urlPreference, type SceneSignals } from './sceneMode'
+import { resolveScene, sceneRoute, urlPreference, type SceneSignals } from './sceneMode'
 
 const fast: SceneSignals = { saveData: false, reducedData: false, slowNetwork: false, webgl2: true }
 
@@ -23,6 +23,32 @@ describe('resolveScene', () => {
   it('stays light without WebGL2, even when the film was chosen', () => {
     expect(resolveScene('complete', { ...fast, webgl2: false })).toEqual({ mode: 'light', reason: 'no-webgl' })
     expect(resolveScene('auto', { ...fast, webgl2: false })).toEqual({ mode: 'light', reason: 'no-webgl' })
+  })
+})
+
+describe('sceneRoute', () => {
+  it('keeps the film on its own paths, and moves a light decision under /leger', () => {
+    expect(sceneRoute('/ville', 'auto', fast).pathname).toBe('/ville')
+    expect(sceneRoute('/ville', 'light', fast)).toEqual({
+      scene: { mode: 'light', reason: 'choice' },
+      pathname: '/leger/ville',
+    })
+    expect(sceneRoute('/', 'auto', { ...fast, slowNetwork: true }).pathname).toBe('/leger')
+  })
+
+  it('opens /leger as the light version, and ?leger=0 sends it back to the film', () => {
+    expect(sceneRoute('/leger/ville/contact', 'complete', fast).scene.mode).toBe('light')
+    expect(sceneRoute('/leger/ville/contact', 'complete', fast).pathname).toBe('/leger/ville/contact')
+    expect(sceneRoute('/leger/nova', 'auto', fast, 'complete')).toEqual({
+      scene: { mode: 'complete', reason: 'choice' },
+      pathname: '/nova',
+    })
+  })
+
+  it('leaves the back-office on its URL when the light version is the choice', () => {
+    const route = sceneRoute('/admin', 'light', fast)
+    expect(route.scene.mode).toBe('light')
+    expect(route.pathname).toBe('/admin')
   })
 })
 

@@ -1,22 +1,24 @@
 /*
   F96: the light version (`html[data-scene='light']`, set before the first paint by main.tsx).
-  System fonts, so the bundled web fonts are never downloaded (a @font-face only loads when used);
-  opaque panels instead of blurred glass; no animation or transition, so everything shows at once.
+  System fonts, so the bundled web fonts are never downloaded (a @font-face only loads when used).
+  Panels stay opaque: there is no backdrop blur, which is the expensive part, and the city behind
+  is a painting rather than a WebGL scene. Motion is allowed; `prefers-reduced-motion` still stops it.
 */
 :root[data-scene='light'] {
   --font-display: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --color-glass: #070e1a;
   --color-glass-dense: #060b15;
-  --color-holo-2: #0a1a2a;
-  --color-holo-3: #06101c;
+  --color-glass-light: #0d1c2e;
+  --color-field: #0a1624;
+  --color-hover: #16344c;
+  --color-holo-2: #0c1c30;
+  --color-holo-3: #081422;
 }
 
 :root[data-scene='light'] *,
 :root[data-scene='light'] *::before,
 :root[data-scene='light'] *::after {
-  animation: none !important;
-  transition: none !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }

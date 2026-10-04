@@ -18,6 +18,7 @@ const ReportsPage = lazy(() => import('./agent/pages/ReportsPage'))
 const AppointmentsPage = lazy(() => import('./agent/pages/AppointmentsPage'))
 const CitizensPage = lazy(() => import('./agent/pages/CitizensPage'))
 const ActivityPage = lazy(() => import('./agent/pages/ActivityPage'))
+const SecurityEventsPage = lazy(() => import('./agent/pages/SecurityEventsPage'))
 const NovaTerraPage = lazy(() => import('./agent/pages/NovaTerraPage'))
 const AdminOverviewPage = lazy(() => import('./admin/pages/AdminOverviewPage'))
 const UsersPage = lazy(() => import('./admin/pages/UsersPage'))
@@ -66,6 +67,7 @@ export default function BackofficeApp() {
               <Route path="rendez-vous" element={<AppointmentsPage />} />
               <Route path="citoyens" element={<CitizensPage />} />
               <Route path="activite" element={<ActivityPage />} />
+              <Route path="securite" element={<SecurityEventsPage />} />
               <Route path="nova-terra" element={<NovaTerraPage />} />
               <Route path="interruptions" element={<MaintenancePage />} />
               <Route path="transports" element={<TransportsPage />} />

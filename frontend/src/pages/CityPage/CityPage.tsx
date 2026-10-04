@@ -132,7 +132,6 @@ function CityView({ session }: { session: Session }) {
       onClick={onClick}
     >
       <TopBar
-        session={session}
         active={active}
         alert={alert}
         exploring={exploring}

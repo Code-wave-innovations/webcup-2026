@@ -1,5 +1,11 @@
-/* the panel fills its frame (it was laid out for the Observatory) */
+/* the panel fills its frame (it was laid out for the Observatory), set here like a window on the lake */
 .chat {
   height: min(70vh, 640px);
   min-height: 360px;
+  border: 1px solid var(--color-line);
+  background: rgba(6, 12, 22, 0.94);
+  box-shadow:
+    0 24px 70px rgba(2, 4, 10, 0.45),
+    inset 0 1px 0 rgba(200, 246, 255, 0.16);
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
 }

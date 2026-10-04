@@ -1,13 +1,17 @@
-import { Outlet } from 'react-router'
+import { Outlet, useLocation } from 'react-router'
+import { barePath } from '../a11y/scenePaths'
 import { Toast } from '../ui/Toast'
+import { CityHorizon } from './CityHorizon'
 
 /**
- * F96: shell of the light version, in place of `FilmLayout`: no 3D, no loading screen, no sound or voice,
- * no Nova overlays. The pages keep their URLs and their functions (D20). Never import the film from here.
+ * F96: shell of the light version, in place of `FilmLayout`: no 3D engine, no loading screen, no sound
+ * or voice, no Nova overlays. A painted city sits behind the pages. Never import the film from here.
  */
 export function LightLayout() {
+  const { pathname } = useLocation()
   return (
     <>
+      <CityHorizon fixed={barePath(pathname) === '/'} />
       <Outlet />
       <Toast />
     </>

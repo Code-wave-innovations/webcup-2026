@@ -164,6 +164,27 @@ export interface SecurityOverview {
   two_factor: { staff_enabled: number; staff_total: number; citizens_enabled: number; passkey_users: number }
 }
 
+/** GET /api/security/events (staff, F100) */
+export type SecurityEventKind = 'login' | 'device' | 'factor' | 'account'
+
+export interface SecurityEvent {
+  id: string
+  type: string
+  at: string
+  count: number
+  account: { id: number | null; label: string | null; email: string | null }
+  actor_name: string | null
+  detail: string | null
+  /** Present for admins on audit lines only */
+  ip?: string | null
+}
+
+export interface SecurityEvents {
+  summary: { refused_24h: number; locked_now: number; new_devices_24h: number; factor_changes_7d: number }
+  locked_accounts: SecurityOverview['locked_accounts']
+  data: SecurityEvent[]
+}
+
 export interface LoginAttempt {
   id: number
   created_at: string

@@ -35,7 +35,7 @@ export default function LightHomePage() {
 
 /** Says why the light version started by itself, so it never looks like a broken site. */
 const reason = SCENE_REASON_LABEL[SCENE.reason]
-const lead = `L'essentiel de Terra Nova, en version légère${reason ? ` (${reason.toLowerCase()})` : ''}. La version complète est à un clic, en haut de page.`
+const lead = `Vue du lac, l'essentiel de Terra Nova.${reason ? ` ${reason}.` : ''} La version complète est en haut de page.`
 
 function LightHome({ firstName }: { firstName: string }) {
   const home = useHome()
@@ -43,6 +43,10 @@ function LightHome({ firstName }: { firstName: string }) {
 
   return (
     <ConsolePage home title={`Bonjour ${firstName}`} lead={lead}>
+      <div className={styles.vista} data-vista="">
+        <p>Ce soir, sur le lac</p>
+      </div>
+      <div className={styles.sheet}>
       {home.isError && <p className={text.error}>{messageFor(home.error)}</p>}
       {home.isPending && <p className={text.note}>Chargement de l'essentiel…</p>}
       {data && <Alerts alerts={data.alerts} />}
@@ -50,11 +54,21 @@ function LightHome({ firstName }: { firstName: string }) {
 
       <Section id="actions" title="Accès rapide">
         <nav aria-label="Accès rapide" className={styles.quick}>
-          <a href="#signaler">Signaler un problème</a>
-          <a href="#catalogue">Tous les services</a>
-          <Link to="/ville/transports">Transports</Link>
-          <Link to="/ville/annonces">Annonces</Link>
-          <Link to="/nova">Parler à Nova</Link>
+          <a href="#signaler">
+            <span aria-hidden="true">01</span>Signaler un problème
+          </a>
+          <a href="#catalogue">
+            <span aria-hidden="true">02</span>Tous les services
+          </a>
+          <Link to="/ville/transports">
+            <span aria-hidden="true">03</span>Transports
+          </Link>
+          <Link to="/ville/annonces">
+            <span aria-hidden="true">04</span>Annonces
+          </Link>
+          <Link to="/nova">
+            <span aria-hidden="true">05</span>Parler à Nova
+          </Link>
         </nav>
       </Section>
 
@@ -79,6 +93,7 @@ function LightHome({ firstName }: { firstName: string }) {
           Toutes les annonces
         </ButtonRouteLink>
       </Section>
+      </div>
     </ConsolePage>
   )
 }

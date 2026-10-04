@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { http } from './client'
 import { queryClient } from './queryClient'
+import { securityKeys } from './security'
 import type { IdentityCheck, IssuedResetCode, ManagedUser, Paginated, Role, StaffMember, User, UserSecurity, UserStats } from './types'
 
 // F34 / D08 / D09: accounts as the staff sees them (/api/users). Agents only reach citizen
@@ -100,7 +101,10 @@ export const useCreateUser = () =>
 export const useUnlockUser = () =>
   useMutation({
     mutationFn: (id: number) => http.post<{ unlocked: boolean }>(`/users/${id}/unlock-login`).then((r) => r.data),
-    onSuccess: refreshUsers,
+    onSuccess: () => {
+      refreshUsers()
+      void queryClient.invalidateQueries({ queryKey: securityKeys.all })
+    },
   })
 
 export const useDeleteUser = () =>

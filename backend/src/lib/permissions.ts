@@ -243,6 +243,16 @@ export const PERMISSIONS: Permission[] = [
     routes: [r("GET", "/api/audit-logs/export.csv", "admin"), r("GET", "/api/audit-logs/stats", "admin")],
   },
   {
+    key: "security.events",
+    label: "Consulter les événements de sécurité",
+    description: "Flux des connexions refusées et de la protection des comptes.",
+    group: "Sécurité",
+    sensitive: true,
+    roles: STAFF,
+    rule: "Un agent ne voit pas les adresses IP.",
+    routes: [r("GET", "/api/security/events", "staff")],
+  },
+  {
     key: "security.read",
     label: "Surveiller les connexions",
     description: "Tentatives, comptes verrouillés, IP suspectes.",

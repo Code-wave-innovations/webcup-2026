@@ -20,7 +20,7 @@ export function useMediaQuery(query: string): boolean {
   )
 }
 
-/** Also true in the light version (F96), which drops every animation. */
+/** Also true in the light version (F96), so GSAP and other JS motion stay off. The painted city animates in CSS. */
 export function useReducedMotion(): boolean {
   return useMediaQuery(REDUCED_MOTION_QUERY) || isLightScene
 }

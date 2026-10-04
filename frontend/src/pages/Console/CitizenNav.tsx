@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router'
+import { barePath } from '../../a11y/scenePaths'
 import { useRequests } from '../../api/requests'
 import { useCitizenSignedIn } from '../../api/session'
 import styles from './CitizenNav.module.css'
@@ -7,19 +8,19 @@ const current = (active: boolean) => (active ? 'true' : undefined)
 
 /** Shared Accueil + Contact + Mes rendez-vous (console) + Mon espace for the console and the city flyover. */
 export function CitizenNav({ variant }: { variant: 'console' | 'flyover' }) {
-  const { pathname } = useLocation()
+  const path = barePath(useLocation().pathname)
   const signedIn = useCitizenSignedIn()
   const waiting = useRequests({ status: ['WAITING_CITIZEN'], limit: 1 }, signedIn)
   const count = waiting.data?.meta.total ?? 0
-  const onEspace = pathname.startsWith('/ville/espace')
-  const onContact = pathname === '/ville/contact'
-  const onAppointments = pathname.startsWith('/ville/rendez-vous')
+  const onEspace = path.startsWith('/ville/espace')
+  const onContact = path === '/ville/contact'
+  const onAppointments = path.startsWith('/ville/rendez-vous')
   const flyover = variant === 'flyover'
 
   return (
     <>
       {variant === 'console' && (
-        <Link to="/ville" aria-current={current(pathname === '/ville')}>
+        <Link to="/ville" aria-current={current(path === '/ville')}>
           Accueil
         </Link>
       )}

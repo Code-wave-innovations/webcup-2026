@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { useAuditLogs } from '../../../api/audit'
 import { useDashboardStats, useDashboardTrends } from '../../../api/dashboard'
 import { messageFor } from '../../../api/errors'
+import { useSecurityEvents } from '../../../api/security'
 import { useUpdateRequest } from '../../../api/requests'
 import { useActor } from '../../layout/persona'
 import { formatRelative } from '../../lib/format'
@@ -12,6 +13,7 @@ import { RadialGauge } from '../../charts/RadialGauge'
 import { DashboardViewToggle } from '../../shared/DashboardViewToggle'
 import { SimpleDashboard } from '../../shared/SimpleDashboard'
 import { AuditFeed } from '../../shared/AuditFeed'
+import { SecurityEventList } from '../../shared/SecurityEventList'
 import { TerraNovaGlance } from '../../shared/TerraNovaGlance'
 import { toast } from '../../stores/toastStore'
 import { PriorityTag, Ref, StatusPill } from '../../ui/Badges'
@@ -40,6 +42,7 @@ export default function AgentDashboardPage() {
   const urgentAwaiting = queue.filter((r) => r.status === 'SUBMITTED' && r.priority === 'URGENT').length
   const appointmentsSeries = trends.data?.daily.map((d) => d.appointments)
   const activity = useAuditLogs({ limit: 6 }, { live: true, enabled: detailed })
+  const security = useSecurityEvents({ days: 1, limit: 5 }, { enabled: detailed })
   const update = useUpdateRequest()
   // the radar turns red when an urgent request has nobody yet
   const urgentUnassigned = queue.some((r) => r.priority === 'URGENT' && r.assigned_agent_id === null)
@@ -191,8 +194,27 @@ export default function AgentDashboardPage() {
                 <Skeleton lines={5} />
               )}
             </Panel>
-            <TerraNovaGlance />
+            <Panel
+              kicker="F100 · Sécurité"
+              title="Derniers événements de sécurité"
+              accent={security.data?.locked_accounts.length ? 'alert' : undefined}
+              actions={
+                <ButtonLink to="/agent/securite" size="sm" variant="ghost">
+                  Tout voir
+                </ButtonLink>
+              }
+            >
+              {security.data ? (
+                <SecurityEventList events={security.data.data} />
+              ) : security.isError ? (
+                <EmptyState title={messageFor(security.error)} icon="alert" />
+              ) : (
+                <Skeleton lines={5} />
+              )}
+            </Panel>
           </div>
+
+          <TerraNovaGlance />
         </>
       )}
     </motion.div>

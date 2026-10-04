@@ -1,9 +1,15 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { http } from './client'
 import { REFRESH } from './queryClient'
-import type { ClientIpCheck, LoginAttempt, NewDevice, Paginated, SecurityOverview } from './types'
+import type { ClientIpCheck, LoginAttempt, NewDevice, Paginated, SecurityEventKind, SecurityEvents, SecurityOverview } from './types'
 
-// F37 / F53 / F54: what the security team needs to see an attack happening (admin)
+// F37 / F53 / F54 / F100: sign-in attacks for the admin page, and the staff security feed
+
+export interface EventFilters {
+  days?: number
+  limit?: number
+  kind?: SecurityEventKind
+}
 
 export interface AttemptFilters {
   email?: string
@@ -16,6 +22,7 @@ export interface AttemptFilters {
 export const securityKeys = {
   all: ['security'] as const,
   overview: () => [...securityKeys.all, 'overview'] as const,
+  events: (filters: EventFilters) => [...securityKeys.all, 'events', filters] as const,
   attempts: (filters: AttemptFilters) => [...securityKeys.all, 'attempts', filters] as const,
   newDevices: (hours: number) => [...securityKeys.all, 'new-devices', hours] as const,
   clientIp: () => [...securityKeys.all, 'client-ip'] as const,
@@ -26,6 +33,15 @@ export const useSecurityOverview = () =>
     queryKey: securityKeys.overview(),
     queryFn: () => http.get<SecurityOverview>('/security/overview').then((r) => r.data),
     refetchInterval: REFRESH.dashboard,
+  })
+
+export const useSecurityEvents = (filters: EventFilters, options: { enabled?: boolean } = {}) =>
+  useQuery({
+    queryKey: securityKeys.events(filters),
+    queryFn: () => http.get<SecurityEvents>('/security/events', { params: filters }).then((r) => r.data),
+    enabled: options.enabled ?? true,
+    placeholderData: keepPreviousData,
+    refetchInterval: REFRESH.audit,
   })
 
 export const useLoginAttempts = (filters: AttemptFilters) =>

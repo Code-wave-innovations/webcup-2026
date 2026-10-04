@@ -1,0 +1,169 @@
+/*
+  The light version's city. One fixed painting behind every page.
+  Motion, when it runs, is transform and opacity only, and slow enough to feel like weather.
+*/
+
+/* absolute, not fixed: the lake scrolls away with the page, so titles never cross the towers */
+.stage,
+.fixed {
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  height: 100vh;
+  overflow: hidden;
+  pointer-events: none;
+  background: #04060c;
+}
+
+.stage {
+  position: absolute;
+}
+
+.fixed {
+  position: fixed;
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 78%, rgba(28, 64, 96, 0.45), transparent 70%),
+    linear-gradient(180deg, #02040a 0%, #071018 34%, #10243a 68%, #16344e 82%, #0a1828 100%);
+}
+
+/* a still field; a few separate stars breathe on top */
+.stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 6% 12%, rgba(255, 255, 255, 0.8) 50%, transparent 52%),
+    radial-gradient(1px 1px at 14% 28%, rgba(255, 255, 255, 0.45) 50%, transparent 52%),
+    radial-gradient(1px 1px at 22% 8%, rgba(255, 255, 255, 0.7) 50%, transparent 52%),
+    radial-gradient(1.5px 1.5px at 31% 18%, rgba(255, 255, 255, 0.9) 50%, transparent 52%),
+    radial-gradient(1px 1px at 38% 6%, rgba(255, 255, 255, 0.4) 50%, transparent 52%),
+    radial-gradient(1px 1px at 47% 22%, rgba(255, 255, 255, 0.55) 50%, transparent 52%),
+    radial-gradient(1px 1px at 53% 11%, rgba(255, 255, 255, 0.75) 50%, transparent 52%),
+    radial-gradient(1px 1px at 58% 26%, rgba(255, 255, 255, 0.35) 50%, transparent 52%),
+    radial-gradient(1.5px 1.5px at 69% 9%, rgba(255, 255, 255, 0.85) 50%, transparent 52%),
+    radial-gradient(1px 1px at 74% 20%, rgba(255, 255, 255, 0.5) 50%, transparent 52%),
+    radial-gradient(1px 1px at 81% 7%, rgba(255, 255, 255, 0.65) 50%, transparent 52%),
+    radial-gradient(1px 1px at 86% 24%, rgba(255, 255, 255, 0.4) 50%, transparent 52%),
+    radial-gradient(1px 1px at 93% 13%, rgba(255, 255, 255, 0.8) 50%, transparent 52%),
+    radial-gradient(1px 1px at 11% 36%, rgba(255, 255, 255, 0.3) 50%, transparent 52%),
+    radial-gradient(1px 1px at 27% 34%, rgba(255, 255, 255, 0.45) 50%, transparent 52%),
+    radial-gradient(1px 1px at 49% 32%, rgba(255, 255, 255, 0.35) 50%, transparent 52%),
+    radial-gradient(1px 1px at 66% 30%, rgba(255, 255, 255, 0.5) 50%, transparent 52%),
+    radial-gradient(1px 1px at 84% 33%, rgba(255, 255, 255, 0.28) 50%, transparent 52%),
+    radial-gradient(1px 1px at 96% 28%, rgba(255, 255, 255, 0.55) 50%, transparent 52%);
+}
+
+.star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.65);
+  opacity: 0.45;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(2, 4, 10, 0.45) 0%, transparent 18%, transparent 72%, rgba(2, 4, 10, 0.72) 100%),
+    radial-gradient(ellipse at 50% 62%, transparent 42%, rgba(2, 4, 10, 0.38) 100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .star {
+    animation: twinkle 5.6s ease-in-out infinite;
+  }
+
+  .spark {
+    animation: twinkle 4.8s ease-in-out infinite;
+  }
+
+  .ember {
+    animation: breath 12s ease-in-out infinite;
+  }
+
+  .reflection {
+    animation: swell 9s ease-in-out infinite;
+  }
+
+  .sheen {
+    animation: sheen 16s ease-in-out infinite alternate;
+  }
+
+  .halo {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ping 3.4s ease-out infinite;
+  }
+
+  /* the far shore drifts a little as the page scrolls; the near shore stays, so its reflection holds */
+  @supports (animation-timeline: scroll()) {
+    .far {
+      animation: drift linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 100vh;
+    }
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes breath {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes swell {
+  50% {
+    transform: translateY(2.5px);
+  }
+}
+
+@keyframes sheen {
+  from {
+    transform: translateX(-90px);
+  }
+  to {
+    transform: translateX(140px);
+  }
+}
+
+@keyframes ping {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes drift {
+  to {
+    transform: translate3d(0, -22px, 0);
+  }
+}

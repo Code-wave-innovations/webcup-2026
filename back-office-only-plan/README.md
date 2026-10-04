@@ -28,14 +28,14 @@ Le back-office (`frontend/src/backoffice/`) est entièrement dessiné, mais chaq
 | [BO-02](BO-02-pilotage-nova-terra-D19-F50.md) | Pilotage de l'activité et API Nova Terra | Agent (tableau de bord), Admin (vue globale) | D19 · F50 | 1 740 | 00, 01, 03 | ≈ 4 h |
 | [BO-03](BO-03-tracabilite-F47-F48.md) | Traçabilité : journal d'audit et historiques | Agent (activité), Admin (audit) | F47 · F48 | 1 600 | 00, 04 | ≈ 4 h |
 | [BO-04](BO-04-comptes-droits-D08-D09-F34.md) | Comptes, citoyens et droits | Agent (citoyens), Admin (utilisateurs, rôles) | D08 · D09 · F34 | 1 580 | 00 | ≈ 3 h |
-| [BO-05](BO-05-securite-connexions-D02-F37-F53-F54.md) | Sécurité des connexions | Admin (sécurité), personnel (mon compte) | D02 · F37 · F53 · F54 | 3 620 | 00, 04, 03 | ≈ 7 h |
+| [BO-05](BO-05-securite-connexions-D02-F37-F53-F54.md) | Sécurité des connexions | Admin (sécurité), Agent (lecture, sans IP), personnel (mon compte) | D02 · F37 · F53 · F54 · F100 | 4 520 | 00, 04, 03 | ≈ 7 h |
 | [BO-06](BO-06-catalogue-disponibilite-D05-D07-F28-F38-F63-F64.md) | Catalogue, accueil et disponibilité des services | Admin (catalogue, coupure), Agent (interruptions) | D05 · D07 · F28 · F38 · F63 · F64 | 3 060 | 00 (03) | ≈ 4 h |
 | [BO-07](BO-07-information-diffusion-D06-D18-F29-F30-F31.md) | Information et diffusion : annonces, alertes, notifications | Admin, Agent (publication) | D06 · D18 · F29 · F30 · F31 | 3 330 | 00 (03) | ≈ 4 h |
 | [BO-08](BO-08-rendez-vous-F39-F40.md) | Rendez-vous : agenda et créneaux | Agent (agenda), Admin (créneaux) | F39 · F40 | 900 | 00 (03) | ≈ 2,5 h |
 | [BO-09](BO-09-referentiels-ville-D13-F36-F45-F46.md) | Référentiels de la ville : transports, lieux, lexique | Admin (édition), Agent (lecture, état des lignes) | D13 · F36 · F45 · F46 | 2 170 | 00 (03, 06) | ≈ 5 h |
 | [BO-10](BO-10-participation-F51-F52-F65-F66-F67-F68.md) | Participation citoyenne : projets, consultations, idées, soutiens, questions sur les données | Admin (projets, consultations), Agent (modération, réponses) | F51 · F52 · F65 · F66 · F67 · F68 | 4 610 | 00, 01, 03 | ≈ 7 h |
 
-- **Couverture :** 40 réfs ont une partie back-office, pour 24 790 XP.
+- **Couverture :** 41 réfs ont une partie back-office, pour 25 690 XP.
 - **XP :** c'est celle de la demande entière, que le back-office partage avec le front citoyen.
 - **Effort :** estimé pour une personne, partie backend comprise.
 - **Version minimale :** chaque plan en a une, à suivre si le temps manque.
@@ -50,7 +50,7 @@ Chaque plan réunit des réfs qui se traitent **dans les mêmes écrans, par le 
   - F50 demande un tableau de bord simplifié.
 - **BO-03 :** les deux réfs « qui a fait quoi ».
 - **BO-04 :** les réfs de profils, de droits et d'administration des comptes.
-- **BO-05 :** les quatre réfs de protection des connexions : blocage, double vérification, nouvel appareil, connexion sans mot de passe. Elles partagent la page Sécurité, l'écran de connexion et la fiche utilisateur.
+- **BO-05 :** les réfs de protection des connexions : blocage, double vérification, nouvel appareil, connexion sans mot de passe, et le flux F100 pour les agents. Elles partagent la page Sécurité admin, la page agent, l'écran de connexion et la fiche utilisateur.
 - **BO-06 :** ce que l'admin règle pour que l'habitant trouve un service et sache s'il fonctionne. F63 (couper un service) et F64 (voir son état) sont les deux faces d'une même donnée, `ServiceInterruption`.
 - **BO-07 :** les réfs de publication vers les habitants.
   - D18, F29 et F31 partagent le même composeur d'alerte.
@@ -75,6 +75,7 @@ Chaque plan réunit des réfs qui se traitent **dans les mêmes écrans, par le 
 | **Nouveau** `/agent/contributions` | BO-10 |
 | **Nouveaux** `/agent/transports`, `/agent/lexique` (lecture) | BO-09 |
 | **Nouveau** `/agent/compte` | BO-05 |
+| **Nouveau** `/agent/securite` | BO-05 (F100) |
 | `/agent/connexion` | BO-00 |
 
 ### Espace Admin (`/admin`)
@@ -177,7 +178,7 @@ Le détail est dans le BO-00.
 | BO-02 | À faire | |
 | BO-03 | À faire | |
 | BO-04 | À faire | |
-| BO-05 | À faire | |
+| BO-05 | À faire | F100, vague 20 |
 | BO-06 | À faire | |
 | BO-07 | À faire | |
 | BO-08 | À faire | |

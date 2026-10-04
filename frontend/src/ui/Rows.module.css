@@ -20,6 +20,13 @@
   width: 100%;
 }
 
+:global(html[data-scene='light']) .row {
+  background:
+    linear-gradient(180deg, rgba(143, 233, 255, 0.06), transparent 48%),
+    var(--color-glass-light);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+
 button.row:hover,
 a.row:hover {
   border-color: var(--color-line);

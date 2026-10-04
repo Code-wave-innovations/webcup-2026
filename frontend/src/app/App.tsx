@@ -1,10 +1,12 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
-import { isLightScene } from '../a11y/sceneMode'
+import { lazy, Suspense, type ReactNode } from 'react'
+import { Navigate, Route, Routes } from 'react-router'
+import { isLightScene, SCENE_REDIRECTING } from '../a11y/sceneMode'
+import { isLightPath } from '../a11y/scenePaths'
 import { ConsoleLayout } from '../pages/Console/ConsoleLayout'
 import { NotFoundPage } from '../pages/Console/NotFoundPage'
 import { FilmLoadingScreen } from './FilmLoadingScreen'
 import { LightLayout } from './LightLayout'
+import { SceneRouter } from './SceneRouter'
 import { RequireRole, RequireSession } from './guards'
 
 /*
@@ -16,9 +18,10 @@ import { RequireRole, RequireSession } from './guards'
 const loadFilmLayout = () => import('./FilmLayout')
 const loadAirlockPage = () => import('../pages/AirlockPage/AirlockPage')
 const loadCityPage = () => import('../pages/CityPage/CityPage')
-/** the film routes: the airlock (/), the city (/ville/*) and the chat (/nova) */
-const onFilmRoute = typeof window !== 'undefined' && /^\/(?:ville(?:\/|$)|nova(?:\/|$)|$)/.test(window.location.pathname)
-if (!isLightScene && onFilmRoute) {
+/** the film routes: the airlock (/), the city (/ville/*) and the chat (/nova). `/leger` never preloads them. */
+const onFilmRoute =
+  typeof window !== 'undefined' && !isLightPath(window.location.pathname) && /^\/(?:ville(?:\/|$)|nova(?:\/|$)|$)/.test(window.location.pathname)
+if (!SCENE_REDIRECTING && !isLightScene && onFilmRoute) {
   void loadFilmLayout()
   void loadAirlockPage()
   void loadCityPage()
@@ -53,177 +56,68 @@ const DemandesListPage = lazy(() => import('../pages/Espace/DemandesListPage'))
 const DemandeDetailPage = lazy(() => import('../pages/Espace/DemandeDetailPage'))
 const ComptePage = lazy(() => import('../pages/Espace/ComptePage'))
 
-function App() {
+function page(node: ReactNode) {
+  return <Suspense fallback={null}>{node}</Suspense>
+}
+
+/** Pages past the flyover. Shared by both versions; links stay `/ville/...` and the light router prefixes them. */
+function consolePages() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* F96: same URLs in both versions; the light one never mounts the film */}
-        <Route
-          element={
-            isLightScene ? (
-              <LightLayout />
-            ) : (
-              <Suspense fallback={<FilmLoadingScreen />}>
-                <FilmLayout />
-              </Suspense>
-            )
-          }
-        >
-          <Route
-            index
-            element={<Suspense fallback={null}>{isLightScene ? <LightAirlockPage /> : <AirlockPage />}</Suspense>}
-          />
-          <Route path="ville">
-            {!isLightScene && (
-              <Route
-                index
-                element={
-                  <Suspense fallback={null}>
-                    <CityPage />
-                  </Suspense>
-                }
-              />
-            )}
-            {/* pages beyond the flyover, over the dimmed city */}
-            <Route element={<ConsoleLayout />}>
-              {isLightScene && (
-                <Route
-                  index
-                  element={
-                    <Suspense fallback={null}>
-                      <LightHomePage />
-                    </Suspense>
-                  }
-                />
-              )}
-              <Route
-                path="contact"
-                element={
-                  <Suspense fallback={null}>
-                    <ContactPage />
-                  </Suspense>
-                }
-              />
-              {/* F39 / F40: appointments with an agent, for a signed-in resident */}
-              <Route
-                path="rendez-vous"
-                element={
-                  <RequireRole roles={['CITIZEN']}>
-                    <Suspense fallback={null}>
-                      <MyAppointmentsPage />
-                    </Suspense>
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="rendez-vous/nouveau"
-                element={
-                  <RequireRole roles={['CITIZEN']}>
-                    <Suspense fallback={null}>
-                      <BookAppointmentPage />
-                    </Suspense>
-                  </RequireRole>
-                }
-              />
-              {ConsoleTestPage && (
-                <Route
-                  path="test"
-                  element={
-                    <Suspense fallback={null}>
-                      <ConsoleTestPage />
-                    </Suspense>
-                  }
-                />
-              )}
-              <Route
-                path="annonces"
-                element={
-                  <Suspense fallback={null}>
-                    <AnnouncementsPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="annonces/:id"
-                element={
-                  <Suspense fallback={null}>
-                    <AnnouncementPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="transports"
-                element={
-                  <Suspense fallback={null}>
-                    <TransportsPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="espace"
-                element={
-                  <RequireSession>
-                    <Suspense fallback={null}>
-                      <EspaceHubPage />
-                    </Suspense>
-                  </RequireSession>
-                }
-              />
-              <Route
-                path="espace/demandes"
-                element={
-                  <RequireSession>
-                    <Suspense fallback={null}>
-                      <DemandesListPage />
-                    </Suspense>
-                  </RequireSession>
-                }
-              />
-              <Route
-                path="espace/demandes/:id"
-                element={
-                  <RequireSession>
-                    <Suspense fallback={null}>
-                      <DemandeDetailPage />
-                    </Suspense>
-                  </RequireSession>
-                }
-              />
-              <Route
-                path="espace/compte"
-                element={
-                  <RequireSession>
-                    <Suspense fallback={null}>
-                      <ComptePage />
-                    </Suspense>
-                  </RequireSession>
-                }
-              />
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Route>
-          {isLightScene ? (
-            <Route element={<ConsoleLayout />}>
-              <Route
-                path="nova"
-                element={
-                  <Suspense fallback={null}>
-                    <LightChatPage />
-                  </Suspense>
-                }
-              />
-            </Route>
-          ) : (
-            <Route
-              path="nova"
-              element={
-                <Suspense fallback={null}>
-                  <ChatPage />
-                </Suspense>
-              }
-            />
-          )}
+    <>
+      <Route path="contact" element={page(<ContactPage />)} />
+      {/* F39 / F40: appointments with an agent, for a signed-in resident */}
+      <Route path="rendez-vous" element={<RequireRole roles={['CITIZEN']}>{page(<MyAppointmentsPage />)}</RequireRole>} />
+      <Route path="rendez-vous/nouveau" element={<RequireRole roles={['CITIZEN']}>{page(<BookAppointmentPage />)}</RequireRole>} />
+      {ConsoleTestPage && <Route path="test" element={page(<ConsoleTestPage />)} />}
+      <Route path="annonces" element={page(<AnnouncementsPage />)} />
+      <Route path="annonces/:id" element={page(<AnnouncementPage />)} />
+      <Route path="transports" element={page(<TransportsPage />)} />
+      <Route path="espace" element={<RequireSession>{page(<EspaceHubPage />)}</RequireSession>} />
+      <Route path="espace/demandes" element={<RequireSession>{page(<DemandesListPage />)}</RequireSession>} />
+      <Route path="espace/demandes/:id" element={<RequireSession>{page(<DemandeDetailPage />)}</RequireSession>} />
+      <Route path="espace/compte" element={<RequireSession>{page(<ComptePage />)}</RequireSession>} />
+      <Route path="*" element={<NotFoundPage />} />
+    </>
+  )
+}
+
+/** One version: `leger` for the light pages, no path for the complete film. */
+function citizenRoutes(mode: 'light' | 'complete') {
+  const light = mode === 'light'
+  return (
+    <Route
+      key={mode}
+      path={light ? 'leger' : undefined}
+      element={light ? <LightLayout /> : <Suspense fallback={<FilmLoadingScreen />}><FilmLayout /></Suspense>}
+    >
+      <Route index element={page(light ? <LightAirlockPage /> : <AirlockPage />)} />
+      <Route path="ville">
+        {!light && <Route index element={page(<CityPage />)} />}
+        <Route element={<ConsoleLayout />}>
+          {light && <Route index element={page(<LightHomePage />)} />}
+          {consolePages()}
         </Route>
+      </Route>
+      {light ? (
+        <Route element={<ConsoleLayout />}>
+          <Route path="nova" element={page(<LightChatPage />)} />
+        </Route>
+      ) : (
+        <Route path="nova" element={page(<ChatPage />)} />
+      )}
+      {light && <Route path="*" element={<Navigate to="/" replace />} />}
+    </Route>
+  )
+}
+
+function App() {
+  if (SCENE_REDIRECTING) return null
+  return (
+    <SceneRouter>
+      <Routes>
+        {/* F96: `/leger` is the light version; `/`, `/ville` and `/nova` are the complete film */}
+        {citizenRoutes('light')}
+        {citizenRoutes('complete')}
         <Route
           path="equipe"
           element={
@@ -263,7 +157,7 @@ function App() {
         )}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </SceneRouter>
   )
 }
 

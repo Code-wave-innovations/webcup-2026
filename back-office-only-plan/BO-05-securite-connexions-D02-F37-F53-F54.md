@@ -2,9 +2,10 @@
 
 > **Rôle :**
 > - Admin : page Sécurité, fiches utilisateurs, politique.
+> - Agent : lecture des événements de sécurité, sans IP, et déblocage.
 > - Tout le personnel : sa page « Mon compte » et sa connexion.
 >
-> **Réfs :** D02 · F37 · F53 · F54. **XP :** 3 620.
+> **Réfs :** D02 · F37 · F53 · F54 · F100. **XP :** 4 520.
 > **Dépend de :** BO-00 (page de connexion), BO-04 (fiches utilisateurs), BO-03 (audit des actions de sécurité).
 > **Pendant citoyen :** les parcours habitant de D02, F53 et F54 ne sont pas encore planifiés dans `project-plan/`. Ce plan écrit le backend commun et la partie back-office. Le front citoyen n'aura qu'à appeler les mêmes endpoints.
 > **Effort :** ≈ 7 h. F37 ≈ 1 h, F54 ≈ 2 h, F53 ≈ 2,5 h, D02 ≈ 1,5 h.
@@ -23,6 +24,7 @@ Les quatre demandes protègent **le même moment : la connexion à un compte**. 
 | F54 | Citoyenne | Être prévenue d'une connexion depuis un nouvel appareil | Les appareils connus de chaque compte, la liste des nouvelles connexions des dernières 24 h, et la révocation des sessions |
 | F53 | Service informatique | Une vérification supplémentaire, compréhensible et efficace | La double vérification par application (TOTP) : obligatoire pour le personnel si la politique l'exige, taux d'adoption, réinitialisation par un admin |
 | D02 | Direction du Numérique | Se connecter sans mot de passe classique, avec un haut niveau de sécurité | Les clés d'accès (passkeys, WebAuthn) : connexion du personnel, gestion dans « Mon compte », révocation par un admin |
+| F100 | Direction du Numérique | Les agents consultent les derniers événements de sécurité, faciles à retrouver pour le suivi quotidien | Page `/agent/securite` et encart du tableau de bord : flux fusionné (audit `security.*` + refus regroupés), sans IP |
 
 ## 2. État actuel
 
@@ -144,10 +146,14 @@ model Passkey {
 - La configuration se fait par variables d'environnement : `WEBAUTHN_RP_ID` (le domaine) et `WEBAUTHN_ORIGIN`.
 - WebAuthn exige HTTPS, ce qui est le cas sur cPanel. `localhost` est accepté en développement.
 
+### 3.5 Événements de sécurité (F100)
+
+`GET /api/security/events?days=1..30&limit=1..100&kind=login|device|factor|account`, personnel. Deux sources fusionnées (audit `security.*` / `user.login_unlocked`, et `LoginAttempt` `LOCKED` / `IP_BLOCKED` / `DISABLED` regroupés par e-mail et motif), triées par date, coupées à `limit`. Un agent ne reçoit pas la clé `ip` ; un admin la reçoit seulement sur une ligne d'audit. Les compteurs (`refused_24h`, `locked_now`, `new_devices_24h`, `factor_changes_7d`) et `locked_accounts` ignorent les filtres. Les routes admin (`/overview`, tentatives, IP, nouveaux appareils) restent admin.
+
 ## 4. Back-office
 
 Fichiers front :
-- `src/api/security.ts` : vue d'ensemble, tentatives, nouveaux appareils ;
+- `src/api/security.ts` : vue d'ensemble, tentatives, nouveaux appareils, flux F100 ;
 - `src/api/me.ts` : appareils, double vérification, clés d'accès, sessions ;
 - `src/api/auth.ts` : vérification du code, connexion par clé.
 
@@ -209,7 +215,11 @@ Elle est accessible par le menu profil (BO-00). C'est le même composant dans le
 - « Oublier » un appareil ;
 - « Déconnecter tous les autres appareils ».
 
-### 4.5 Paramètres (`SettingsPage`)
+### 4.5 Page agent `/agent/securite` (F100)
+
+Dans le menu Suivi, avec le code F100. Phrase d'introduction, 4 tuiles, panel des comptes verrouillés (sans IP, « Débloquer »), panel des derniers événements (période et type dans l'URL, « Afficher plus », `LiveDot`). L'encart « Derniers événements de sécurité » du tableau de bord détaillé (`days=1`, `limit=5`) y renvoie.
+
+### 4.6 Paramètres (`SettingsPage`)
 
 - Section Sécurité : `two_factor_required_roles`, choisis parmi Admin, Agent et Citoyen.
 - Les seuils de blocage restent affichés en lecture seule, comme sur `plan-00`.
@@ -244,6 +254,10 @@ Dans l'ordre, chaque étape est livrable seule :
    - [x] bouton de connexion ;
    - [x] révocation par un admin.
 6. [x] Audit de toutes ces actions (BO-03, § 3.3).
+7. [x] **F100 :**
+   - [x] `GET /api/security/events` (personnel, sans IP pour l'agent) ;
+   - [x] page `/agent/securite` et entrée Suivi / ⌘K ;
+   - [x] encart du tableau de bord détaillé.
 
 ## 6. Critères d'acceptation
 
@@ -265,6 +279,12 @@ Dans l'ordre, chaque étape est livrable seule :
    - Il se déconnecte, puis se reconnecte avec « Se connecter avec une clé d'accès », sans saisir de mot de passe.
    - La politique de double vérification est satisfaite.
    - L'admin voit « 1 clé d'accès » dans sa fiche et peut la révoquer.
+5. **F100.**
+   - `agent@` ouvre « Sécurité » dans Suivi et dans ⌘K : le flux est lisible, sans IP.
+   - Un compte verrouillé apparaît ; « Débloquer » le retire.
+   - L'encart du tableau de bord détaillé et « Tout voir » mènent à la page.
+   - `admin@` garde `/admin/securite` et reçoit `ip` sur les lignes d'audit de `GET /api/security/events`.
+   - Sans token : 401. Citoyen : 403. Agent sur `/api/security/overview` : 403.
 
 ## 7. Version minimale
 

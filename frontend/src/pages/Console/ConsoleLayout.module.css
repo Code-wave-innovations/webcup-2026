@@ -134,19 +134,26 @@
   }
 }
 
-/* F96: switch between the light and the complete version (reloads the page) */
-.sceneSwitch {
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--color-line-thin);
-  background: transparent;
-  color: var(--color-text-muted);
-  font: 500 14px/1.2 var(--font-body);
+/* F96: other pages keep the sky behind the title, then a solid sheet. The home opens the lake instead. */
+.console[data-light] .main {
+  background: linear-gradient(180deg, transparent 0, transparent 16vh, #071018 34vh);
 }
 
-.sceneSwitch:hover {
-  color: var(--color-text);
-  border-color: var(--color-line);
+.console[data-light] .main:has([data-vista]) {
+  background: none;
+}
+
+.console[data-light] .title,
+.console[data-light] .lead {
+  text-shadow: 0 2px 16px rgba(4, 6, 12, 0.85);
+}
+
+.console[data-light] .title {
+  letter-spacing: -0.03em;
+}
+
+.console[data-light] .footer {
+  background: linear-gradient(180deg, transparent, rgba(4, 6, 12, 0.8) 55%);
 }
 
 /* D18: the alert banner sits under the top bar; the page starts below it */

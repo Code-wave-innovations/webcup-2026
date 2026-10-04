@@ -33,6 +33,7 @@ export const AGENT_NAV: NavGroup[] = [
     label: 'Suivi',
     items: [
       { path: '/agent/activite', label: 'Activité & historique', icon: 'activity', codes: ['F47', 'F48'] },
+      { path: '/agent/securite', label: 'Sécurité', icon: 'shield', codes: ['F100'] },
       { path: '/agent/nova-terra', label: 'API Nova Terra', icon: 'satellite', codes: ['D19'] },
     ],
   },

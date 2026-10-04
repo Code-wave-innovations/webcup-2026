@@ -1,10 +1,23 @@
 .airlock {
+  position: relative;
+  z-index: 1;
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: 16px;
+  gap: 22px;
   min-height: 100svh;
   padding: 24px var(--gutter);
+}
+
+.place {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-ice-bright);
 }
 
 /* the panel is placed for the orbit (absolute, beside Nova, tilted in): here it simply sits in the column */
@@ -19,14 +32,45 @@
 
 .complete {
   min-height: 44px;
-  padding: 0 14px;
-  border: 0;
-  background: none;
-  color: var(--color-text-muted);
-  text-decoration: underline;
+  padding: 0 18px;
+  border: 1px solid var(--color-line-thin);
+  background: rgba(6, 14, 26, 0.82);
+  color: var(--color-ice-bright);
   font: inherit;
+  letter-spacing: 0.01em;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
 
 .complete:hover {
+  border-color: var(--color-ice);
   color: var(--color-text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .place,
+  .airlock > form,
+  .complete {
+    animation: arrive 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .airlock > form {
+    animation-delay: 0.08s;
+  }
+
+  /* the hologram's own reveal waits on the 3D power-on; here the fields follow the panel at once */
+  .airlock > form > * {
+    animation-duration: 0.45s;
+    animation-delay: 0.22s;
+  }
+
+  .complete {
+    animation-delay: 0.18s;
+  }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
 }

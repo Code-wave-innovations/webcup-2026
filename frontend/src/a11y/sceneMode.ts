@@ -1,9 +1,11 @@
 import { readScenePreference, writeScenePreference, type ScenePreference } from './preferences'
+import { isLightPath, pathForMode } from './scenePaths'
 
 /**
  * F96 / D20: the light version (no 3D, linear pages, system fonts, no voice) or the complete film.
  * Decided once, before the first render, because it chooses which chunks the page downloads at all.
- * Switching saves the choice and reloads the page at the same URL.
+ * The light version is the `/leger` routes; the complete film keeps `/`, `/ville` and `/nova`.
+ * Switching saves the choice and reloads on the other version's URL.
  */
 export type SceneMode = 'complete' | 'light'
 export type SceneReason = 'choice' | 'save-data' | 'reduced-data' | 'slow-network' | 'no-webgl' | 'default'
@@ -38,6 +40,23 @@ export function urlPreference(search: string): ScenePreference | undefined {
   const value = new URLSearchParams(search).get('leger')
   if (value === null) return undefined
   return value === '0' ? 'complete' : 'light'
+}
+
+/**
+ * The version for this URL, and the path it should use. Opening `/leger` shows the light version.
+ * `?leger=0` sends that URL back to the film. A light decision on `/`, `/ville` or `/nova` moves to `/leger`.
+ */
+export function sceneRoute(
+  pathname: string,
+  preference: ScenePreference,
+  signals: SceneSignals,
+  query?: ScenePreference,
+): { scene: SceneDecision; pathname: string } {
+  let scene = resolveScene(query ?? preference, signals)
+  if (isLightPath(pathname) && scene.mode === 'complete' && query !== 'complete') {
+    scene = { mode: 'light', reason: 'choice' }
+  }
+  return { scene, pathname: pathForMode(pathname, scene.mode) }
 }
 
 /** Why the light version started by itself, for the top bar; null when it was the visitor's choice. */
@@ -76,23 +95,37 @@ export function readSignals(): SceneSignals {
   }
 }
 
-function decide(): SceneDecision {
-  const fromUrl = urlPreference(window.location.search)
-  if (fromUrl) writeScenePreference(fromUrl)
-  return resolveScene(fromUrl ?? readScenePreference(), readSignals())
+function boot(): { scene: SceneDecision; redirecting: boolean } {
+  const url = new URL(window.location.href)
+  const query = urlPreference(url.search)
+  if (query) {
+    writeScenePreference(query)
+    url.searchParams.delete('leger')
+  }
+  const { scene, pathname } = sceneRoute(url.pathname, query ?? readScenePreference(), readSignals(), query)
+  const redirecting = pathname !== window.location.pathname || url.search !== window.location.search
+  if (redirecting) {
+    url.pathname = pathname
+    window.location.replace(url.href)
+  }
+  return { scene, redirecting }
 }
 
+const booted = typeof window === 'undefined' ? { scene: { mode: 'complete', reason: 'default' } as SceneDecision, redirecting: false } : boot()
+
 /** The mode of this page load. */
-export const SCENE: SceneDecision = typeof window === 'undefined' ? { mode: 'complete', reason: 'default' } : decide()
+export const SCENE: SceneDecision = booted.scene
+
+/** True while the address bar is moving to the version's own URL; the app renders nothing in between. */
+export const SCENE_REDIRECTING = booted.redirecting
 
 export const isLightScene = SCENE.mode === 'light'
 
-/** Saves the visitor's choice and reloads at the same URL (without `?leger`, which would override it). */
+/** Saves the visitor's choice and reloads on that version's URL (`/leger` or the film's paths). */
 export function switchScene(mode: SceneMode): void {
   writeScenePreference(mode)
   const url = new URL(window.location.href)
   url.searchParams.delete('leger')
-  // a plain replace would not reload when only the hash differs
-  window.history.replaceState(window.history.state, '', url)
-  window.location.reload()
+  url.pathname = pathForMode(url.pathname, mode)
+  window.location.assign(url.href)
 }

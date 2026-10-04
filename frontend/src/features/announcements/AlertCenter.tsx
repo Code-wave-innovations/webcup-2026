@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router'
+import { barePath } from '../../a11y/scenePaths'
 import { useActiveAlerts } from '../../api/alerts'
 import { useCitizenSessionStore } from '../../api/session'
 import { useBodyClass } from '../../hooks/useBodyClass'
@@ -61,15 +62,15 @@ export function AlertCenter() {
 
   return (
     <>
-      <AlertTicker alerts={mine} dismissed={dismissed} airlock={pathname === '/'} onOpen={review} onDismiss={dismiss} />
+      <AlertTicker alerts={mine} dismissed={dismissed} airlock={barePath(pathname) === '/'} onOpen={review} onDismiss={dismiss} />
       {queue.length > 0 && <AlertTransmission alerts={queue} review={reviewed !== undefined} onAcknowledge={acknowledge} />}
     </>
   )
 }
 
 /**
- * The read alerts that still concern me, one at a time. A critical one cannot be folded away
- * (the plan's "reduced banner"); the others can, and stay folded for this alert.
+ * The read alerts that still concern me, one at a time. The cross folds the current one away
+ * for this browser, including a critical alert, until that alert ends.
  */
 function AlertTicker({
   alerts,
@@ -85,7 +86,7 @@ function AlertTicker({
   onDismiss: (id: number) => void
 }) {
   const [index, setIndex] = useState(0)
-  const visible = alerts.filter((a) => a.severity === 'CRITICAL' || !dismissed.includes(a.id))
+  const visible = alerts.filter((a) => !dismissed.includes(a.id))
   // pages that start at the top (console pages) leave room for the banner while it shows
   useBodyClass('has-alert-ticker', visible.length > 0)
   if (visible.length === 0) return null
@@ -124,11 +125,9 @@ function AlertTicker({
       <button type="button" className={styles.open} onClick={() => onOpen(alert.id)}>
         Voir les consignes
       </button>
-      {alert.severity !== 'CRITICAL' && (
-        <button type="button" className={styles.hide} onClick={() => onDismiss(alert.id)} aria-label={`Masquer l'alerte « ${alert.title} »`}>
-          <Icon name="close" size={16} />
-        </button>
-      )}
+      <button type="button" className={styles.hide} onClick={() => onDismiss(alert.id)} aria-label={`Masquer l'alerte « ${alert.title} »`}>
+        <Icon name="close" size={16} />
+      </button>
     </aside>
   )
 }
