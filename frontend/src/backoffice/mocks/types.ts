@@ -204,56 +204,6 @@ export interface TranslationEntry {
   translations: Record<string, Record<string, string>>
 }
 
-/** F47 / F48: not in the backend yet. This is the contract for the future AuditLog table. */
-export interface AuditChange {
-  field: string
-  before: string | null
-  after: string | null
-}
-
-export type AuditAction =
-  | 'request.status_changed'
-  | 'request.assigned'
-  | 'request.priority_changed'
-  | 'request.comment_added'
-  | 'user.created'
-  | 'user.updated'
-  | 'user.role_changed'
-  | 'user.deactivated'
-  | 'user.unlocked'
-  | 'service.updated'
-  | 'service.featured'
-  | 'interruption.created'
-  | 'announcement.published'
-  | 'alert.created'
-  | 'broadcast.sent'
-  | 'translation.updated'
-  | 'slot.created'
-  | 'appointment.updated'
-  | 'settings.updated'
-  | 'role.permission_changed'
-  | 'auth.login'
-
-export interface AuditLog {
-  id: number
-  at: string
-  actor_id: number
-  action: AuditAction
-  entity: string
-  entity_id: number | null
-  entity_label: string
-  changes: AuditChange[]
-  ip: string
-}
-
-export interface Permission {
-  key: string
-  label: string
-  description: string
-  sensitive: boolean
-  group: string
-}
-
 export interface PlatformSettings {
   home_sections: { key: string; label: string; enabled: boolean }[]
   default_locale: string

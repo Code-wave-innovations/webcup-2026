@@ -160,3 +160,17 @@
     padding: 0 14px 12px;
   }
 }
+
+/* A link-looking button (filters on a value, opens a record) */
+.linkButton {
+  all: unset;
+  cursor: pointer;
+  color: var(--color-ice-bright);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.linkButton:focus-visible {
+  outline: 2px solid var(--color-ice);
+  outline-offset: 2px;
+}

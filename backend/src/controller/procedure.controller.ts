@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import prisma from "../lib/prisma";
+import { audit, fieldsOf } from "../lib/audit";
 import procedureModel from "../model/procedure.model";
 import { notFound } from "../lib/errors";
 import { idOrSlugWhere, parseId, slugify, zBool, zId, zJson, zSlug } from "../lib/validation";
@@ -68,21 +70,28 @@ const procedureController = {
       required_documents: toJson(required_documents),
       form_schema: toJson(form_schema),
     });
+    await audit(req, { action: "procedure.created", entity: "Procedure", entityId: procedure.id, label: procedure.title, metadata: { service_id: procedure.service_id } });
     res.status(201).json(procedure);
   },
 
   update: async (req: Request, res: Response) => {
-    const { required_documents, form_schema, ...input } = updateSchema.parse(req.body);
-    const procedure = await procedureModel.update(parseId(req.params.id), {
+    const id = parseId(req.params.id);
+    const parsed = updateSchema.parse(req.body);
+    const { required_documents, form_schema, ...input } = parsed;
+    const before = await prisma.procedure.findUnique({ where: { id } });
+    const procedure = await procedureModel.update(id, {
       ...input,
       required_documents: toJson(required_documents),
       form_schema: toJson(form_schema),
     });
+    await audit(req, { action: "procedure.updated", entity: "Procedure", entityId: id, label: procedure.title, before, after: procedure, fields: fieldsOf(parsed) });
     res.json(procedure);
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await procedureModel.delete(parseId(req.params.id)));
+    const procedure = await procedureModel.delete(parseId(req.params.id));
+    await audit(req, { action: "procedure.deleted", entity: "Procedure", entityId: procedure.id, label: procedure.title });
+    res.json(procedure);
   },
 };
 

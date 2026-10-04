@@ -79,11 +79,8 @@ export async function trends(days: number, now = new Date()) {
       where: { status: { not: "CANCELLED" }, slot: { starts_at: { gte: from, lte: now } } },
       select: { slot: { select: { starts_at: true } } },
     }),
-    // Staff actions until the audit log exists (BO-03): what agents did on the requests
-    prisma.requestEvent.findMany({
-      where: { created_at: { gte: from }, type: { not: "CREATED" }, author: { role: { in: STAFF_ROLES } } },
-      select: { created_at: true },
-    }),
+    // Staff actions: every audited action of agents and admins (F47)
+    prisma.auditLog.findMany({ where: { created_at: { gte: from }, actor_role: { in: STAFF_ROLES } }, select: { created_at: true } }),
   ]);
 
   const daily = new Map<string, {
@@ -347,23 +344,3 @@ export async function summary(period: SummaryPeriod, role: Role, now = new Date(
   };
 }
 
-// ─── Staff activity ─────────────────────────────────────────────────────────
-
-// The latest actions of agents and admins on the requests (status, assignment, priority, notes)
-export const activity = (limit: number) =>
-  prisma.requestEvent.findMany({
-    where: { type: { not: "CREATED" }, author: { role: { in: STAFF_ROLES } } },
-    orderBy: { created_at: "desc" },
-    take: limit,
-    select: {
-      id: true,
-      created_at: true,
-      type: true,
-      from_status: true,
-      to_status: true,
-      message: true,
-      is_internal: true,
-      author: { select: { id: true, name: true, last_name: true, role: true } },
-      request: { select: { id: true, reference: true, subject: true } },
-    },
-  });

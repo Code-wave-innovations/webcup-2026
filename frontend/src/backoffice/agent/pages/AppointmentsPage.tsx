@@ -79,10 +79,10 @@ export default function AppointmentsPage() {
         footer={
           selected && (
             <>
-              <Button variant="danger" icon="close" onClick={() => setAppointmentStatus(selected.id, 'NO_SHOW', actor.id)}>
+              <Button variant="danger" icon="close" onClick={() => setAppointmentStatus(selected.id, 'NO_SHOW')}>
                 Absent
               </Button>
-              <Button variant="primary" icon="check" onClick={() => setAppointmentStatus(selected.id, 'COMPLETED', actor.id)}>
+              <Button variant="primary" icon="check" onClick={() => setAppointmentStatus(selected.id, 'COMPLETED')}>
                 Honoré
               </Button>
             </>
@@ -116,7 +116,7 @@ export default function AppointmentsPage() {
             <Field label="Note de l’agent" hint="Jamais visible du citoyen.">
               {(id, describedBy) => <TextArea id={id} aria-describedby={describedBy} value={notes} onChange={(e) => setNotes(e.target.value)} />}
             </Field>
-            <Button icon="check" onClick={() => saveAgentNotes(selected.id, notes, actor.id)}>
+            <Button icon="check" onClick={() => saveAgentNotes(selected.id, notes)}>
               Enregistrer la note
             </Button>
             <p className={[layout.muted, layout.small].join(' ')}>Agent : {fullName(slot.agent_id ? users.get(slot.agent_id) : undefined)}</p>

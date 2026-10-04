@@ -1,12 +1,18 @@
 import type { Request, Response } from "express";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
+import prisma from "../lib/prisma";
+import { audit, fieldsOf } from "../lib/audit";
 import cityServiceModel, { SERVICE_ORDER } from "../model/cityService.model";
 import { notFound } from "../lib/errors";
+import { warnAppointments } from "../lib/interruptions";
+import { notifyUser } from "../lib/notify";
+import { OPEN_STATUSES } from "../model/citizenRequest.model";
 import {
   idOrSlugWhere,
   pageMeta,
   paginationSchema,
+  fieldError,
   parseId,
   slugify,
   toSkipTake,
@@ -16,7 +22,7 @@ import {
 } from "../lib/validation";
 import { resolveLocale, searchTranslatedIds, translate, translateServices } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
-import { withAvailability } from "../lib/availability";
+import { notEndedWhere, withAvailability } from "../lib/availability";
 
 // D05 service catalog, F28 featured services, F32 search, F27 translations
 
@@ -48,6 +54,31 @@ const createSchema = z.object({
 });
 
 const updateSchema = createSchema.partial();
+
+// F63: cutting a service keeps it visible as « Indisponible », with why, what to do and when to come back
+const disableSchema = z.object({
+  reason: z.string().trim().min(3).max(2000),
+  alternative: z.string().trim().max(2000).nullable().optional(),
+  back_at: z.coerce.date().nullable().optional(),
+  notify_open_requests: zBool.default(false),
+});
+
+const loadService = async (id: number) => {
+  const service = await prisma.cityService.findUnique({ where: { id } });
+  if (!service) throw notFound("Service not found");
+  return service;
+};
+
+// What a cut would touch (shown before cutting)
+const impactOf = async (serviceId: number) => {
+  const now = new Date();
+  const [upcoming_appointments, open_requests, open_procedures] = await Promise.all([
+    prisma.appointment.count({ where: { service_id: serviceId, status: "BOOKED", slot: { starts_at: { gte: now } } } }),
+    prisma.citizenRequest.count({ where: { service_id: serviceId, status: { in: OPEN_STATUSES } } }),
+    prisma.procedure.count({ where: { service_id: serviceId, is_active: true } }),
+  ]);
+  return { upcoming_appointments, open_requests, open_procedures };
+};
 
 const cityServiceController = {
   getAll: async (req: Request, res: Response) => {
@@ -98,15 +129,108 @@ const cityServiceController = {
 
   create: async (req: Request, res: Response) => {
     const input = createSchema.parse(req.body);
-    res.status(201).json(await cityServiceModel.create({ ...input, slug: input.slug ?? slugify(input.name) }));
+    const service = await cityServiceModel.create({ ...input, slug: input.slug ?? slugify(input.name) });
+    await audit(req, { action: "service.created", entity: "CityService", entityId: service.id, label: service.name });
+    res.status(201).json(service);
   },
 
   update: async (req: Request, res: Response) => {
-    res.json(await cityServiceModel.update(parseId(req.params.id), updateSchema.parse(req.body)));
+    const id = parseId(req.params.id);
+    const input = updateSchema.parse(req.body);
+    const before = await prisma.cityService.findUnique({ where: { id } });
+    const service = await cityServiceModel.update(id, input);
+    // F28: putting a service forward has its own action; everything else is one "updated" entry
+    const fields = fieldsOf(input);
+    const target = { entity: "CityService", entityId: id, label: service.name, before, after: service };
+    if (fields.includes("is_featured") && before?.is_featured !== service.is_featured) {
+      await audit(req, { ...target, action: "service.featured", fields: ["is_featured"] });
+    }
+    const rest = fields.filter((field) => field !== "is_featured");
+    if (rest.length) await audit(req, { ...target, action: "service.updated", fields: rest });
+    res.json(service);
+  },
+
+  // F63: what cutting this service would touch
+  impact: async (req: Request, res: Response) => {
+    const service = await loadService(parseId(req.params.id));
+    res.json(await impactOf(service.id));
+  },
+
+  // F63: cut a faulty service now, in one action (admin). It stays in the catalogue, shown as
+  // unavailable with the reason, the alternative and the return time; requests and bookings are refused.
+  disable: async (req: Request, res: Response) => {
+    const service = await loadService(parseId(req.params.id));
+    const { reason, alternative, back_at, notify_open_requests } = disableSchema.parse(req.body);
+    const now = new Date();
+    if (back_at && back_at <= now) throw fieldError("back_at", "back_at must be in the future");
+    const interruption = await prisma.serviceInterruption.create({
+      data: {
+        service_id: service.id,
+        type: "INCIDENT",
+        impact: "UNAVAILABLE",
+        reason,
+        alternative: alternative ?? null,
+        starts_at: now,
+        ends_at: back_at ?? null,
+        created_by_id: req.user!.id,
+      },
+      include: { service: { select: { id: true, slug: true, name: true } } },
+    });
+    const notifiedAppointments = await warnAppointments(interruption);
+
+    let notifiedRequests = 0;
+    if (notify_open_requests) {
+      const requests = await prisma.citizenRequest.findMany({
+        where: { service_id: service.id, status: { in: OPEN_STATUSES }, citizen_id: { not: null } },
+        select: { id: true, reference: true, citizen_id: true },
+      });
+      for (const request of requests) {
+        await notifyUser(request.citizen_id!, {
+          type: "SERVICE_INTERRUPTION",
+          title: `${service.name} est momentanément indisponible`,
+          body: [`Votre demande ${request.reference} reste enregistrée.`, reason, alternative].filter(Boolean).join("\n"),
+          link: `/requests/${request.id}`,
+          data: { interruption_id: interruption.id, request_id: request.id },
+        });
+      }
+      notifiedRequests = requests.length;
+    }
+
+    const notified = notifiedAppointments + notifiedRequests;
+    await audit(req, {
+      action: "service.disabled",
+      entity: "CityService",
+      entityId: service.id,
+      label: service.name,
+      changes: [{ field: "availability", from: "AVAILABLE", to: "UNAVAILABLE" }],
+      metadata: { reason, alternative: alternative ?? null, back_at: back_at ?? null, notified_appointments: notifiedAppointments, notified_requests: notifiedRequests },
+    });
+    res.status(201).json({ interruption, notified, notified_appointments: notifiedAppointments, notified_requests: notifiedRequests });
+  },
+
+  // F63: the service is back: every ongoing interruption ends now
+  enable: async (req: Request, res: Response) => {
+    const service = await loadService(parseId(req.params.id));
+    const now = new Date();
+    const { count } = await prisma.serviceInterruption.updateMany({
+      where: { service_id: service.id, starts_at: { lte: now }, ...notEndedWhere() },
+      data: { ends_at: now },
+    });
+    await audit(req, {
+      action: "service.enabled",
+      entity: "CityService",
+      entityId: service.id,
+      label: service.name,
+      changes: [{ field: "availability", from: "UNAVAILABLE", to: "AVAILABLE" }],
+      metadata: { ended_interruptions: count },
+    });
+    res.json({ ended: count });
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await cityServiceModel.delete(parseId(req.params.id)));
+    const service = await cityServiceModel.delete(parseId(req.params.id));
+    await audit(req, { action: "service.deleted", entity: "CityService", entityId: service.id, label: service.name });
+    res.json(service);
   },
 };
 

@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { audit, fieldsOf } from "../lib/audit";
 import { AnnouncementCategory, Prisma, PublicationStatus } from "@prisma/client";
 import { z } from "zod";
 import announcementModel, { visibleAnnouncementWhere } from "../model/announcement.model";
@@ -93,6 +94,7 @@ const announcementController = {
       ...(publish ? { status: "PUBLISHED", published_at: input.published_at ?? new Date() } : {}),
     });
     if (publish) await notifyIfImportant(announcement);
+    await audit(req, { action: publish ? "announcement.published" : "announcement.created", entity: "Announcement", entityId: announcement.id, label: announcement.title });
     res.status(201).json(announcement);
   },
 
@@ -110,6 +112,16 @@ const announcementController = {
       ...(goesLive && !current.published_at && !input.published_at ? { published_at: new Date() } : {}),
     });
     if (goesLive) await notifyIfImportant(announcement);
+    const archived = input.status === "ARCHIVED" && current.status !== "ARCHIVED";
+    await audit(req, {
+      action: goesLive ? "announcement.published" : archived ? "announcement.archived" : "announcement.updated",
+      entity: "Announcement",
+      entityId: id,
+      label: announcement.title,
+      before: current,
+      after: announcement,
+      fields: [...fieldsOf(input), ...(cover_image ? ["cover_image"] : [])],
+    });
     res.json(announcement);
   },
 
@@ -126,11 +138,16 @@ const announcementController = {
       published_at: current.published_at ?? new Date(),
     });
     await notifyIfImportant(announcement);
+    await audit(req, { action: "announcement.published", entity: "Announcement", entityId: id, label: announcement.title });
     res.json(announcement);
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await announcementModel.delete(parseId(req.params.id)));
+    const id = parseId(req.params.id);
+    const current = await announcementModel.getOne({ id });
+    const deleted = await announcementModel.delete(id);
+    await audit(req, { action: "announcement.deleted", entity: "Announcement", entityId: id, label: current?.title ?? null });
+    res.json(deleted);
   },
 };
 

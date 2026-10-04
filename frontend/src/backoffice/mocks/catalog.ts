@@ -1,5 +1,4 @@
-import type { CityService, ServiceCategory, ServiceInterruption } from './types'
-import { atTime, hoursAgo, inHours } from './time'
+import type { CityService, ServiceCategory } from './types'
 
 export const CATEGORIES: ServiceCategory[] = [
   { id: 1, slug: 'administration', name: 'Administration & état civil' },
@@ -31,20 +30,3 @@ export const SERVICES: CityService[] = [
   service({ id: 11, slug: 'urbanisme', category_id: 5, name: 'Urbanisme & permis', summary: 'Permis de construire et autorisations.', icon: 'building', is_featured: false, priority: 2, view_count: 120, is_active: false }),
 ]
 
-export const INTERRUPTIONS: ServiceInterruption[] = [
-  {
-    id: 1, service_id: 8, type: 'INCIDENT', impact: 'DEGRADED',
-    reason: 'Incident sur le réseau de suivi des consommations : traitement des demandes retardé.',
-    alternative: 'Pour une coupure urgente, appelez le +00 100 300.', starts_at: hoursAgo(1), ends_at: inHours(23), created_by_id: 2,
-  },
-  {
-    id: 2, service_id: 1, type: 'MAINTENANCE', impact: 'UNAVAILABLE',
-    reason: 'Maintenance du registre numérique d’état civil.',
-    alternative: 'Le guichet de l’Hôtel de ville reste ouvert lundi dès 8h.', starts_at: atTime(8, 0, 2), ends_at: atTime(18, 0, 2), created_by_id: 1,
-  },
-  {
-    id: 3, service_id: 6, type: 'MAINTENANCE', impact: 'UNAVAILABLE',
-    reason: 'Remplacement des capteurs des bennes connectées.',
-    alternative: 'Déposez vos encombrants à la déchetterie Est.', starts_at: atTime(6, 0, -3), ends_at: atTime(12, 0, -3), created_by_id: 1,
-  },
-]

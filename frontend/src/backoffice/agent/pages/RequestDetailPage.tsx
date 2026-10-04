@@ -15,6 +15,7 @@ import { fullName } from '../../lib/lookups'
 import { CITIZEN_STATUS_LABEL, EXPLAINED_STATUSES } from '../../lib/requests'
 import { useNow } from '../../lib/useNow'
 import { CitizenCard } from '../../shared/CitizenCard'
+import { EntityHistory } from '../../shared/EntityHistory'
 import { RequestTimeline } from '../../shared/RequestTimeline'
 import { toast } from '../../stores/toastStore'
 import { PriorityTag, Ref, StatusPill, Tag } from '../../ui/Badges'
@@ -226,6 +227,10 @@ function RequestWorkspace({ request, base }: { request: RequestDetail; base: str
           >
             {asCitizen && !hasAccount && <p className={layout.sectionLabel}>Sans compte, ce visiteur ne voit pas ce suivi : il ne reçoit que vos e-mails.</p>}
             <RequestTimeline request={request} asCitizen={asCitizen} />
+          </Panel>
+
+          <Panel kicker="F48 · Journal d’audit" title="Historique des modifications">
+            <EntityHistory entity="CitizenRequest" entityId={request.id} />
           </Panel>
         </div>
 

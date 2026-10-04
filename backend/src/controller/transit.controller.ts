@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { audit, fieldsOf } from "../lib/audit";
 import { DayType, TransitLineStatus, TransitMode, type Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "../lib/prisma";
@@ -200,19 +201,25 @@ const transitController = {
   },
 
   createLine: async (req: Request, res: Response) => {
-    res.status(201).json(await prisma.transitLine.create({ data: lineSchema.parse(req.body) }));
+    const line = await prisma.transitLine.create({ data: lineSchema.parse(req.body) });
+    await audit(req, { action: "transit.line_created", entity: "TransitLine", entityId: line.id, label: `Ligne ${line.code}` });
+    res.status(201).json(line);
   },
 
   updateLine: async (req: Request, res: Response) => {
-    res.json(
-      await prisma.transitLine.update({ where: { id: parseId(req.params.id) }, data: lineSchema.partial().parse(req.body) })
-    );
+    const id = parseId(req.params.id);
+    const input = lineSchema.partial().parse(req.body);
+    const before = await prisma.transitLine.findUnique({ where: { id } });
+    const line = await prisma.transitLine.update({ where: { id }, data: input });
+    await audit(req, { action: "transit.line_updated", entity: "TransitLine", entityId: id, label: `Ligne ${line.code}`, before, after: line, fields: fieldsOf(input) });
+    res.json(line);
   },
 
   updateStatus: async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
     const { notify, ...data } = statusSchema.parse(req.body);
     if (data.status === "NORMAL" && data.status_message === undefined) data.status_message = null;
+    const before = await prisma.transitLine.findUnique({ where: { id } });
     const line = await prisma.transitLine.update({
       where: { id },
       data,
@@ -238,6 +245,7 @@ const transitController = {
       }
     }
     const { stops: _stops, ...rest } = line;
+    await audit(req, { action: "transit.line_status", entity: "TransitLine", entityId: id, label: `Ligne ${line.code}`, before, after: rest, fields: ["status", "status_message"], metadata: { notified } });
     res.json({ ...rest, notified });
   },
 
@@ -251,6 +259,7 @@ const transitController = {
         data: stop_ids.map((stop_id, position) => ({ line_id: id, stop_id, position })),
       }),
     ]);
+    await audit(req, { action: "transit.stops", entity: "TransitLine", entityId: id, label: `Ligne #${id}`, metadata: { stop_ids } });
     res.json({ line_id: id, stop_ids });
   },
 
@@ -283,25 +292,35 @@ const transitController = {
       prisma.transitDeparture.deleteMany({ where: { line_id: id, day_type: input.day_type } }),
       prisma.transitDeparture.createMany({ data: rows }),
     ]);
+    await audit(req, { action: "transit.timetable", entity: "TransitLine", entityId: id, label: `Ligne #${id}`, metadata: { day_type: input.day_type, departures: rows.length } });
     res.json({ line_id: id, day_type: input.day_type, departures: rows.length });
   },
 
   deleteLine: async (req: Request, res: Response) => {
-    res.json(await prisma.transitLine.delete({ where: { id: parseId(req.params.id) }, select: { id: true } }));
+    const line = await prisma.transitLine.delete({ where: { id: parseId(req.params.id) }, select: { id: true, code: true } });
+    await audit(req, { action: "transit.line_deleted", entity: "TransitLine", entityId: line.id, label: `Ligne ${line.code}` });
+    res.json({ id: line.id });
   },
 
   createStop: async (req: Request, res: Response) => {
-    res.status(201).json(await prisma.transitStop.create({ data: stopSchema.parse(req.body) }));
+    const stop = await prisma.transitStop.create({ data: stopSchema.parse(req.body) });
+    await audit(req, { action: "transit.stop_created", entity: "TransitStop", entityId: stop.id, label: stop.name });
+    res.status(201).json(stop);
   },
 
   updateStop: async (req: Request, res: Response) => {
-    res.json(
-      await prisma.transitStop.update({ where: { id: parseId(req.params.id) }, data: stopSchema.partial().parse(req.body) })
-    );
+    const id = parseId(req.params.id);
+    const input = stopSchema.partial().parse(req.body);
+    const before = await prisma.transitStop.findUnique({ where: { id } });
+    const stop = await prisma.transitStop.update({ where: { id }, data: input });
+    await audit(req, { action: "transit.stop_updated", entity: "TransitStop", entityId: id, label: stop.name, before, after: stop, fields: fieldsOf(input) });
+    res.json(stop);
   },
 
   deleteStop: async (req: Request, res: Response) => {
-    res.json(await prisma.transitStop.delete({ where: { id: parseId(req.params.id) }, select: { id: true } }));
+    const stop = await prisma.transitStop.delete({ where: { id: parseId(req.params.id) }, select: { id: true, name: true } });
+    await audit(req, { action: "transit.stop_deleted", entity: "TransitStop", entityId: stop.id, label: stop.name });
+    res.json({ id: stop.id });
   },
 };
 

@@ -26,6 +26,8 @@ import serviceInterruptionRouter from './src/router/serviceInterruption.router';
 import transitRouter from './src/router/transit.router';
 import appointmentRouter from './src/router/appointment.router';
 import settingsRouter from './src/router/settings.router';
+import auditRouter from './src/router/audit.router';
+import permissionRouter from './src/router/permission.router';
 import { startScheduler } from './src/lib/scheduler';
 import { errorHandler, notFoundHandler } from './src/middleware/error';
 
@@ -38,7 +40,7 @@ const port = process.env.PORT || 9002;
 // CORS_ORIGINS: comma-separated list of allowed front-end origins (every origin when unset)
 const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean);
 // Retry-After (F37 lockouts, rate limits) must be readable by the front, which runs on another origin
-app.use(cors({ origin: corsOrigins?.length ? corsOrigins : true, exposedHeaders: ["Retry-After"] }))
+app.use(cors({ origin: corsOrigins?.length ? corsOrigins : true, exposedHeaders: ["Retry-After", "Content-Disposition"] }))
 app.use(express.urlencoded({extended : true}))
 app.use(express.json());
 // @ts-ignore
@@ -81,6 +83,8 @@ app.use('/api/service-interruptions', serviceInterruptionRouter);
 app.use('/api/transit', transitRouter);
 app.use('/api/appointments', appointmentRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/audit-logs', auditRouter);
+app.use('/api/permissions', permissionRouter);
 
 const localImages = process.env.ENV && process.env.ENV == "development" ? './public' : '../public'
 app.use('/public', express.static(path.join(__dirname, localImages)));

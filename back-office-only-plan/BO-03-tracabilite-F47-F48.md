@@ -130,14 +130,14 @@ La mention « Données simulées » de l'ancien flux en direct disparaît.
 
 ## 6. Étapes
 
-1. [ ] **Étape 1, backend :**
-   - [ ] `AuditLog`, migration et `lib/audit.ts` ;
-   - [ ] appels dans les contrôleurs existants (demandes, comptes, catalogue, interruptions, annonces, alertes, rendez-vous, transports, paramètres) ;
-   - [ ] `GET /api/audit-logs` et seed.
-2. [ ] `src/api/audit.ts`, `ActivityPage`, `AuditPage` et l'export
-3. [ ] `EntityHistory`, posé dans les tiroirs déjà branchés, puis dans ceux des plans suivants
-4. [ ] `AuditFeed` sur données réelles, puis suppression de l'audit côté navigateur
-5. [ ] `GET /api/audit-logs/stats`, pour la vue globale (BO-02)
+1. [x] **Étape 1, backend :**
+   - [x] `AuditLog`, migration et `lib/audit.ts` ;
+   - [x] appels dans les contrôleurs existants (demandes, comptes, catalogue, interruptions, annonces, alertes, rendez-vous, transports, paramètres) ;
+   - [x] `GET /api/audit-logs` et seed.
+2. [x] `src/api/audit.ts`, `ActivityPage`, `AuditPage` et l'export
+3. [x] `EntityHistory`, posé dans les tiroirs déjà branchés, puis dans ceux des plans suivants
+4. [x] `AuditFeed` sur données réelles, puis suppression de l'audit côté navigateur
+5. [x] `GET /api/audit-logs/stats`, pour la vue globale (BO-02)
 
 ## 7. Critères d'acceptation
 
@@ -168,3 +168,12 @@ Peut attendre :
 
 - **Données personnelles :** les coordonnées d'un habitant (téléphone, adresse) ne sont pas copiées dans le journal. `changes` contient `{ field: 'phone', masked: true }` et l'écran affiche « téléphone modifié ». Les autres champs gardent leur avant → après.
 - **Volume :** `AuditLog` grossit sans limite, par choix (F47). Les index ci-dessus suffisent pour le hackathon.
+
+## Réalisé (4 octobre 2026)
+
+- **Migration :** `20261004010000_audit_log` reprend à l'identique le fichier de la branche `fix/auditPage` (déjà appliqué à la base locale), sans clé étrangère sur `actor_id` : l'entrée garde l'id et le nom figé après la suppression du compte. Le reste (bibliothèque, endpoints, appels, écrans) est écrit sur `bo-03-06`.
+- **Écriture :** `lib/audit.ts` (`audit`, `auditAs` pour le système et les étapes de connexion, `diff`, `fieldsOf`). Tous les contrôleurs existants appellent `audit()` : demandes, comptes, catalogue (services, catégories, démarches, quartiers), interruptions, annonces, alertes, créneaux et rendez-vous, transports, paramètres, traductions ; le planificateur écrit `reminders.sent` (acteur nul) ; la suppression de son compte par un habitant écrit `user.self_deleted` sans nom ni IP.
+- **Seed :** 6 entrées marquées `metadata.demo`, écrites une fois et jamais supprimées par `SEED_RESET` (le journal est immuable).
+- **Écrans :** `AuditFeed` (une ligne par action, détail dans un tiroir, nouvelles entrées éclairées), `EntityHistory` (tiroirs Comptes, Services, Interruptions et page détail d'une demande), `ActivityPage` (Mes actions / Équipe), `AuditPage` (filtres dans l'URL, export CSV en blob). Les tableaux de bord lisent le journal ; le fil provisoire `/dashboard/activity` du BO-02 est supprimé et la carte de chaleur compte les actions d'audit du personnel.
+- **Nettoyage :** `stores/auditStore.ts`, `mocks/audit.ts` et les appels `recordAudit` sont supprimés.
+- **Vérifié dans Chrome :** critères 1 à 4.

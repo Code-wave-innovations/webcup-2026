@@ -3,7 +3,6 @@ import type {
   AlertSeverity,
   AnnouncementCategory,
   AppointmentStatus,
-  AuditAction,
   InterruptionImpact,
   InterruptionType,
   PublicationStatus,
@@ -115,58 +114,3 @@ export const APPOINTMENT_TONE: Record<AppointmentStatus, Tone> = {
   NO_SHOW: 'alert',
 }
 
-export const AUDIT_LABEL: Record<AuditAction, string> = {
-  'request.status_changed': 'a changé l’état de',
-  'request.assigned': 'a assigné',
-  'request.priority_changed': 'a changé la priorité de',
-  'request.comment_added': 'a commenté',
-  'user.created': 'a créé le compte',
-  'user.updated': 'a modifié le compte',
-  'user.role_changed': 'a changé le rôle de',
-  'user.deactivated': 'a désactivé',
-  'user.unlocked': 'a déverrouillé',
-  'service.updated': 'a modifié le service',
-  'service.featured': 'a mis en avant',
-  'interruption.created': 'a déclaré une interruption sur',
-  'announcement.published': 'a publié',
-  'alert.created': 'a lancé l’alerte',
-  'broadcast.sent': 'a diffusé',
-  'translation.updated': 'a traduit',
-  'slot.created': 'a publié',
-  'appointment.updated': 'a mis à jour',
-  'settings.updated': 'a modifié',
-  'role.permission_changed': 'a changé les permissions du rôle',
-  'auth.login': 's’est connecté·e',
-}
-
-export const AUDIT_DOMAIN: Record<string, string> = {
-  CitizenRequest: 'Demandes',
-  User: 'Comptes',
-  CityService: 'Catalogue',
-  ServiceInterruption: 'Catalogue',
-  Announcement: 'Contenus',
-  Alert: 'Contenus',
-  Broadcast: 'Contenus',
-  Appointment: 'Rendez-vous',
-  AppointmentSlot: 'Rendez-vous',
-  PlatformSettings: 'Paramètres',
-  Role: 'Paramètres',
-}
-
-const VALUE_LABELS: Record<string, string> = {
-  ...STATUS_LABEL,
-  ...PRIORITY_LABEL,
-  ...ROLE_LABEL,
-  ...SEVERITY_LABEL,
-  ...IMPACT_LABEL,
-  ...PUBLICATION_LABEL,
-  ...APPOINTMENT_LABEL,
-  DISTRICTS: 'Quartiers ciblés',
-  VULNERABLE: 'Personnes vulnérables',
-  ALL: 'Tous les habitants',
-  true: 'oui',
-  false: 'non',
-}
-
-/** Human label for a raw audit value (enum codes, booleans); other values pass through. */
-export const auditValue = (value: string | null) => (value === null ? '—' : (VALUE_LABELS[value] ?? value))

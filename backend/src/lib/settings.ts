@@ -19,6 +19,13 @@ const homeSection = z.object({
 const SETTINGS = {
   // D01: new citizens can create an account
   registration_open: { public: true, schema: z.boolean(), default: true },
+  // F53: roles that must use a second factor (code or passkey). Empty by default so the demo
+  // accounts keep signing in with a password; an admin turns it on in Paramètres.
+  two_factor_required_roles: {
+    public: false,
+    schema: z.array(z.enum(["CITIZEN", "AGENT", "ADMIN"])).max(3),
+    default: [] as ("CITIZEN" | "AGENT" | "ADMIN")[],
+  },
   // Citizen space read-only: no new requests nor bookings (staff keeps working)
   maintenance_mode: { public: true, schema: z.boolean(), default: false },
   maintenance_message: {

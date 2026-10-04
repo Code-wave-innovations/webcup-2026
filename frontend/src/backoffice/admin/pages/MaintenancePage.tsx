@@ -1,17 +1,23 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { useActor } from '../../layout/persona'
+import { messageFor } from '../../../api/errors'
+import { useDeleteInterruption, useEndInterruption, useInterruptions, useSaveInterruption } from '../../../api/interruptions'
+import { useAdminServices } from '../../../api/services'
+import type { ServiceInterruption } from '../../../api/types'
+import { useApiForm } from '../../../hooks/useApiForm'
+import { usePersona } from '../../layout/persona'
 import { IMPACT_LABEL, INTERRUPTION_TYPE_LABEL } from '../../lib/labels'
-import { formatDateTime, formatRelative } from '../../lib/format'
-import { useServiceName } from '../../lib/lookups'
+import { formatDateTime, formatRelative, fromLocalInput, toLocalInput } from '../../lib/format'
 import { useNow } from '../../lib/useNow'
-import type { InterruptionImpact, InterruptionType } from '../../mocks/types'
-import { addInterruption, endInterruption, useCatalogStore } from '../../stores/catalogStore'
+import { EntityHistory } from '../../shared/EntityHistory'
+import { ServicesStatus } from '../../shared/ServiceState'
+import { toast } from '../../stores/toastStore'
 import { Tag } from '../../ui/Badges'
 import { Button } from '../../ui/Button'
+import { ErrorSummary } from '../../ui/ErrorSummary'
 import { Field, FilterChips, Select, TextArea, TextInput } from '../../ui/Controls'
-import { EmptyState } from '../../ui/Feedback'
-import { Modal } from '../../ui/Overlay'
+import { EmptyState, Skeleton } from '../../ui/Feedback'
+import { Drawer, Modal } from '../../ui/Overlay'
 import { PageHeader } from '../../ui/PageHeader'
 import { Panel } from '../../ui/Panel'
 import { stagger } from '../../ui/motion'
@@ -19,58 +25,55 @@ import layout from '../../ui/layout.module.css'
 import styles from './admin.module.css'
 
 const DAY = 86_400_000
-const toLocalInput = (ms: number) => {
-  const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60_000)
-  return d.toISOString().slice(0, 16)
-}
+type Type = ServiceInterruption['type']
+type Impact = ServiceInterruption['impact']
 
-/** F38: planned maintenance and incidents, on a 7-day frise, with what citizens should do instead. */
+/** F38: planned maintenance and incidents on a 7-day frise, with what citizens should do instead (agents and admins). */
 export default function MaintenancePage() {
-  const actor = useActor()
   const now = useNow()
-  const serviceName = useServiceName()
-  const services = useCatalogStore((s) => s.services)
-  const interruptions = useCatalogStore((s) => s.interruptions)
-  const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState({
-    service_id: services[0]?.id ?? 1,
-    type: 'MAINTENANCE' as InterruptionType,
-    impact: 'UNAVAILABLE' as InterruptionImpact,
-    reason: '',
-    alternative: '',
-    starts: '',
-    ends: '',
-  })
+  const persona = usePersona()
+  const all = useInterruptions('all')
+  const services = useAdminServices()
+  const end = useEndInterruption()
+  const remove = useDeleteInterruption()
+  const [editing, setEditing] = useState<ServiceInterruption | 'new' | null>(null)
+  const [history, setHistory] = useState<ServiceInterruption | null>(null)
 
+  const list = all.data ?? []
   const windowStart = now - DAY
   const windowEnd = now + 6 * DAY
   const pct = (ms: number) => `${Math.min(100, Math.max(0, ((ms - windowStart) / (windowEnd - windowStart)) * 100))}%`
-  const ended = (end: string | null) => end !== null && new Date(end).getTime() <= now
-  const active = interruptions.filter((i) => !ended(i.ends_at)).sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-  const past = interruptions.filter((i) => ended(i.ends_at))
+  const ended = (iso: string | null) => iso !== null && new Date(iso).getTime() <= now
+  const active = list.filter((i) => !ended(i.ends_at)).sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+  const past = list.filter((i) => ended(i.ends_at))
   const ticks = Array.from({ length: 8 }, (_, i) => new Date(windowStart + i * DAY))
 
-  const openForm = () => {
-    setForm((f) => ({ ...f, starts: toLocalInput(now), ends: toLocalInput(now + 4 * 3_600_000) }))
-    setCreating(true)
-  }
+  const act = (promise: Promise<unknown>, done: string) => promise.then(() => toast(done), (error) => toast(messageFor(error), 'alert'))
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader simulated
+      <PageHeader
         title="Interruptions de service"
-        codes={['F38']}
+        codes={['F38', 'F64']}
         lead="Annoncez une maintenance ou un incident : les habitants voient l’indisponibilité avant de commencer une démarche, quand revenir et quoi faire à la place."
         actions={
-          <Button variant="primary" icon="plus" onClick={openForm}>
+          <Button variant="primary" icon="plus" onClick={() => setEditing('new')}>
             Déclarer une interruption
           </Button>
         }
       />
 
-      <Panel kicker="7 jours" title="Frise des interruptions">
-        {active.length === 0 ? (
-          <EmptyState title="Tous les services fonctionnent" icon="check" />
+      {persona === 'ADMIN' && (
+        <Panel kicker="F64 · En ce moment" title="État des services">
+          {services.data ? <ServicesStatus services={services.data} /> : <Skeleton lines={2} />}
+        </Panel>
+      )}
+
+      <Panel kicker="7 jours" title="Frise des interruptions" aria-busy={all.isFetching}>
+        {!all.data ? (
+          all.isError ? <EmptyState title={messageFor(all.error)} icon="alert" /> : <Skeleton lines={4} />
+        ) : active.length === 0 ? (
+          <EmptyState title="Tous les services fonctionnent, aucune interruption prévue" icon="check" />
         ) : (
           <div className={styles.gantt}>
             <div className={styles.ganttScale}>
@@ -83,15 +86,15 @@ export default function MaintenancePage() {
             </div>
             {active.map((i) => {
               const start = new Date(i.starts_at).getTime()
-              const end = i.ends_at ? new Date(i.ends_at).getTime() : windowEnd
+              const stop = i.ends_at ? new Date(i.ends_at).getTime() : windowEnd
               const color = i.impact === 'UNAVAILABLE' ? 'var(--color-alert)' : 'var(--color-progress)'
               return (
                 <div key={i.id} className={styles.ganttRow}>
-                  <span className={styles.ganttLabel}>{serviceName(i.service_id)}</span>
+                  <span className={styles.ganttLabel}>{i.service.name}</span>
                   <span className={styles.ganttTrack}>
                     <motion.span
                       className={styles.ganttBar}
-                      style={{ left: pct(start), width: `calc(${pct(end)} - ${pct(start)})`, background: color, originX: 0 }}
+                      style={{ left: pct(start), width: `calc(${pct(stop)} - ${pct(start)})`, background: color, originX: 0 }}
                       initial={{ scaleX: 0 }}
                       animate={{ scaleX: 1 }}
                       transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
@@ -113,15 +116,24 @@ export default function MaintenancePage() {
           return (
             <Panel
               key={i.id}
-              kicker={`${INTERRUPTION_TYPE_LABEL[i.type]} · ${ongoing ? 'en cours' : `dans ${formatRelative(i.starts_at, now).replace('dans ', '')}`}`}
-              title={serviceName(i.service_id)}
+              kicker={`${INTERRUPTION_TYPE_LABEL[i.type]} · ${ongoing ? 'en cours' : `à venir, ${formatRelative(i.starts_at, now)}`}`}
+              title={i.service.name}
               accent={ongoing && i.impact === 'UNAVAILABLE' ? 'alert' : ongoing ? 'ember' : undefined}
               actions={
-                ongoing && (
-                  <Button size="sm" icon="check" onClick={() => endInterruption(i.id, actor.id)}>
-                    Service rétabli
+                <span className={layout.row}>
+                  {ongoing ? (
+                    <Button size="sm" icon="check" disabled={end.isPending} onClick={() => void act(end.mutateAsync(i.id), `${i.service.name} rétabli`)}>
+                      Service rétabli
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="danger" disabled={remove.isPending} onClick={() => void act(remove.mutateAsync(i.id), 'Interruption annulée')}>
+                      Annuler
+                    </Button>
+                  )}
+                  <Button size="sm" variant="subtle" icon="edit" onClick={() => setEditing(i)}>
+                    Modifier
                   </Button>
-                )
+                </span>
               }
             >
               <div className={layout.row}>
@@ -141,6 +153,9 @@ export default function MaintenancePage() {
                   </p>
                 </div>
               )}
+              <Button size="sm" variant="ghost" icon="scroll" onClick={() => setHistory(i)}>
+                Historique
+              </Button>
             </Panel>
           )
         })}
@@ -149,12 +164,12 @@ export default function MaintenancePage() {
       {past.length > 0 && (
         <Panel kicker="Historique" title="Interruptions terminées">
           <ul className={styles.sectionList}>
-            {past.map((i) => (
+            {past.slice(0, 20).map((i) => (
               <li key={i.id} className={styles.sectionItem}>
                 <Tag tone="neutral">{INTERRUPTION_TYPE_LABEL[i.type]}</Tag>
                 <span />
                 <span>
-                  {serviceName(i.service_id)} — {i.reason}
+                  {i.service.name} — {i.reason}
                 </span>
                 <small className={layout.muted}>{i.ends_at && formatRelative(i.ends_at, now)}</small>
               </li>
@@ -163,44 +178,89 @@ export default function MaintenancePage() {
         </Panel>
       )}
 
-      <Modal
-        open={creating}
-        onClose={() => setCreating(false)}
-        kicker="F38"
-        title="Déclarer une interruption"
-        footer={
-          <>
-            <Button variant="subtle" onClick={() => setCreating(false)}>
-              Annuler
-            </Button>
-            <Button
-              variant="primary"
-              icon="wrench"
-              disabled={form.reason.trim().length < 3 || !form.starts}
-              onClick={() => {
-                addInterruption(
-                  {
-                    service_id: form.service_id,
-                    type: form.type,
-                    impact: form.impact,
-                    reason: form.reason.trim(),
-                    alternative: form.alternative.trim() || null,
-                    starts_at: new Date(form.starts).toISOString(),
-                    ends_at: form.ends ? new Date(form.ends).toISOString() : null,
-                  },
-                  actor.id,
-                )
-                setCreating(false)
-              }}
-            >
-              Publier
-            </Button>
-          </>
-        }
+      {editing && <InterruptionForm key={editing === 'new' ? 'new' : editing.id} interruption={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+
+      <Drawer open={history !== null} onClose={() => setHistory(null)} kicker="F48" title={history ? `Historique · ${history.service.name}` : ''}>
+        {history && <EntityHistory entity="ServiceInterruption" entityId={history.id} />}
+      </Drawer>
+    </motion.div>
+  )
+}
+
+function InterruptionForm({ interruption, onClose }: { interruption: ServiceInterruption | null; onClose: () => void }) {
+  const now = useNow()
+  const services = useAdminServices().data ?? []
+  const save = useSaveInterruption()
+  const [serviceId, setServiceId] = useState(interruption?.service_id ?? services[0]?.id ?? 0)
+  const [type, setType] = useState<Type>(interruption?.type ?? 'MAINTENANCE')
+  const [impact, setImpact] = useState<Impact>(interruption?.impact ?? 'UNAVAILABLE')
+  const [reason, setReason] = useState(interruption?.reason ?? '')
+  const [alternative, setAlternative] = useState(interruption?.alternative ?? '')
+  const [starts, setStarts] = useState(toLocalInput(interruption?.starts_at ?? new Date(now).toISOString()))
+  const [ends, setEnds] = useState(toLocalInput(interruption?.ends_at ?? new Date(now + 4 * 3_600_000).toISOString()))
+
+  const form = useApiForm({
+    labels: { service_id: 'Service', reason: 'Motif', alternative: 'Alternative', starts_at: 'Début', ends_at: 'Fin' },
+    validate: (): Record<string, string> => {
+      const errors: Record<string, string> = {}
+      if (!serviceId) errors.service_id = 'Choisissez un service.'
+      if (reason.trim().length < 3) errors.reason = 'Dites ce qui se passe.'
+      if (!starts) errors.starts_at = 'Indiquez le début.'
+      if (starts && ends && new Date(ends) <= new Date(starts)) errors.ends_at = 'La fin doit être après le début.'
+      return errors
+    },
+    submit: () =>
+      save.mutateAsync({
+        id: interruption?.id,
+        ...(interruption ? {} : { service_id: serviceId }),
+        type,
+        impact,
+        reason: reason.trim(),
+        alternative: alternative.trim() || null,
+        starts_at: fromLocalInput(starts) ?? undefined,
+        ends_at: fromLocalInput(ends),
+      }),
+    onSuccess: (saved) => {
+      const name = services.find((s) => s.id === saved.service_id)?.name ?? 'Service'
+      toast(
+        interruption
+          ? `Interruption de ${name} modifiée`
+          : `${name} : interruption publiée · ${saved.notified ?? 0} habitant${(saved.notified ?? 0) > 1 ? 's' : ''} prévenu${(saved.notified ?? 0) > 1 ? 's' : ''}`,
+      )
+      onClose()
+    },
+  })
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      kicker="F38"
+      title={interruption ? 'Modifier l’interruption' : 'Déclarer une interruption'}
+      footer={
+        <>
+          <Button variant="subtle" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button variant="primary" icon="wrench" type="submit" form="interruption-form" disabled={form.pending} aria-busy={form.pending}>
+            {interruption ? 'Enregistrer' : 'Publier'}
+          </Button>
+        </>
+      }
+    >
+      <form
+        id="interruption-form"
+        noValidate
+        className={layout.stack}
+        onSubmit={(e) => {
+          e.preventDefault()
+          void form.handleSubmit(undefined)
+        }}
       >
-        <Field label="Service concerné">
+        <ErrorSummary id={form.summaryId} errors={form.summary} formError={form.formError} />
+        <Field id={form.fieldId('service_id')} label="Service concerné" required error={form.errors.service_id}>
           {(id) => (
-            <Select id={id} data-autofocus value={form.service_id} onChange={(e) => setForm({ ...form, service_id: Number(e.target.value) })}>
+            <Select id={id} data-autofocus value={serviceId} disabled={interruption !== null} onChange={(e) => setServiceId(Number(e.target.value))}>
               {services.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -210,19 +270,27 @@ export default function MaintenancePage() {
           )}
         </Field>
         <div className={layout.row}>
-          <FilterChips<InterruptionType> label="Type" value={form.type} onChange={(type) => setForm({ ...form, type })} options={[{ value: 'MAINTENANCE', label: 'Maintenance' }, { value: 'INCIDENT', label: 'Incident' }]} />
-          <FilterChips<InterruptionImpact> label="Impact" value={form.impact} onChange={(impact) => setForm({ ...form, impact })} options={[{ value: 'UNAVAILABLE', label: 'Indisponible' }, { value: 'DEGRADED', label: 'Dégradé' }]} />
+          <FilterChips<Type> label="Type" value={type} onChange={setType} options={[{ value: 'MAINTENANCE', label: 'Maintenance' }, { value: 'INCIDENT', label: 'Incident' }]} />
+          <FilterChips<Impact> label="Impact" value={impact} onChange={setImpact} options={[{ value: 'UNAVAILABLE', label: 'Indisponible' }, { value: 'DEGRADED', label: 'Perturbé' }]} />
         </div>
-        <Field label="Raison (visible des habitants)">{(id) => <TextArea id={id} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />}</Field>
-        <Field label="Que faire à la place ?" hint="Autre guichet, numéro d’urgence, date de retour…">
-          {(id, d) => <TextInput id={id} aria-describedby={d} value={form.alternative} onChange={(e) => setForm({ ...form, alternative: e.target.value })} />}
+        <Field id={form.fieldId('reason')} label="Motif (visible des habitants)" required error={form.errors.reason}>
+          {(id, describedBy, invalid) => <TextArea id={id} aria-describedby={describedBy} aria-invalid={invalid} value={reason} onChange={(e) => setReason(e.target.value)} />}
+        </Field>
+        <Field id={form.fieldId('alternative')} label="Que faire à la place ?" hint="Autre guichet, numéro d’urgence, date de retour…" error={form.errors.alternative}>
+          {(id, describedBy, invalid) => <TextInput id={id} aria-describedby={describedBy} aria-invalid={invalid} value={alternative} onChange={(e) => setAlternative(e.target.value)} />}
         </Field>
         <div className={layout.formGrid}>
-          <Field label="Début">{(id) => <TextInput id={id} type="datetime-local" value={form.starts} onChange={(e) => setForm({ ...form, starts: e.target.value })} />}</Field>
-          <Field label="Fin (vide = jusqu’à nouvel ordre)">{(id) => <TextInput id={id} type="datetime-local" value={form.ends} onChange={(e) => setForm({ ...form, ends: e.target.value })} />}</Field>
+          <Field id={form.fieldId('starts_at')} label="Début" required error={form.errors.starts_at}>
+            {(id, describedBy, invalid) => <TextInput id={id} type="datetime-local" aria-describedby={describedBy} aria-invalid={invalid} value={starts} onChange={(e) => setStarts(e.target.value)} />}
+          </Field>
+          <Field id={form.fieldId('ends_at')} label="Fin (vide = jusqu’à nouvel ordre)" error={form.errors.ends_at}>
+            {(id, describedBy, invalid) => <TextInput id={id} type="datetime-local" aria-describedby={describedBy} aria-invalid={invalid} value={ends} onChange={(e) => setEnds(e.target.value)} />}
+          </Field>
         </div>
-        {form.impact === 'UNAVAILABLE' && <p className={[layout.muted, layout.small].join(' ')}>Les nouvelles demandes et réservations sur ce service seront bloquées pendant la période.</p>}
-      </Modal>
-    </motion.div>
+        {impact === 'UNAVAILABLE' && (
+          <p className={[layout.muted, layout.small].join(' ')}>Les nouvelles demandes et réservations seront refusées pendant la période ; les habitants qui ont un rendez-vous sont prévenus.</p>
+        )}
+      </form>
+    </Modal>
   )
 }

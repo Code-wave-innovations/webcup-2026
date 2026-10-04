@@ -14,12 +14,14 @@ const jwtSecret = () => {
   return process.env.JWT_SECRET || DEV_SECRET;
 };
 
-const generateToken = (id: number | undefined, email: string | undefined, role?: string) => {
+// `tv`: the account's token_version, so bumping it signs out every device (BO-05)
+const generateToken = (id: number | undefined, email: string | undefined, role?: string, tokenVersion = 0) => {
   const token = jwt.sign(
     {
       id,
       email,
       role,
+      tv: tokenVersion,
     },
     jwtSecret(),
     {
@@ -30,7 +32,7 @@ const generateToken = (id: number | undefined, email: string | undefined, role?:
 };
 
 // Throws when the token is invalid or expired.
-const verifyToken = (token: string): { id: number; email?: string; role?: string } => {
+const verifyToken = (token: string): { id: number; email?: string; role?: string; tv?: number; purpose?: string } => {
   return jwt.verify(token, jwtSecret());
 };
 
@@ -70,4 +72,4 @@ const deleteFile = (path: any) => {
   }
 };
 
-export { generateToken, verifyToken, uploadFile, deleteFile };
+export { generateToken, verifyToken, uploadFile, deleteFile, jwtSecret };

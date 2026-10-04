@@ -68,6 +68,13 @@ const MESSAGES: Record<string, string> = {
   SLOT_FULL: 'Ce créneau vient d’être réservé. Choisissez-en un autre.',
   OVERLAPPING_APPOINTMENT: 'Vous avez déjà un rendez-vous à ce moment-là.',
   UPSTREAM_ERROR: 'Le service externe ne répond pas pour le moment.',
+  SESSION_REVOKED: 'Cette session a été fermée depuis un autre appareil. Reconnectez-vous.',
+  INVALID_TWO_FACTOR_CODE: 'Code de vérification incorrect.',
+  INVALID_STEP_TOKEN: 'Cette étape a expiré. Reprenez la connexion depuis le début.',
+  TWO_FACTOR_REQUIRED: 'La politique de sécurité impose la double vérification à votre rôle.',
+  TWO_FACTOR_ALREADY_ENABLED: 'La double vérification est déjà activée.',
+  UNKNOWN_PASSKEY: 'Cette clé d’accès n’est enregistrée sur aucun compte.',
+  INVALID_PASSKEY: 'La clé d’accès n’a pas pu être vérifiée.',
   INTERNAL_ERROR: 'Une erreur est survenue. Réessayez dans un instant.',
 }
 
@@ -85,6 +92,8 @@ export function messageFor(error: unknown): string {
 function frenchFieldMessage(message: string): string {
   let match: RegExpMatchArray | null
   if (/^Required$/i.test(message)) return 'Ce champ est obligatoire.'
+  if (/must be after starts_at/i.test(message)) return 'La fin doit être après le début.'
+  if (/must be in the future/i.test(message)) return 'Choisissez une heure à venir.'
   if (/public note is required/i.test(message))
     return 'Ce changement doit être expliqué à l’habitant : dites ce qu’il doit faire ou ce qui a été fait.'
   if ((match = message.match(/at least (\d+) character/i))) return `Saisissez au moins ${match[1]} caractères.`

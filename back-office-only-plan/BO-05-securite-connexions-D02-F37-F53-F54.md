@@ -218,32 +218,32 @@ Elle est accessible par le menu profil (BO-00). C'est le même composant dans le
 
 Dans l'ordre, chaque étape est livrable seule :
 
-1. [ ] **F37 :**
-   - [ ] `/admin/securite` : vue d'ensemble, verrouillés, tentatives, encart cPanel ;
-   - [ ] entrée dans `nav.ts` ;
-   - [ ] messages de la page de connexion.
-2. [ ] **Révocation des sessions :** `token_version`, les deux endpoints, le message `SESSION_REVOKED`.
-3. [ ] **F54 :**
-   - [ ] `UserDevice` et l'en-tête `X-Device-Id` (posé par le client HTTP au login) ;
-   - [ ] notification et audit ;
-   - [ ] endpoints ;
-   - [ ] bloc « Nouveaux appareils » ;
-   - [ ] onglet Sécurité ;
-   - [ ] « Mon compte › Appareils ».
-4. [ ] **F53 :**
-   - [ ] schéma, `otplib`, `qrcode` ;
-   - [ ] connexion en deux temps ;
-   - [ ] politique ;
-   - [ ] étapes 2 et 3 de la page de connexion ;
-   - [ ] « Mon compte › Double vérification » ;
-   - [ ] réinitialisation par un admin ;
-   - [ ] jauge d'adoption.
-5. [ ] **D02 :**
-   - [ ] `Passkey` et `@simplewebauthn` ;
-   - [ ] enregistrement dans « Mon compte » ;
-   - [ ] bouton de connexion ;
-   - [ ] révocation par un admin.
-6. [ ] Audit de toutes ces actions (BO-03, § 3.3).
+1. [x] **F37 :**
+   - [x] `/admin/securite` : vue d'ensemble, verrouillés, tentatives, encart cPanel ;
+   - [x] entrée dans `nav.ts` ;
+   - [x] messages de la page de connexion.
+2. [x] **Révocation des sessions :** `token_version`, les deux endpoints, le message `SESSION_REVOKED`.
+3. [x] **F54 :**
+   - [x] `UserDevice` et l'en-tête `X-Device-Id` (posé par le client HTTP au login) ;
+   - [x] notification et audit ;
+   - [x] endpoints ;
+   - [x] bloc « Nouveaux appareils » ;
+   - [x] onglet Sécurité ;
+   - [x] « Mon compte › Appareils ».
+4. [x] **F53 :**
+   - [x] schéma, `otplib`, `qrcode` ;
+   - [x] connexion en deux temps ;
+   - [x] politique ;
+   - [x] étapes 2 et 3 de la page de connexion ;
+   - [x] « Mon compte › Double vérification » ;
+   - [x] réinitialisation par un admin ;
+   - [x] jauge d'adoption.
+5. [x] **D02 :**
+   - [x] `Passkey` et `@simplewebauthn` ;
+   - [x] enregistrement dans « Mon compte » ;
+   - [x] bouton de connexion ;
+   - [x] révocation par un admin.
+6. [x] Audit de toutes ces actions (BO-03, § 3.3).
 
 ## 6. Critères d'acceptation
 
@@ -285,3 +285,13 @@ Peut attendre :
 - **Horloge :** le TOTP dépend de l'heure du serveur. Autoriser un décalage d'une période (`window: 1`).
 - **Identifiant d'appareil :** il n'est pas une preuve d'identité. Il sert seulement à détecter un appareil inhabituel. Effacer le `localStorage` produit une nouvelle alerte, ce qui est normal ; le dire dans le texte d'aide de « Mon compte ».
 - **Mot de passe provisoire (BO-04) :** on peut ajouter ici `must_change_password`. La page de connexion impose alors le changement du mot de passe avant l'accès.
+
+## Réalisé (4 octobre 2026)
+
+- **Politique par défaut : vide**, et non `["ADMIN"]` comme prévu, pour que les comptes de démo, `DevLogin` et les scripts de l'équipe continuent de se connecter par mot de passe. Un admin l'active dans Paramètres › Sécurité.
+- **Connexion :** `completeLogin` (`auth.controller.ts`) décide pour toutes les méthodes : mot de passe, visage (`by-email`, qui ne vaut pas second facteur), code, clé d'accès. Les jetons d'étape portent un `purpose` et sont refusés par `authenticate`.
+- **Appareils :** un compte dont c'est la première connexion n'est pas « nouveau » ; ensuite chaque appareil inconnu prévient la personne.
+- **Écrans :** page de connexion à étapes, `/admin/securite`, « Mon compte » (`/agent/compte`, `/admin/compte`), onglet Sécurité du tiroir de compte, politique dans Paramètres.
+- **Dépendances :** `otplib@12`, `qrcode`, `@simplewebauthn/server@14` (Node ≥ 20) côté backend, `@simplewebauthn/browser` côté front.
+- **Pas fait :** `must_change_password`, chiffrement du secret TOTP.
+- **Vérifié dans Chrome :** critères 1 à 4 (D02 avec l'authentificateur virtuel de Chrome).

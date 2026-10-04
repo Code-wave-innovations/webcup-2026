@@ -679,6 +679,36 @@ async function resetScenario(prisma: PrismaClient, refs: ScenarioRefs) {
   ]);
 }
 
+// F47 / F48: a few past entries so the journal is not empty on the first launch. The journal is
+// immutable: they carry metadata.demo, are written once, and SEED_RESET never deletes them.
+async function seedAuditLog(prisma: PrismaClient, refs: ScenarioRefs, userIds: Ids) {
+  if ((await prisma.auditLog.count({ where: { metadata: { path: "$.demo", equals: true } } })) > 0) return;
+  const actors = {
+    ada: { actor_id: userIds["admin@novaterra.local"], actor_role: "ADMIN" as const, actor_name: "Ada Ranaivo", ip: "10.0.0.12" },
+    alex: { actor_id: userIds["agent@novaterra.local"], actor_role: "AGENT" as const, actor_name: "Alex Rakoto", ip: "10.0.0.31" },
+  };
+  const request = await prisma.citizenRequest.findUnique({ where: { reference: requestReference(12) }, select: { id: true } });
+  const health = refs.serviceIds["prevention-sante"]
+    ? await prisma.cityService.findUnique({ where: { id: refs.serviceIds["prevention-sante"] }, select: { id: true, name: true } })
+    : null;
+  const hanta = userIds["hanta.agent@novaterra.local"];
+  const entries: Prisma.AuditLogCreateManyInput[] = [
+      { ...actors.ada, created_at: daysAgo(6), action: "user.created", entity: "User", entity_id: hanta, entity_label: "Hanta Andria", changes: [{ field: "role", from: null, to: "AGENT" }] },
+      { ...actors.ada, created_at: daysAgo(3), action: "settings.updated", entity: "PlatformSetting", entity_label: "Paramètres de la plateforme", changes: [{ field: "registration_open", from: false, to: true }] },
+      ...(health
+        ? [{ ...actors.ada, created_at: daysAgo(2), action: "service.updated", entity: "CityService", entity_id: health.id, entity_label: health.name, changes: [{ field: "priority", from: 2, to: 5 }] }]
+        : []),
+      ...(request
+        ? [
+            { ...actors.alex, created_at: minutesAgo(130), action: "request.assigned", entity: "CitizenRequest", entity_id: request.id, entity_label: requestReference(12), changes: [{ field: "assigned_agent", from: null, to: "Alex Rakoto" }] },
+            { ...actors.alex, created_at: minutesAgo(90), action: "request.status_changed", entity: "CitizenRequest", entity_id: request.id, entity_label: requestReference(12), changes: [{ field: "status", from: "IN_REVIEW", to: "IN_PROGRESS" }] },
+          ]
+        : []),
+      { ...actors.ada, created_at: minutesAgo(45), action: "user.login_unlocked", entity: "User", entity_id: userIds[LOCKED_EMAIL] ?? null, entity_label: LOCKED_EMAIL },
+  ];
+  await prisma.auditLog.createMany({ data: entries.map((entry) => ({ ...entry, metadata: { demo: true } })) });
+}
+
 export async function seedDemoScenario(prisma: PrismaClient, refs: ScenarioRefs) {
   if (refs.reset) await resetScenario(prisma, refs);
   const userIds = await seedAccounts(prisma, refs);
@@ -689,5 +719,6 @@ export async function seedDemoScenario(prisma: PrismaClient, refs: ScenarioRefs)
   await seedInterruptions(prisma, refs, userIds);
   await seedLoginAttempts(prisma, userIds);
   await seedNotifications(prisma, userIds);
+  await seedAuditLog(prisma, refs, userIds);
   return userIds;
 }

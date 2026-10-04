@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
 import userModel from "../model/user.model";
+import { audit, auditAs } from "../lib/audit";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { zBool, zId, zLocale } from "../lib/validation";
@@ -93,6 +94,7 @@ const meController = {
     const hash = await userModel.getPasswordHash(req.user!.id);
     if (!(await verifyPassword(current_password, hash))) throw badRequest("Current password is incorrect");
     await userModel.update(req.user!.id, { password_hash: await hashPassword(new_password) });
+    await audit(req, { action: "security.password_changed", entity: "User", entityId: req.user!.id, label: `${req.user!.name} ${req.user!.last_name}` });
     res.json({ message: "Password updated" });
   },
 
@@ -112,6 +114,8 @@ const meController = {
       }),
       prisma.user.delete({ where: { id: user.id } }),
     ]);
+    // F33 / F47: the deletion is traced without any personal data (no name, no IP)
+    await auditAs(null, null, { action: "user.self_deleted", entity: "User", entityId: user.id });
     res.json({
       deleted: true,
       message:

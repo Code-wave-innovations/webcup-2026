@@ -111,16 +111,16 @@ Sont supprimés :
 
 ## 6. Étapes
 
-- [ ] Backend :
-  - [ ] `GET /api/users/staff` et `GET /api/users/stats` ;
-  - [ ] `login_locked` et `locked_until` ;
-  - [ ] `reason` obligatoire pour désactiver ;
-  - [ ] `lib/permissions.ts` et `GET /api/permissions`.
-- [ ] `src/api/users.ts`, `src/api/permissions.ts`, `src/api/districts.ts`
-- [ ] `UsersPage` : onglets, filtres, tiroir, création du personnel avec mot de passe provisoire, désactivation avec motif, suppression
-- [ ] `CitizensPage` : fiche, demandes, rendez-vous, champs autorisés, déblocage
-- [ ] `RolesPage` en lecture seule, avec l'encart « Vérifier un droit »
-- [ ] Nettoyage
+- [x] Backend :
+  - [x] `GET /api/users/staff` et `GET /api/users/stats` ;
+  - [x] `login_locked` et `locked_until` ;
+  - [x] `reason` obligatoire pour désactiver ;
+  - [x] `lib/permissions.ts` et `GET /api/permissions`.
+- [x] `src/api/users.ts`, `src/api/permissions.ts`, `src/api/districts.ts`
+- [x] `UsersPage` : onglets, filtres, tiroir, création du personnel avec mot de passe provisoire, désactivation avec motif, suppression
+- [ ] `CitizensPage` : fiche, demandes, champs autorisés, déblocage faits ; rendez-vous au BO-08
+- [x] `RolesPage` en lecture seule, avec l'encart « Vérifier un droit »
+- [ ] Nettoyage : partiel, `userStore` et `mocks/people` restent pour les écrans du BO-07 et du BO-08
 
 ## 7. Critères d'acceptation
 
@@ -156,3 +156,11 @@ Peut attendre :
 
 - **Compte supprimé par l'habitant (F33) :** ses demandes restent, avec `citizen_id` nul (`onDelete: SetNull`). Le détail d'une demande affiche alors « Compte supprimé » au lieu d'une fiche vide.
 - **Mot de passe provisoire :** il n'existe pas encore de changement de mot de passe forcé. Le BO-05 peut l'ajouter (`must_change_password`). En attendant, la mention suffit.
+
+## Réalisé (4 octobre 2026)
+
+- **Backend :** `GET /api/users/stats`, `login_locked` / `locked_until` (calculés par `lockState`), motif obligatoire pour désactiver (`reason`, gardé dans l'audit), `lib/permissions.ts` + `GET /api/permissions`, `npm run check:permissions` (`scripts/check-permissions.ts` lit les routeurs).
+- **Écrans :** `shared/AccountDrawer` commun à `UsersPage` et `CitizensPage` (onglets Profil, Sécurité pour l'admin, Historique), création du personnel avec mot de passe provisoire affiché une fois, `RolesPage` en lecture seule avec « Vérifier un droit ».
+- **Nettoyage partiel :** `togglePermission`, `PERMISSIONS` et `ROLE_PERMISSIONS` sont supprimés. `stores/userStore.ts` et `mocks/people.ts` restent, réduits à la liste des comptes, car `lib/lookups` les lit encore pour les écrans du BO-07 et du BO-08.
+- **Pas fait :** les rendez-vous d'un habitant dans sa fiche (BO-08) ; `must_change_password`.
+- **Vérifié dans Chrome :** critères 2 à 5 (le 1 relève du sas citoyen, PLAN-01).
