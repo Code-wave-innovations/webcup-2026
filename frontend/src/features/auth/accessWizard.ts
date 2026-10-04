@@ -1,7 +1,7 @@
 import { accountExists, isEmail, resolveAuthEmail, type Session } from './authService'
 import { DEMO_ACCOUNTS } from './demoAccounts'
 
-export type AccessStep = 'identify' | 'login' | 'register-1' | 'register-2' | 'register-3'
+export type AccessStep = 'identify' | 'login' | 'recover' | 'register-1' | 'register-2' | 'register-3'
 
 export function normalizeIdentifier(value: string): string {
   return value.trim().toLowerCase()
@@ -69,6 +69,8 @@ export function stepTitle(step: AccessStep): string {
       return 'Demande d’approche'
     case 'login':
       return 'Vérification d’identité'
+    case 'recover':
+      return 'Retrouver votre accès'
     case 'register-1':
       return 'Premier amarrage'
     case 'register-2':
@@ -84,6 +86,8 @@ export function stepSubtitle(step: AccessStep, opts?: { face?: boolean }): strin
       return 'Nova ouvre le sas. Présentez votre signal citoyen.'
     case 'login':
       return opts?.face ? 'Regardez la caméra pour entrer.' : 'Le code d’accès confirme que c’est bien vous.'
+    case 'recover':
+      return 'Avec le code remis par la mairie, choisissez un nouveau code d’accès.'
     case 'register-1':
       return 'Identité et quartier — Terra Nova vous situe.'
     case 'register-2':

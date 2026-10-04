@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
-import axios from 'axios'
 import Webcam from '../../../components/Face/Webcam'
-import { enrollFrames, type FaceJson } from '../../../hooks/useFaceApi'
 import { Button } from '../../../ui/Button'
-import { faceIdentityFromEmail } from '../faceIdentity'
 import { useFacePresence } from '../useFacePresence'
 import faceStyles from '../FaceScan.module.css'
 import styles from '../AccessHologram.module.css'
@@ -22,9 +19,9 @@ const MIN_FACE_PCT = 22
 type Phase = 'starting' | 'searching' | 'capturing' | 'sealing' | 'enrolled' | 'failed' | 'denied'
 
 interface RegisterFacePanelProps {
-  email: string
   name: string
-  onEnrolled: () => void
+  /** the sharp frames, linked to the account by the API once it exists (D03, F34) */
+  onEnrolled: (frames: Blob[]) => void
   onSkip: () => void
   onBack: () => void
   busy?: boolean
@@ -45,28 +42,18 @@ function grab(video: HTMLVideoElement | null): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95))
 }
 
-function enrollErrorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as FaceJson | undefined
-    const reason = data?.quality?.reason ?? data?.error
-    if (reason === 'too_blurry') return 'Image trop floue. Approchez-vous, face à la lumière, et restez immobile.'
-    if (reason === 'face_too_small') return 'Visage trop loin. Rapprochez-vous du cercle.'
-    if (data?.message) return data.message
-    if (error.response?.status === 400) return 'Échantillon refusé. Réessayez face à la caméra.'
-  }
-  return 'Le service de reconnaissance ne répond pas. Réessayez ou continuez sans visage.'
-}
-
 /**
- * Live face enrolment: one sharp frame at a time (presence + hold), then `/enroll` until committed.
+ * Live face capture: one sharp frame at a time (presence + hold). The frames are only linked once the
+ * account exists, by the API and with its session (`POST /api/me/face`): nobody can enrol a face under
+ * an e-mail that is not theirs.
  */
-export function RegisterFacePanel({ email, name, onEnrolled, onSkip, onBack, busy }: RegisterFacePanelProps) {
+export function RegisterFacePanel({ name, onEnrolled, onSkip, onBack, busy }: RegisterFacePanelProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [phase, setPhase] = useState<Phase>('starting')
   const [sample, setSample] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const capturing = useRef(false)
-  const accepted = useRef(0)
+  const frames = useRef<Blob[]>([])
 
   const present = useFacePresence(videoRef, phase === 'searching' || phase === 'capturing', { minFacePercent: MIN_FACE_PCT })
   const aligned = phase === 'searching' && present === true
@@ -84,31 +71,24 @@ export function RegisterFacePanel({ email, name, onEnrolled, onSkip, onBack, bus
         return
       }
       setPhase('sealing')
-      const identity = faceIdentityFromEmail(email)
-      const result = await enrollFrames(identity, [blob])
-      if (!result.ok) {
-        setError(result.message || 'Échantillon refusé. Réessayez.')
-        setPhase('failed')
-        return
-      }
-      const count = result.samples ?? accepted.current + 1
-      accepted.current = count
+      frames.current = [...frames.current, blob]
+      const count = frames.current.length
       setSample(Math.min(SAMPLES, count))
-      if (result.committed) {
+      if (count >= SAMPLES) {
         setPhase('enrolled')
         await wait(500)
-        onEnrolled()
+        onEnrolled(frames.current)
         return
       }
       await wait(BETWEEN_MS)
       setPhase('searching')
-    } catch (err) {
-      setError(enrollErrorMessage(err))
+    } catch {
+      setError('La capture a échoué. Réessayez ou continuez sans visage.')
       setPhase('failed')
     } finally {
       capturing.current = false
     }
-  }, [email, onEnrolled])
+  }, [onEnrolled])
 
   useEffect(() => {
     // enroll only when a large-enough face is held still — never fire blind/timer captures
@@ -119,7 +99,7 @@ export function RegisterFacePanel({ email, name, onEnrolled, onSkip, onBack, bus
 
   const retry = () => {
     setError(null)
-    accepted.current = 0
+    frames.current = []
     setSample(0)
     setPhase('searching')
   }
@@ -136,7 +116,7 @@ export function RegisterFacePanel({ email, name, onEnrolled, onSkip, onBack, bus
         : phase === 'capturing'
           ? `Capture ${Math.min(sample + 1, SAMPLES)} / ${SAMPLES}`
           : phase === 'sealing'
-            ? `Vérification de la netteté (${Math.min(sample + 1, SAMPLES)} / ${SAMPLES})…`
+            ? `Empreinte ${Math.min(sample + 1, SAMPLES)} / ${SAMPLES} enregistrée…`
             : phase === 'enrolled'
               ? `Visage de ${name} ancré. Création du compte…`
               : phase === 'failed'

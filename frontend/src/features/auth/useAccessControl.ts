@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LOCK_MS, lockSecondsLeft } from './accessLock'
-import type { AuthService, Session, SignInResult } from './authService'
+import type { AuthService, SignInResult } from './authService'
 import type { LoginActivity } from './loginActivity'
 import { attemptsLeft, INITIAL_LOGIN, reduceLogin, type LoginEvent, type LoginState } from './loginMachine'
 
@@ -68,11 +68,9 @@ export function useAccessControl(service: AuthService, onActivity?: (activity: L
     return result
   }
 
-  /** Checks the credentials; resolves with the session when access is granted. */
-  const submit = async (identifier: string, code: string): Promise<Session | null> => {
-    const result = await attempt(() => service.signIn(identifier, code), !!identifier.trim() && !!code.trim())
-    return result?.ok ? result.session : null
-  }
+  /** Checks the credentials; resolves with the result (null when no check could start). */
+  const submit = (identifier: string, code: string): Promise<SignInResult | null> =>
+    attempt(() => service.signIn(identifier, code), !!identifier.trim() && !!code.trim())
 
   return {
     state,

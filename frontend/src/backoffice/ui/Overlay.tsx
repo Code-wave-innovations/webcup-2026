@@ -10,6 +10,12 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [ta
 /** Focus moves into the dialog, Tab stays inside, Escape closes, focus returns to the opener. */
 function useDialogFocus(open: boolean, onClose: () => void) {
   const ref = useRef<HTMLDivElement>(null)
+  // the latest onClose, read when a key is pressed: a parent that re-renders (a ticking clock, a
+  // refetch) hands a new function each time, which must not re-run the focus effect and steal the caret
+  const close = useRef(onClose)
+  useEffect(() => {
+    close.current = onClose
+  })
   useEffect(() => {
     if (!open) return
     const opener = document.activeElement as HTMLElement | null
@@ -19,7 +25,7 @@ function useDialogFocus(open: boolean, onClose: () => void) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation()
-        onClose()
+        close.current()
         return
       }
       if (e.key !== 'Tab' || !dialog) return
@@ -39,7 +45,7 @@ function useDialogFocus(open: boolean, onClose: () => void) {
       document.removeEventListener('keydown', onKey)
       opener?.focus()
     }
-  }, [open, onClose])
+  }, [open])
   return ref
 }
 

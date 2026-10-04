@@ -164,3 +164,11 @@ Peut attendre :
 - **Nettoyage partiel :** `togglePermission`, `PERMISSIONS` et `ROLE_PERMISSIONS` sont supprimés. `stores/userStore.ts` et `mocks/people.ts` restent, réduits à la liste des comptes, car `lib/lookups` les lit encore pour les écrans du BO-07 et du BO-08.
 - **Pas fait :** les rendez-vous d'un habitant dans sa fiche (BO-08) ; `must_change_password`.
 - **Vérifié dans Chrome :** critères 2 à 5 (le 1 relève du sas citoyen, PLAN-01).
+
+## Complément F34 (4 octobre 2026)
+
+- **Faille fermée :** `GET /api/auth/by-email` ouvrait une session sur n'importe quel compte avec son seul e-mail (la reconnaissance faciale se faisait dans le navigateur). Remplacé par `POST /api/auth/face`, où l'API fait vérifier le visage par le moteur (`/verify`, clé côté serveur). L'enrôlement d'un visage passe par `POST /api/me/face`, pour son propre compte, une fois le compte créé.
+- **Retrouver l'accès :** dans la fiche (`shared/AccessRecovery`), l'agent vérifie l'identité (pièce d'identité, personne connue, questions par téléphone), puis remet un code à usage unique de 30 min. La personne choisit elle-même son mot de passe dans le sas (« Code oublié ? J'ai un code de la mairie »). Ses autres appareils sont déconnectés.
+- **Garde-fous :** la suppression d'un compte est réservée aux admins (l'agent désactive) ; la personne est notifiée de chaque action de la mairie sur son compte ; un compte suspendu reçoit un message clair (`ACCOUNT_DISABLED`).
+- **Vérifié :** 17 scénarios contre l'API (dont visage d'un tiers, code réutilisé, agent qui tente de fixer un mot de passe ou de supprimer), et le parcours complet dans Chrome.
+

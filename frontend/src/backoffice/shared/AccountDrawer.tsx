@@ -25,6 +25,7 @@ import { Field, Select, Tabs, TextArea, TextInput, Toggle } from '../ui/Controls
 import { EmptyState, Skeleton } from '../ui/Feedback'
 import { Drawer, Modal } from '../ui/Overlay'
 import layout from '../ui/layout.module.css'
+import { AccessRecovery } from './AccessRecovery'
 import { CitizenCard } from './CitizenCard'
 import { EntityHistory } from './EntityHistory'
 
@@ -205,7 +206,10 @@ function ProfileTab({ user, onClose }: { user: ManagedUser; onClose: () => void 
                 <dt>Rôle</dt>
                 <dd>{ROLE_LABEL[user.role]}</dd>
               </dl>
-              <p className={[layout.muted, layout.small].join(' ')}>Modifiables uniquement par un administrateur. Le mot de passe n’est jamais accessible.</p>
+              <p className={[layout.muted, layout.small].join(' ')}>
+                Modifiables uniquement par un administrateur. Le mot de passe n’est jamais accessible : pour un mot de passe oublié, remettez un code (ci-dessous). La personne est
+                prévenue de chaque modification de son compte.
+              </p>
             </div>
           )}
           <Field id={form.fieldId('phone')} label="Téléphone" error={form.errors.phone}>
@@ -262,6 +266,8 @@ function ProfileTab({ user, onClose }: { user: ManagedUser; onClose: () => void 
           </Button>
         )}
       </div>
+
+      <AccessRecovery user={user} self={self} />
 
       {admin && user.role !== 'CITIZEN' && (
         <>

@@ -10,6 +10,7 @@ import { audit } from "../lib/audit";
 import { deviceHash } from "../lib/devices";
 import { HttpError, badRequest, notFound } from "../lib/errors";
 import { verifyPassword } from "../lib/password";
+import { enrollFace } from "../lib/faceGateway";
 import { getSetting } from "../lib/settings";
 import { readStepToken, sessionToken, stepToken } from "../lib/tokens";
 import { checkCode, newRecoveryCodes, newSecret, remainingRecoveryCodes, setupPayload } from "../lib/twoFactor";
@@ -52,6 +53,19 @@ export const deviceList = (userId: number) =>
   });
 
 const meSecurityController = {
+  // D03 / F34: links the signed-in person's face to their own account, never to anybody else's
+  enrollFace: async (req: Request, res: Response) => {
+    const frames = Object.entries(req.files ?? {})
+      .filter(([field]) => /^img\d*$/.test(field))
+      .flatMap(([, file]) => (Array.isArray(file) ? file : [file]))
+      .slice(0, 10);
+    if (frames.length === 0) throw badRequest("Send the pictures in img0, img1…");
+    const user = req.user!;
+    const result = await enrollFace(user.email, frames);
+    await audit(req, { action: "security.face_enrolled", entity: "User", entityId: user.id, label: `${user.name} ${user.last_name}`, metadata: { frames: frames.length, committed: result.committed } });
+    res.json(result);
+  },
+
   // What « Mon compte » shows: second factor, passkeys, devices (the current one marked)
   overview: async (req: Request, res: Response) => {
     const user = await loadMe(req);

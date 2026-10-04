@@ -49,6 +49,18 @@ export interface ManagedUser extends User {
   /** F37: too many wrong passwords lately */
   login_locked: boolean
   locked_until: string | null
+  /** F34: a reset code handed over by the city is waiting to be used until then (GET /api/users/:id) */
+  reset_code_expires_at?: string | null
+}
+
+/** F34: how the agent checked who they are talking to before handing over a reset code */
+export type IdentityCheck = 'ID_DOCUMENT' | 'IN_PERSON_KNOWN' | 'PHONE_QUESTIONS'
+
+/** POST /api/users/:id/reset-code: the only time the code is readable */
+export interface IssuedResetCode {
+  code: string
+  expires_at: string
+  minutes: number
 }
 
 /** GET /api/users/stats (admin) */

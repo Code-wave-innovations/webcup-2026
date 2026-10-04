@@ -21,5 +21,7 @@ meRouter.post("/passkeys/register/options", meSecurityController.passkeyOptions)
 meRouter.post("/passkeys/register/verify", meSecurityController.passkeyVerify);
 meRouter.get("/passkeys", meSecurityController.passkeys);
 meRouter.delete("/passkeys/:id", meSecurityController.deletePasskey);
+// D03: face sign-in, enrolled for oneself only (the face engine is never reached from the browser)
+meRouter.post("/face", meSecurityController.enrollFace);
 
 export default meRouter;

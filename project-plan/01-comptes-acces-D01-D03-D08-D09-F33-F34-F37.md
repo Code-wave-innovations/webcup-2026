@@ -244,6 +244,6 @@ Peuvent attendre : la page Sécurité, le message sur les tentatives échouées 
 
 ## 9. Points d'attention
 
-- **Mot de passe oublié :** aucun endpoint n'existe, faute de service d'envoi d'e-mails. Afficher « Contactez la mairie ». Un lien de réinitialisation est une extension possible.
+- **Mot de passe oublié :** sans service d'e-mails, la mairie vérifie l'identité au guichet ou par téléphone et remet un code à usage unique (30 min) ; la personne choisit son nouveau mot de passe dans le sas (`POST /api/auth/recover`). Fait le 4 octobre 2026, voir BO-04 « Complément F34 ».
 - **Durée du blocage :** le blocage de démonstration du sas (30 s) est remplacé par celui du serveur (15 min). Pendant la démo au jury, garder une session admin ouverte pour pouvoir débloquer.
 - **Mise en scène :** l'appel à l'API ne doit pas bloquer l'animation. Le bouton affiche « Vérification… » pendant l'appel ; la cinématique ne démarre qu'après une connexion réussie.

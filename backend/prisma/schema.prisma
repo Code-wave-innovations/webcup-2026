@@ -105,6 +105,11 @@ model User {
   // F53: TOTP secret (set by setup, active once two_factor_enabled_at is set)
   two_factor_secret     String?
   two_factor_enabled_at DateTime?
+  // F34: one-time code an agent hands over after checking the person's identity, so that they set a
+  // new password themselves (the agent never sees it). Only the hash is kept; single use, 30 min.
+  reset_code_hash       String?
+  reset_code_expires_at DateTime?
+  reset_code_by_id      Int?
 
   district          District?               @relation(fields: [district_id], references: [id], onDelete: SetNull)
   requests          CitizenRequest[]        @relation("RequestCitizen")

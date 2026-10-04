@@ -1,15 +1,15 @@
 import axios from 'axios'
 import { enrollFrames, identifyFrame } from '../../hooks/useFaceApi'
-import { resolveAuthEmail, sessionByEmail, toSession, type Inconclusive, type SignInResult } from './authService'
+import { faceSignIn, linkOwnFace, resolveAuthEmail, toSession, type Inconclusive, type Session, type SignInResult } from './authService'
 import { DEMO_ACCOUNTS, type Account } from './demoAccounts'
 import { emailFromFaceIdentity, faceIdentityFromEmail } from './faceIdentity'
 
-/** Recognises a face against the gallery, then opens a session via `GET /api/auth/by-email`. */
+/** Face sign-in, checked by the API (`POST /api/auth/face`); demo accounts stay in the page. */
 export interface FaceAuthService {
   /** `expectedIdentifier` is the e-mail / short id the visitor typed on the login step. */
   identify(frame: Blob, expectedIdentifier: string): Promise<SignInResult>
-  /** Enrols the frames under the gallery name derived from the account key (e-mail preferred). */
-  link(accountKey: string, frames: Blob[]): Promise<boolean>
+  /** Links the frames to the account that just signed in (its own face only). */
+  link(session: Session, frames: Blob[]): Promise<boolean>
 }
 
 /** Demo account matching a gallery identity (short id or encoded e-mail). */
@@ -50,41 +50,38 @@ export function identityMatchesIdentifier(identity: string, expectedIdentifier: 
   return faceEmail === expectedEmail
 }
 
+const demoAccount = (identifier: string) => {
+  const key = normalizeKey(identifier)
+  return Object.values(DEMO_ACCOUNTS).find((a) => a.id === key || a.email === key)
+}
+
 /**
- * Face login:
- * 1. `POST /identify` → gallery identity
- * 2. compare identity to the identifier typed on the login step
- * 3. decode → e-mail → `GET /api/auth/by-email` (same payload as password login)
- *
- * Demo gallery short ids (miora, conseil) stay local — they are not in the Express DB.
+ * Face login (D03, F34):
+ * - a real account: the frame goes to `POST /api/auth/face` with the typed e-mail; the API asks the
+ *   face engine whether it is that person and opens the session. The browser never decides.
+ * - a demo account (miora, conseil): recognised in the page against the demo gallery; its session
+ *   is local and opens nothing on the API.
  */
 export const faceAuthService: FaceAuthService = {
   async identify(frame, expectedIdentifier) {
+    if (!demoAccount(expectedIdentifier)) return faceSignIn(expectedIdentifier, frame)
     try {
       const identity = (await identifyFrame(frame)).identity
       if (!identity) return { ok: false, inconclusive: 'unknown' }
-
-      if (!identityMatchesIdentifier(identity, expectedIdentifier)) {
-        return { ok: false, inconclusive: 'mismatch' }
-      }
-
+      if (!identityMatchesIdentifier(identity, expectedIdentifier)) return { ok: false, inconclusive: 'mismatch' }
       const demo = accountForIdentity(identity)
-      if (demo) return { ok: true, session: toSession(demo) }
-
-      const email = emailFromFaceIdentity(identity) ?? resolveAuthEmail(expectedIdentifier)
-      return sessionByEmail(email)
+      return demo ? { ok: true, session: toSession(demo) } : { ok: false, inconclusive: 'mismatch' }
     } catch (error) {
       return { ok: false, inconclusive: faceFailure(error) }
     }
   },
-  async link(accountKey, frames) {
+  async link(session, frames) {
+    // a real account links its own face through the API, with its session
+    if (session.token) return linkOwnFace(session.token, frames)
+    const demo = demoAccount(session.email ?? session.accountId)
+    if (!demo) return false
     try {
-      const key = normalizeKey(accountKey)
-      const demo = Object.values(DEMO_ACCOUNTS).find((a) => a.id === key || a.email === key)
-      const name = demo
-        ? faceIdentityFromEmail(demo.email)
-        : faceIdentityFromEmail(key.includes('@') ? key : resolveAuthEmail(key))
-      return !!(await enrollFrames(name, frames)).committed
+      return !!(await enrollFrames(faceIdentityFromEmail(demo.email), frames)).committed
     } catch {
       return false
     }

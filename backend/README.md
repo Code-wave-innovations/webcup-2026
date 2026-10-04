@@ -27,17 +27,21 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 
 | Method & path | Access | Feature |
 |---|---|---|
-| `POST /api/auth/register` (JSON or multipart; optional file `profile`) · `POST /api/auth/login` · `GET /api/auth/exists?email=` (`{ exists }`, no session) · `GET /api/auth/by-email?email=` (passwordless session, same payload as login; still asks the code when the account has a second factor) | public | D01, D03 |
+| `POST /api/auth/register` (JSON or multipart; optional file `profile`) · `POST /api/auth/login` · `GET /api/auth/exists?email=` (`{ exists }`, no session) | public | D01, D03 |
+| `POST /api/auth/face` (multipart `email` + `image`): the API asks the face engine (`/verify`, liveness) whether it is that person, then answers like login (a second factor still asks its code). `FACE_MISMATCH` counts as a failed login; `FACE_NOT_ENROLLED`, `FACE_UNUSABLE`, `FACE_UNAVAILABLE` (no `FACE_API_URL`) do not | public | D03, F34 |
+| `POST /api/auth/recover` `{ email, code, password }`: new password with the one-time code an agent handed over; signs every other device out, notifies the holder. A wrong code counts as a failed login | public | F34 |
 | `POST /api/auth/2fa/verify { challenge_token, code \| recovery_code }` · `POST /api/auth/2fa/setup { setup_token }` · `POST /api/auth/2fa/activate { setup_token, code }` | public (step tokens) | F53 |
 | `POST /api/auth/passkey/options { email? }` · `POST /api/auth/passkey/verify { challenge_token, response }` | public | D02 |
 | `GET/PATCH /api/me` · `PATCH /api/me/password` · `POST /api/me/onboarding/complete` | logged in | D03, D12, D14, F23/F24 (`preferences`) |
+| `POST /api/me/face` (multipart `img0`…`img9`): links the frames to one's own face in the engine (`{ committed }`) | logged in | D03, F34 |
 | `GET /api/me/security` · `DELETE /api/me/devices/:id` · `POST /api/me/sessions/revoke` (new token) · `POST /api/me/2fa/setup\|enable\|disable` · `POST /api/me/passkeys/register/options\|verify` · `GET /api/me/passkeys` · `DELETE /api/me/passkeys/:id` | logged in | D02, F53, F54 |
 | `DELETE /api/me` body `{ password, confirm: true }` | citizen | F33 |
-| `GET /api/users` · `GET/PATCH/DELETE /api/users/:id` · `POST /api/users/:id/unlock-login` | staff (agents: citizens only, no email/password/role changes) | D08, D09, F34 |
+| `GET /api/users` · `GET/PATCH /api/users/:id` · `POST /api/users/:id/unlock-login` | staff (agents: citizens only, no email/password/role changes; the holder is notified of each change) | D08, D09, F34 |
+| `POST /api/users/:id/reset-code` `{ verification: ID_DOCUMENT\|IN_PERSON_KNOWN\|PHONE_QUESTIONS, identity_confirmed: true, note? }` → `{ code, expires_at }` shown once (30 min, single use, hash only in DB) · `DELETE /api/users/:id/reset-code` | staff (agents: citizens only) | F34 |
 | `GET /api/users/staff` | staff | F22 (active agents and admins a request can be assigned to) |
 | `POST /api/users` | admin | D08 |
 | `GET /api/security/overview` (adds `locked_accounts`, `two_factor`) · `GET /api/security/login-attempts` · `GET /api/security/new-devices?hours=24` | admin | F37, F53, F54 |
-| `GET /api/users/stats` · `GET /api/users/:id/security` · `GET /api/users/:id/devices` · `POST /api/users/:id/revoke-sessions` · `POST /api/users/:id/2fa/reset` · `DELETE /api/users/:id/passkeys` | admin | D08, F53, F54, D02 |
+| `DELETE /api/users/:id` · `GET /api/users/stats` · `GET /api/users/:id/security` · `GET /api/users/:id/devices` · `POST /api/users/:id/revoke-sessions` · `POST /api/users/:id/2fa/reset` · `DELETE /api/users/:id/passkeys` | admin | D08, F53, F54, D02 |
 | `GET /api/audit-logs?actor_id=&entity=&entity_id=&action=&from=&to=&q=&page=` | staff (agents: no `security.*`/`auth.*` entry, no IP) | F47, F48 |
 | `GET /api/audit-logs/export.csv` (same filters, UTF-8 with BOM, `;`) · `GET /api/audit-logs/stats?days=14` | admin | F47 |
 | `GET /api/permissions` | staff | D08, D09 (the roles matrix of `src/lib/permissions.ts`) |
