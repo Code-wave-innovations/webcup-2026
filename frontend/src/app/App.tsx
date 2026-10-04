@@ -5,6 +5,7 @@ import { CityPage } from '../pages/CityPage/CityPage'
 import { ConsoleLayout } from '../pages/Console/ConsoleLayout'
 import { NotFoundPage } from '../pages/Console/NotFoundPage'
 import { FilmLayout } from './FilmLayout'
+import { RequireRole } from './guards'
 
 const ChatPage = lazy(() => import('../pages/ChatPage/ChatPage'))
 const TeamPage = lazy(() => import('../pages/TeamPage/TeamPage'))
@@ -18,6 +19,8 @@ const NovaBench = import.meta.env.DEV ? lazy(() => import('../dev/NovaBench')) :
 const ConsoleTestPage = import.meta.env.DEV ? lazy(() => import('../dev/ConsoleTestPage')) : null
 /** D04: write to municipal services (console over the dimmed city). */
 const ContactPage = lazy(() => import('../pages/Console/ContactPage'))
+const BookAppointmentPage = lazy(() => import('../pages/Console/BookAppointmentPage'))
+const MyAppointmentsPage = lazy(() => import('../pages/Console/MyAppointmentsPage'))
 
 function App() {
   return (
@@ -35,6 +38,27 @@ function App() {
                   <Suspense fallback={null}>
                     <ContactPage />
                   </Suspense>
+                }
+              />
+              {/* F39 / F40: appointments with an agent, for a signed-in resident */}
+              <Route
+                path="rendez-vous"
+                element={
+                  <RequireRole roles={['CITIZEN']}>
+                    <Suspense fallback={null}>
+                      <MyAppointmentsPage />
+                    </Suspense>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="rendez-vous/nouveau"
+                element={
+                  <RequireRole roles={['CITIZEN']}>
+                    <Suspense fallback={null}>
+                      <BookAppointmentPage />
+                    </Suspense>
+                  </RequireRole>
                 }
               />
               {ConsoleTestPage && (

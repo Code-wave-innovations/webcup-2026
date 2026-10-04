@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router'
 import { useActiveAlerts } from '../../api/alerts'
+import { useBodyClass } from '../../hooks/useBodyClass'
 import type { ActiveAlert } from '../../api/types'
 import { useDirectorStore } from '../../experience/director/directorStore'
 import { Icon } from '../../ui/Icon'
@@ -82,6 +83,8 @@ function AlertTicker({
 }) {
   const [index, setIndex] = useState(0)
   const visible = alerts.filter((a) => a.severity === 'CRITICAL' || !dismissed.includes(a.id))
+  // pages that start at the top (console pages) leave room for the banner while it shows
+  useBodyClass('has-alert-ticker', visible.length > 0)
   if (visible.length === 0) return null
 
   const position = index % visible.length

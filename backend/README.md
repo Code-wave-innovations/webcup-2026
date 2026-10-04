@@ -75,9 +75,9 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 | `POST /api/service-interruptions` · `PATCH /:id` · `POST /:id/end` · `DELETE /:id` | staff | F38 |
 | `GET /api/transit/lines` · `/lines/:idOrCode?day=` · `/stops?district_id=&q=` · `/stops/:id?day=&at=` · `/disruptions` | public | F36 |
 | `POST/PATCH/DELETE /api/transit/lines[/:id]` · `PATCH /lines/:id/status` · `PUT /lines/:id/stops` · `PUT /lines/:id/timetable` · stops CRUD | staff | F36 |
-| `GET /api/appointments/slots?service_id=&from=&to=` | public | F39 |
+| `GET /api/appointments/slots?service_id=&agent_id=&from=&to=` (staff: `all=true` adds full and inactive slots) | public | F39 (each slot has `label`, and `day`, `day_label`, `start_time`, `end_time`, `time_zone` in the server time zone; `blocked: { reason, alternative, back_at }` when an interruption of the service covers it, F38) |
 | `POST /api/appointments/slots` · `POST /slots/bulk` · `PATCH/DELETE /slots/:id` | staff | F39 |
-| `POST /api/appointments` · `GET /api/appointments` · `GET /:id` · `GET /:id/ics` · `POST /:id/cancel` · `PATCH /:id/reminder` | logged in (own) / staff | F39, F40 |
+| `POST /api/appointments` · `GET /api/appointments?scope=&status=&mine=&from=&to=&citizen_id=` · `GET /:id` · `GET /:id/ics` · `POST /:id/cancel` · `PATCH /:id/reminder` | logged in (own) / staff (`mine`, `citizen_id`) | F39, F40 (`reminder_offset_minutes: null` = no reminder: the scheduler skips it and the `.ics` has no alarm; omitted = `reminder_default_minutes`) |
 | `PATCH /api/appointments/:id` (status, agent_notes) · `POST /api/appointments/reminders/run` | staff · admin | F39, F40 |
 | `GET /api/terra-nova/requests` | staff | D19 (needs `TERRA_NOVA_API_KEY`, sent as `X-Webcup-Api-Key`) |
 | `GET /api/settings/public` | public | D07, D08 (home blocks, registrations, maintenance, contacts, emergency numbers, default reminder) |

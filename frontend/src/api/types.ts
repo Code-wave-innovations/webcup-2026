@@ -253,6 +253,76 @@ export interface NotificationPage {
   meta: PageMeta & { unread: number }
 }
 
+/* ─── Appointments (F39, F40) ───────────────────────────────────────────── */
+
+/** Where a moment falls in the city: every day and time in the server's time zone (never the browser's) */
+export interface CityClock {
+  /** "2026-10-07" */
+  day: string
+  /** "mardi 7 octobre 2026" */
+  day_label: string
+  /** "09:30" */
+  start_time: string
+  end_time: string
+  /** "Indian/Antananarivo" */
+  time_zone: string
+}
+
+/** GET /api/appointments/slots: a bookable slot, with its places left */
+export interface AppointmentSlot extends CityClock {
+  id: number
+  service_id: number
+  agent_id: number | null
+  starts_at: string
+  ends_at: string
+  location: string
+  capacity: number
+  booked: number
+  remaining: number
+  preparation_notes: string | null
+  is_active: boolean
+  /** "mardi 7 octobre 2026, 09:30 – 10:00" */
+  label: string
+  service: { id: number; slug: string; name: string; address: string | null; contact_phone: string | null; contact_email: string | null }
+  agent: { id: number; name: string; last_name: string } | null
+  /** F38: the service is interrupted during this slot (booking would be refused): why, and when it is back */
+  blocked: { reason: string; alternative: string | null; back_at: string | null } | null
+}
+
+export type AppointmentStatus = 'BOOKED' | 'COMPLETED' | 'NO_SHOW' | 'CANCELLED'
+
+/** An appointment as the API presents it (F39: everything to remove any doubt and to prepare) */
+export interface Appointment {
+  id: number
+  reference: string
+  status: AppointmentStatus
+  reason: string
+  created_at: string
+  cancelled_at: string | null
+  service_id: number
+  slot_id: number
+  procedure: { id: number; slug: string; title: string } | null
+  citizen?: { id: number; name: string; last_name: string; email: string; phone: string | null } | null
+  /** staff only */
+  agent_notes?: string | null
+  when: CityClock & { starts_at: string; ends_at: string; duration_minutes: number; label: string }
+  where: { location: string; service_address: string | null }
+  with: string | null
+  service: AppointmentSlot['service']
+  preparation: { notes: string | null; required_documents: unknown[]; bring: string[]; contact: { phone: string | null; email: string | null } }
+  /** F40: null offset and moment when the citizen asked for no reminder */
+  reminder: { offset_minutes: number | null; scheduled_for: string | null; sent_at: string | null }
+  calendar_url: string
+}
+
+export interface BookingInput {
+  slot_id: number
+  reason: string
+  procedure_id?: number
+  /** null: no reminder; absent: the city's default */
+  reminder_offset_minutes?: number | null
+}
+
 /* ─── Citizen requests (D04, D11, F25) ───────────────────────────────────── */
 
 export type RequestType = 'CONTACT' | 'PROCEDURE' | 'INCIDENT'

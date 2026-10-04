@@ -15,6 +15,18 @@ const PATHS = {
   ),
   hex: <path d="M12 2 20.7 7v10L12 22 3.3 17V7z" />,
   close: <path d="M18 6 6 18M6 6l12 12" />,
+  bell: (
+    <>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </>
+  ),
   info: (
     <>
       <circle cx="12" cy="12" r="10" />

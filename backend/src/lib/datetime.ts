@@ -30,6 +30,23 @@ export const formatSlotLabel = (start: Date, end: Date, locale = "fr") => {
 
 export const timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+// F39: the calendar day of a moment in the server time zone ("2026-10-07"), so that the citizen's
+// browser, wherever it is, groups the slots by the city's days and never by its own
+export const localDay = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+/** "mardi 7 octobre 2026" */
+export const formatDayLabel = (date: Date, locale = "fr") => new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(date);
+
+/** Where a moment falls in the city: its day, start and end times, all in the server time zone */
+export const slotClock = (start: Date, end: Date, locale = "fr") => ({
+  day: localDay(start),
+  day_label: formatDayLabel(start, locale),
+  start_time: toHHMM(start),
+  end_time: toHHMM(end),
+  time_zone: timeZone(),
+});
+
 // iCalendar UTC timestamp: 20261008T070000Z
 export const toIcsDate = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 

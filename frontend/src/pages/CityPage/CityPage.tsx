@@ -14,6 +14,7 @@ import { CityGauges } from '../../features/cityStatus/CityGauges'
 import { RegistryPanel } from '../../features/registry/RegistryPanel'
 import { ReportPanel } from '../../features/reports/ReportPanel'
 import { useReportStore } from '../../features/reports/reportStore'
+import { NextAppointment } from '../../features/appointments/NextAppointment'
 import { QuickServices, ServiceShowcase } from '../../features/services/ServiceShowcase'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { PHONE_QUERY, useMediaQuery, useReducedMotion } from '../../hooks/useMediaQuery'
@@ -159,6 +160,7 @@ function CityView({ session }: { session: Session }) {
                 </ButtonLink>
               </div>
               <QuickServices />
+              <NextAppointment />
             </div>
             <div className={styles.scrollHint} data-scroll-hint aria-hidden="true">
               <span>Faites défiler</span>

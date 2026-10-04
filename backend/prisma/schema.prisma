@@ -492,8 +492,8 @@ model Appointment {
   status                  AppointmentStatus @default(BOOKED)
   // Agent-side notes, never shown to the citizen
   agent_notes             String?           @db.Text
-  // F40: how long before the appointment the reminder is sent
-  reminder_offset_minutes Int               @default(1440)
+  // F40: how long before the appointment the reminder is sent; null: the citizen asked for none
+  reminder_offset_minutes Int?              @default(1440)
   reminder_sent_at        DateTime?
   cancelled_at            DateTime?
 

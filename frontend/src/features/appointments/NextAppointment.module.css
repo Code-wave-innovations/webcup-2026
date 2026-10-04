@@ -1,0 +1,90 @@
+.capsule,
+.book {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+  text-decoration: none;
+  color: var(--color-text);
+  animation: capsuleIn 0.7s 1.7s var(--ease-out-soft) both;
+}
+
+.capsule {
+  padding: 8px 14px 8px 8px;
+  background: var(--color-glass);
+  border: 1px solid rgba(255, 177, 92, 0.5);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition:
+    border-color 0.2s,
+    transform 0.3s var(--ease-out-soft);
+}
+
+.capsule:hover {
+  border-color: var(--color-ember);
+  transform: translateY(-2px);
+}
+
+.icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 38px;
+  color: var(--color-ink);
+  background: var(--color-ember);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.text small {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ember);
+}
+
+.text strong {
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capsule > svg:last-child {
+  flex: none;
+  color: var(--color-ember);
+}
+
+.book {
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ice-bright);
+  text-shadow: 0 1px 12px var(--color-shade);
+}
+
+.book:hover {
+  text-decoration: underline;
+}
+
+.capsule:focus-visible,
+.book:focus-visible {
+  outline: 2px solid var(--color-ice-bright);
+  outline-offset: 3px;
+}
+
+@keyframes capsuleIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}

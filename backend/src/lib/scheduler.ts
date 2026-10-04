@@ -13,6 +13,8 @@ export const sendDueReminders = async (now = new Date()) => {
     where: {
       status: "BOOKED",
       reminder_sent_at: null,
+      // F40: null means the citizen asked for no reminder
+      reminder_offset_minutes: { not: null },
       citizen_id: { not: null },
       slot: { starts_at: { gt: now, lte: horizon } },
     },
@@ -21,7 +23,7 @@ export const sendDueReminders = async (now = new Date()) => {
 
   let sent = 0;
   for (const appointment of candidates) {
-    const remindAt = appointment.slot.starts_at.getTime() - appointment.reminder_offset_minutes * 60_000;
+    const remindAt = appointment.slot.starts_at.getTime() - appointment.reminder_offset_minutes! * 60_000;
     if (remindAt > now.getTime()) continue;
 
     // Claim first so two processes never send the same reminder twice.

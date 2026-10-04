@@ -34,6 +34,9 @@ export function ConsoleTopBar() {
       </Link>
       <nav className={chrome.links} aria-label="Rubriques">
         <Link to="/ville">Accueil de la ville</Link>
+        <Link to="/ville/rendez-vous" aria-current={pathname.startsWith('/ville/rendez-vous') ? 'page' : undefined}>
+          Mes rendez-vous
+        </Link>
         <Link to="/ville#conseil">Contact</Link>
       </nav>
       <div className={chrome.end}>

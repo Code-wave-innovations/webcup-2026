@@ -133,3 +133,14 @@
     padding-top: calc(84px + env(safe-area-inset-top, 0px));
   }
 }
+
+/* D18: the alert banner sits under the top bar; the page starts below it */
+:global(body.has-alert-ticker) .main {
+  padding-top: calc(160px + env(safe-area-inset-top, 0px));
+}
+
+@media (max-width: 860px) {
+  :global(body.has-alert-ticker) .main {
+    padding-top: calc(220px + env(safe-area-inset-top, 0px));
+  }
+}
