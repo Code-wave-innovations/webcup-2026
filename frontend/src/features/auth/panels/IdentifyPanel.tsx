@@ -1,8 +1,10 @@
-import type { RefObject } from 'react'
+import { useState, type RefObject } from 'react'
 import { isLightScene } from '../../../a11y/sceneMode'
-import { Button, ButtonRouteLink } from '../../../ui/Button'
-import { Field } from '../../../ui/Field'
 import { defineMessages, useMessages } from '../../../i18n'
+import { Button, ButtonRouteLink } from '../../../ui/Button'
+import { ConfirmDialog } from '../../../ui/ConfirmDialog'
+import { Field } from '../../../ui/Field'
+import { ContactPanel } from '../../contact/ContactPanel'
 import styles from '../AccessHologram.module.css'
 
 const messages = defineMessages(
@@ -14,6 +16,7 @@ const messages = defineMessages(
     checking: 'Vérification',
     next: 'Continuer',
     contact: 'Écrire à la mairie',
+    contactClose: 'Fermer',
     staff: 'Accès agent / administration',
   },
   {
@@ -24,6 +27,7 @@ const messages = defineMessages(
     checking: 'Checking',
     next: 'Continue',
     contact: 'Write to the city hall',
+    contactClose: 'Close',
     staff: 'Staff / administration access',
   },
 )
@@ -38,6 +42,8 @@ interface IdentifyPanelProps {
 
 export function IdentifyPanel({ identifier, error, checking, identifierRef, onChange }: IdentifyPanelProps) {
   const m = useMessages(messages)
+  const [contactOpen, setContactOpen] = useState(false)
+
   return (
     <div className={`${styles.panel} ${styles.panelEnter}`}>
       <p className={styles.lead}>
@@ -77,13 +83,27 @@ export function IdentifyPanel({ identifier, error, checking, identifierRef, onCh
             m.next
           )}
         </Button>
-        <ButtonRouteLink to="/ville/contact" variant="ghost" small className={styles.staffLink}>
+        <Button type="button" variant="ghost" small className={styles.staffLink} onClick={() => setContactOpen(true)}>
           {m.contact}
-        </ButtonRouteLink>
+        </Button>
         <ButtonRouteLink to="/agent" variant="ghost" small className={styles.staffLink}>
           {m.staff}
         </ButtonRouteLink>
       </div>
+
+      <ConfirmDialog
+        open={contactOpen}
+        title={m.contact}
+        size="wide"
+        onClose={() => setContactOpen(false)}
+        footer={
+          <Button type="button" variant="ghost" onClick={() => setContactOpen(false)}>
+            {m.contactClose}
+          </Button>
+        }
+      >
+        <ContactPanel showLead />
+      </ConfirmDialog>
     </div>
   )
 }

@@ -54,7 +54,7 @@ export function AlertCenter() {
   const { receive, acknowledge, dismiss, review } = useAlertFeed.getState()
 
   useEffect(() => {
-    if (Array.isArray(feed.data)) receive(feed.data)
+    if (feed.data) receive(feed.data)
   }, [feed.data, receive])
 
   // the city turns red (and the chime plays) while a critical alert concerns me. The light version has neither.

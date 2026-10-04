@@ -3,8 +3,7 @@ import type { AnchorId } from '../director/frameState'
 import { COUNCIL_TOWER, DOME_BASE, DOME_FLATTEN, DOMES, OBSERVATORY } from './cityConfig'
 
 const domeTop = (id: string) => {
-  const dome = DOMES.find((d) => d.id === id)
-  if (!dome) return new Vector3(0, DOME_BASE, 0)
+  const dome = DOMES.find((d) => d.id === id)!
   return new Vector3(dome.x, DOME_BASE + dome.r * DOME_FLATTEN, dome.z)
 }
 

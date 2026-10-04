@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import styles from './ConfirmDialog.module.css'
 
 const FOCUSABLE =
@@ -10,10 +11,12 @@ interface ConfirmDialogProps {
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
+  /** Wider panel for forms (contact…). */
+  size?: 'default' | 'wide'
 }
 
 /** Citizen glass dialog: Escape / backdrop close, focus trap, no back-office imports. */
-export function ConfirmDialog({ open, title, onClose, children, footer }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, title, onClose, children, footer, size = 'default' }: ConfirmDialogProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
@@ -53,11 +56,12 @@ export function ConfirmDialog({ open, title, onClose, children, footer }: Confir
 
   if (!open) return null
 
-  return (
+  // Portal to body: the airlock hologram uses transform + overflow:hidden, which would clip a local fixed overlay.
+  return createPortal(
     <div className={styles.backdrop} onClick={onClose} role="presentation">
       <div
         ref={panelRef}
-        className={styles.panel}
+        className={size === 'wide' ? `${styles.panel} ${styles.panelWide}` : styles.panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -69,6 +73,7 @@ export function ConfirmDialog({ open, title, onClose, children, footer }: Confir
         <div className={styles.body}>{children}</div>
         {footer ? <div className={styles.footer}>{footer}</div> : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
