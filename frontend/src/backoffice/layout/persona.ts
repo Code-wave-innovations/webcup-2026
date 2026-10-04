@@ -58,13 +58,15 @@ export function loginPath(persona: Persona, retour?: string, ended: 'expired' | 
 }
 
 /**
- * Where to go after signing in: the requested page when the role may open it (never another site,
- * never the login page), otherwise the home of the space they signed into when the role may open it
- * (admins may land on /agent or /admin; agents always on /agent).
+ * Where to go after signing in: an admin always lands on the administration, whichever login page they
+ * used (/agent/connexion included); an agent always on their workspace. The requested page (`retour`)
+ * is kept only when it belongs to that space (never another site, never the login page). Admins switch
+ * to the agent view from the shell afterwards.
  */
-export function destinationAfterLogin(role: Role, retour: string | null, space: Persona = personaOf(role)): string {
-  const home = homePath(role === 'ADMIN' ? space : 'AGENT')
-  if (!retour || !/^\/(agent|admin)(\/|$|\?)/.test(retour) || /^\/(agent|admin)\/connexion/.test(retour)) return home
-  if (retour.startsWith('/admin') && role !== 'ADMIN') return home
-  return retour
+export function destinationAfterLogin(role: Role, retour: string | null): string {
+  const space = personaOf(role)
+  const home = homePath(space)
+  if (!retour || /^\/(agent|admin)\/connexion/.test(retour)) return home
+  const prefix = space === 'ADMIN' ? '/admin' : '/agent'
+  return new RegExp(`^${prefix}(\\/|$|\\?)`).test(retour) ? retour : home
 }

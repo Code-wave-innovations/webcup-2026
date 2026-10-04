@@ -157,7 +157,7 @@ export default function StaffLoginPage() {
     signIn(auth)
     if (auth.security?.new_device) toast('Connexion depuis un nouvel appareil : il a été ajouté à « Mon compte ».', 'info')
     if (persona === 'ADMIN' && auth.user.role !== 'ADMIN') toast('Administration réservée aux administrateurs : bienvenue dans l’espace agent.', 'info')
-    navigate(destinationAfterLogin(auth.user.role, retour, persona), { replace: true })
+    navigate(destinationAfterLogin(auth.user.role, retour), { replace: true })
   }
 
   const next = (result: LoginStep) => {
@@ -201,7 +201,7 @@ export default function StaffLoginPage() {
   }
 
   // Already signed in as staff: straight to the workspace they opened (ignores a leftover CITIZEN JWT).
-  if (staff && !citizen) return <Navigate to={destinationAfterLogin(staff.role, retour, persona)} replace />
+  if (staff && !citizen) return <Navigate to={destinationAfterLogin(staff.role, retour)} replace />
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
