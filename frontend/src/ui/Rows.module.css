@@ -33,6 +33,6 @@ button.row:hover {
 
 .row small {
   display: block;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
 }

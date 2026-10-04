@@ -123,7 +123,7 @@
 }
 
 .serviceCat {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 
@@ -306,7 +306,7 @@
 .reco {
   margin: 8px 0 0;
   padding-left: 18px;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .newsCard {
@@ -326,7 +326,7 @@
 }
 
 .coverage small {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 
@@ -457,7 +457,7 @@
 .homeBlock {
   padding: 8px 10px;
   border: 1px solid var(--color-ice);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .homeBlockHidden {
@@ -499,7 +499,7 @@
   align-items: center;
   gap: 6px;
   margin-top: 6px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-alert);
 }
 
@@ -589,7 +589,7 @@
   align-items: center;
   gap: 5px;
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   border: 1px solid var(--color-line);
 }
@@ -628,7 +628,7 @@
   place-items: center;
   width: 20px;
   height: 22px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-ink);
   background: var(--tone);
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);

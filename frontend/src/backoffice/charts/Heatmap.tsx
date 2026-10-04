@@ -25,13 +25,13 @@ export function Heatmap({ rows, columns, summary }: HeatmapProps) {
         <div style={{ display: 'grid', gridTemplateColumns: `38px repeat(${columns.length}, minmax(0, 1fr))`, gap: 2 }}>
           <span />
           {columns.map((c, i) => (
-            <span key={c} className={styles.axis} style={{ fontSize: 10.5, textAlign: 'center', color: 'var(--color-text-muted)', visibility: i % 2 === 0 ? 'visible' : 'hidden' }}>
+            <span key={c} className={styles.axis} style={{ fontSize: 12.5, textAlign: 'center', color: 'var(--color-text-muted)', visibility: i % 2 === 0 ? 'visible' : 'hidden' }}>
               {c}
             </span>
           ))}
           {rows.map((row, r) => (
             <div key={row.day} style={{ display: 'contents' }}>
-              <span style={{ fontSize: 12, color: 'var(--color-text-muted)', alignSelf: 'center' }}>{row.day}</span>
+              <span style={{ fontSize: 14, color: 'var(--color-text-muted)', alignSelf: 'center' }}>{row.day}</span>
               {row.values.map((v, c) => (
                 <span
                   key={c}

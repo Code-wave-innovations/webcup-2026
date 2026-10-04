@@ -27,7 +27,7 @@
 .bubble b {
   display: block;
   margin-bottom: 2px;
-  font: 600 12px/1.2 var(--font-body);
+  font: 600 14px/1.2 var(--font-body);
   letter-spacing: 0.14em;
   color: var(--color-ice);
 }

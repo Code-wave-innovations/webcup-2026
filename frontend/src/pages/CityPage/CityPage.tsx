@@ -201,6 +201,7 @@ function CityView({ session }: { session: Session }) {
         <CitySection
           info={REPORT}
           side="left"
+          compact
           title={readOnly ? 'Signalement en pause' : <>Un problème&nbsp;? Dites‑le en une phrase</>}
           lead={
             readOnly

@@ -76,12 +76,12 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 10px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
 }
 
 .caption strong {
-  font: 600 12px/1.2 var(--font-body);
+  font: 600 14px/1.2 var(--font-body);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--color-ice);
@@ -236,7 +236,7 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--status);
 }
@@ -324,7 +324,7 @@
 }
 
 .offline small {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text);
 }
 
@@ -365,7 +365,7 @@
 }
 
 .explore small {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
   color: var(--color-text-muted);
 }
@@ -436,7 +436,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font: 600 11px/1.2 var(--font-body);
+  font: 600 13px/1.2 var(--font-body);
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--color-ice);
@@ -535,7 +535,7 @@
 
 .quickItem > small {
   flex: none;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--status);
 }
@@ -562,8 +562,24 @@
   }
 }
 
-@media (max-height: 700px) and (min-width: 861px) {
+@media (max-height: 900px) and (min-width: 861px) {
+  .quick {
+    gap: 8px;
+    margin-top: 0;
+  }
+
   .quickItem {
     min-height: 42px;
+    padding: 6px 12px;
+  }
+
+  .quickItem > span:not(.srOnly) {
+    font-size: 15px;
+  }
+}
+
+@media (max-height: 700px) and (min-width: 861px) {
+  .quickItem {
+    min-height: 38px;
   }
 }

@@ -59,13 +59,13 @@ function TeamPage() {
         <div className="flex items-center gap-6">
           <Link
             to="/transcription"
-            className="text-[11px] font-medium uppercase tracking-[0.42em] text-[#4A90FF] transition hover:text-[#0A2342]"
+            className="text-[13px] font-medium uppercase tracking-[0.42em] text-[#4A90FF] transition hover:text-[#0A2342]"
           >
             Transcription
           </Link>
           <Link
             to="/face"
-            className="text-[11px] font-medium uppercase tracking-[0.42em] text-[#4A90FF] transition hover:text-[#0A2342]"
+            className="text-[13px] font-medium uppercase tracking-[0.42em] text-[#4A90FF] transition hover:text-[#0A2342]"
           >
             Face Unlock
           </Link>

@@ -41,6 +41,8 @@ interface ReportValues {
   districtsKnown: boolean
 }
 
+type Step = 1 | 2
+
 /** One sentence is enough: NOVA proposes the category, the district and the urgency while the visitor types. */
 export function ReportForm() {
   const draft = useReportStore((s) => s.draft)
@@ -50,12 +52,14 @@ export function ReportForm() {
   const online = useOnline()
   const { editDraft, applySuggestion, accept } = useReportStore.getState()
   const districts = useDistricts()
+  const [step, setStep] = useState<Step>(1)
   const [coords, setCoords] = useState<Coords | null>(null)
   const [geoNote, setGeoNote] = useState<string | null>(null)
   const [locating, setLocating] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const previewUrl = useRef<string | null>(null)
+  const stepHeadingRef = useRef<HTMLParagraphElement>(null)
 
   useEffect(() => {
     if (draft.text.trim().length < MIN_REPORT_LENGTH) return
@@ -70,6 +74,10 @@ export function ReportForm() {
     },
     [],
   )
+
+  useEffect(() => {
+    stepHeadingRef.current?.focus()
+  }, [step])
 
   const form = useApiForm<ReportValues, Awaited<ReturnType<typeof createIncident>>>({
     labels: {
@@ -158,10 +166,9 @@ export function ReportForm() {
     )
   }
 
-  const send = (event: FormEvent) => {
-    event.preventDefault()
+  const valuesFromDraft = (): ReportValues => {
     const current = useReportStore.getState().draft
-    void form.handleSubmit({
+    return {
       text: current.text,
       location: current.location,
       category: current.category,
@@ -170,116 +177,180 @@ export function ReportForm() {
       coords,
       attachment: file,
       districtsKnown: Boolean(districts.data?.length),
-    })
+    }
+  }
+
+  const goNext = () => {
+    const values = valuesFromDraft()
+    const errors: Record<string, string> = {}
+    if (values.text.trim().length < MIN_REPORT_LENGTH) errors.text = 'Décrivez le problème en quelques mots.'
+    if (!values.location.trim() && !values.coords) errors.location = 'Indiquez le lieu, ou utilisez votre position.'
+    if (Object.keys(errors).length) {
+      form.applyErrors(errors)
+      return
+    }
+    setStep(2)
+  }
+
+  const send = (event: FormEvent) => {
+    event.preventDefault()
+    if (step === 1) {
+      goNext()
+      return
+    }
+    void form.handleSubmit(valuesFromDraft())
   }
 
   return (
     <form className={styles.form} noValidate onSubmit={send}>
+      <div className={styles.stepper} aria-hidden="true">
+        <span data-active={step === 1 || undefined} />
+        <span data-active={step === 2 || undefined} />
+      </div>
+      <p ref={stepHeadingRef} className={styles.stepLabel} tabIndex={-1}>
+        {step === 1 ? '1 / 2 · Le problème' : '2 / 2 · Précisions'}
+      </p>
+
       <ErrorSummary errors={form.summary} formError={form.formError} id={form.summaryId} />
       {!online && (
         <p className={text.note}>Cet appareil est hors réseau. Ce texte reste enregistré ici et partira quand vous réessaierez.</p>
       )}
-      <Field label="Que se passe-t-il ?" required error={form.errors.text} htmlFor={form.fieldId('text')}>
-        {(control) => (
-          <textarea
-            {...control}
-            maxLength={2000}
-            placeholder="Exemple : lampadaire cassé devant le 12, rue des Lilas, quartier sud."
-            value={draft.text}
-            onChange={(e) => {
-              form.clearError('text')
-              editDraft({ text: e.target.value })
-            }}
-          />
-        )}
-      </Field>
-      <div className={styles.nova}>
-        <Icon name="hex" size={16} />
-        <span>{draft.suggested ? 'Proposé par NOVA, à vérifier' : 'NOVA propose la catégorie, le quartier et l’urgence pendant que vous écrivez'}</span>
-      </div>
-      <Field label="Où ?" required hint="Une adresse ou un repère. Obligatoire sans position." error={form.errors.location} htmlFor={form.fieldId('location')}>
-        {(control) => (
-          <input
-            {...control}
-            maxLength={191}
-            placeholder="12 rue des Lilas"
-            value={draft.location}
-            onChange={(e) => {
-              form.clearError('location')
-              editDraft({ location: e.target.value })
-            }}
-          />
-        )}
-      </Field>
-      <div className={styles.geo}>
-        <Button type="button" variant="ghost" small onClick={locate} disabled={locating}>
-          {locating ? 'Recherche de la position…' : coords ? 'Position prise' : 'Utiliser ma position'}
-        </Button>
-        {geoNote && <p className={text.note}>{geoNote}</p>}
-      </div>
-      <Field label="Catégorie" group error={form.errors.category}>
-        <div className={styles.chips}>
-          {CATEGORIES.map((category, index) => (
-            <button
-              key={category}
-              id={index === 0 ? form.fieldId('category') : undefined}
-              type="button"
-              aria-pressed={category === draft.category}
-              onClick={() => editDraft({ category })}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-      </Field>
-      <div className={styles.pair}>
-        <Field label="Quartier" required={Boolean(districts.data?.length)} error={form.errors.districtId} htmlFor={form.fieldId('districtId')}>
-          {(control) => (
-            <select
-              {...control}
-              value={draft.districtId ? String(draft.districtId) : ''}
-              disabled={!districts.data}
-              onChange={(e) => {
-                form.clearError('districtId')
-                editDraft({ districtId: e.target.value ? Number(e.target.value) : null })
-              }}
-            >
-              <option value="">{districts.isError ? 'Quartiers indisponibles' : districts.data ? 'Choisir un quartier' : 'Chargement…'}</option>
-              {(districts.data ?? []).map((district) => (
-                <option key={district.id} value={district.id}>
-                  {district.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
-        <Field label="Urgence estimée" hint="Le service confirme la priorité." htmlFor="report-urgency">
-          <select id="report-urgency" value={draft.urgency} onChange={(e) => editDraft({ urgency: e.target.value as ReportValues['urgency'] })}>
-            {URGENCIES.map((urgency) => (
-              <option key={urgency.value} value={urgency.value}>
-                {urgency.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      <Field label="Photo" hint="Facultative. JPG, PNG ou WebP, 10 Mo au plus." error={form.errors.attachment} htmlFor={form.fieldId('attachment')}>
-        {(control) => (
-          <input
-            {...control}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => chooseFile(e.target.files?.[0] ?? null)}
-          />
-        )}
-      </Field>
-      {preview && <img className={styles.preview} src={preview} alt="Aperçu de la photo jointe" />}
-      {!signedIn && (
-        <p className={text.note}>Pour que le signalement parte aux services, connectez-vous avec l’e-mail de votre compte citoyen.</p>
+
+      {step === 1 ? (
+        <>
+          <div className={styles.group}>
+            <Field label="Que se passe-t-il ?" required error={form.errors.text} htmlFor={form.fieldId('text')}>
+              {(control) => (
+                <textarea
+                  {...control}
+                  maxLength={2000}
+                  rows={2}
+                  placeholder="Exemple : lampadaire cassé devant le 12, rue des Lilas, quartier sud."
+                  value={draft.text}
+                  onChange={(e) => {
+                    form.clearError('text')
+                    editDraft({ text: e.target.value })
+                  }}
+                />
+              )}
+            </Field>
+            <div className={styles.nova}>
+              <Icon name="hex" size={16} />
+              <span>{draft.suggested ? 'Proposé par NOVA, à vérifier' : 'NOVA propose la catégorie, le quartier et l’urgence pendant que vous écrivez'}</span>
+            </div>
+          </div>
+
+          <div className={styles.group}>
+            <Field label="Où ?" required hint="Adresse ou repère — obligatoire sans position." error={form.errors.location} htmlFor={form.fieldId('location')}>
+              {(control) => (
+                <div className={styles.placeRow}>
+                  <input
+                    {...control}
+                    maxLength={191}
+                    placeholder="12 rue des Lilas"
+                    value={draft.location}
+                    onChange={(e) => {
+                      form.clearError('location')
+                      editDraft({ location: e.target.value })
+                    }}
+                  />
+                  <Button type="button" variant="ghost" small onClick={locate} disabled={locating}>
+                    {locating ? '…' : coords ? 'Position prise' : 'Ma position'}
+                  </Button>
+                </div>
+              )}
+            </Field>
+            {geoNote && <p className={text.note}>{geoNote}</p>}
+          </div>
+
+          <div className={styles.actions}>
+            <Button type="submit" small>
+              Continuer
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={styles.group}>
+            <Field label="Catégorie" group error={form.errors.category}>
+              <div className={styles.chips}>
+                {CATEGORIES.map((category, index) => (
+                  <button
+                    key={category}
+                    id={index === 0 ? form.fieldId('category') : undefined}
+                    type="button"
+                    aria-pressed={category === draft.category}
+                    onClick={() => editDraft({ category })}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <div className={styles.pair}>
+              <Field label="Quartier" required={Boolean(districts.data?.length)} error={form.errors.districtId} htmlFor={form.fieldId('districtId')}>
+                {(control) => (
+                  <select
+                    {...control}
+                    value={draft.districtId ? String(draft.districtId) : ''}
+                    disabled={!districts.data}
+                    onChange={(e) => {
+                      form.clearError('districtId')
+                      editDraft({ districtId: e.target.value ? Number(e.target.value) : null })
+                    }}
+                  >
+                    <option value="">{districts.isError ? 'Quartiers indisponibles' : districts.data ? 'Choisir un quartier' : 'Chargement…'}</option>
+                    {(districts.data ?? []).map((district) => (
+                      <option key={district.id} value={district.id}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+              <Field label="Urgence estimée" hint="Le service confirme la priorité." htmlFor="report-urgency">
+                <select id="report-urgency" value={draft.urgency} onChange={(e) => editDraft({ urgency: e.target.value as ReportValues['urgency'] })}>
+                  {URGENCIES.map((urgency) => (
+                    <option key={urgency.value} value={urgency.value}>
+                      {urgency.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          </div>
+
+          <div className={styles.group}>
+            <Field label="Photo" hint="Facultative. JPG, PNG ou WebP, 10 Mo au plus." error={form.errors.attachment} htmlFor={form.fieldId('attachment')}>
+              {(control) => (
+                <div className={styles.photoRow}>
+                  <input
+                    {...control}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => chooseFile(e.target.files?.[0] ?? null)}
+                  />
+                  {preview && <img className={styles.preview} src={preview} alt="Aperçu de la photo jointe" />}
+                </div>
+              )}
+            </Field>
+          </div>
+
+          <div className={styles.actions}>
+            {!signedIn && (
+              <p className={text.note}>Pour que le signalement parte aux services, connectez-vous avec l’e-mail de votre compte citoyen.</p>
+            )}
+            <div className={styles.nav}>
+              <Button type="button" variant="ghost" small onClick={() => setStep(1)}>
+                Retour
+              </Button>
+              <Button type="submit" small disabled={form.pending}>
+                {form.pending ? 'Envoi…' : 'Envoyer au service concerné'}
+              </Button>
+            </div>
+          </div>
+        </>
       )}
-      <Button type="submit" disabled={form.pending}>
-        {form.pending ? 'Envoi…' : 'Envoyer au service concerné'}
-      </Button>
     </form>
   )
 }

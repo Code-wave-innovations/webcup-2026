@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { formatRelative } from './format'
+import { formatLocalTime, formatRelative } from './format'
+
+describe('formatLocalTime', () => {
+  it('formats the device wall clock as HH:MM', () => {
+    const moment = new Date(2026, 9, 4, 9, 5, 30).getTime()
+    expect(formatLocalTime(moment)).toBe('09:05')
+  })
+})
 
 describe('formatRelative', () => {
   const now = Date.parse('2026-10-04T12:00:00.000Z')

@@ -69,7 +69,7 @@ export default function FaceUnlock() {
                         className="h-10 w-auto object-contain brightness-0 invert sm:h-12"
                     />
                 </Link>
-                <p className="text-[11px] font-medium uppercase tracking-[0.42em] text-[#4a90ff]">
+                <p className="text-[13px] font-medium uppercase tracking-[0.42em] text-[#4a90ff]">
                     Face Unlock
                 </p>
             </header>
@@ -104,14 +104,14 @@ export default function FaceUnlock() {
                         </div>
                     )}
                     {faceDetected && <VerifiedSeal />}
-                    <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
+                    <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 text-[12px] uppercase tracking-[0.2em]">
                         <span
                             className={`h-1.5 w-1.5 rounded-full ${ready ? 'bg-emerald-400' : 'bg-red-400'}`}
                         />
                         {ready ? 'Caméra active' : 'Caméra…'}
                     </div>
                     {ready && (
-                        <div className="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
+                        <div className="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 text-[12px] uppercase tracking-[0.2em]">
                             <span
                                 className={`h-1.5 w-1.5 rounded-full ${
                                     faceDetected ? 'bg-[#4a90ff]' : 'bg-white/30'

@@ -122,12 +122,47 @@
   text-shadow: 0 1px 16px var(--color-shade);
 }
 
+/* compact forms (Signaler): smaller chrome so both steps fit the sticky frame */
+.compact .frame {
+  align-items: flex-start;
+  padding-top: calc(78px + env(safe-area-inset-top, 0px));
+  padding-bottom: 20px;
+}
+
+.compact .column {
+  width: min(520px, 50%);
+  gap: 8px;
+}
+
+.compact .block {
+  gap: 4px;
+}
+
+.compact .place {
+  font-size: 14px;
+  gap: 6px;
+}
+
+.compact .heading {
+  font-size: clamp(20px, min(2.4vw, 3.4vh), 28px);
+}
+
+.compact .lead {
+  display: none;
+}
+
+.compact :global([data-panel]) {
+  padding: 12px 14px;
+  gap: 0;
+}
+
 /* arrival: the hero of the city */
 .arrival {
   min-height: calc(var(--screen-h) * 1.7);
 }
 
 .arrival .frame {
+  /* bottom-aligned when the column fits; short viewports center it (see below) */
   align-items: flex-end;
   padding-bottom: calc(7% + 40px);
 }
@@ -138,6 +173,45 @@
 
 .arrival .column {
   width: min(620px, 58%);
+}
+
+/* sticky frame is viewport-tall: if the column is taller, flex-end clips it under the top bar */
+@media (max-height: 900px) and (min-width: 861px) {
+  .arrival .frame {
+    align-items: center;
+    padding-top: calc(84px + env(safe-area-inset-top, 0px));
+    padding-bottom: 36px;
+  }
+
+  .arrival .column {
+    gap: 12px;
+    max-height: calc(var(--screen-h) - 84px - 36px - env(safe-area-inset-top, 0px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .arrival .headline {
+    font-size: clamp(28px, 5.2vh, 52px);
+  }
+
+  .arrival .greeting {
+    font-size: 15px;
+  }
+
+  .arrival .lead {
+    font-size: 15px;
+  }
+}
+
+@media (max-height: 720px) and (min-width: 861px) {
+  .arrival .column {
+    gap: 10px;
+  }
+
+  .arrival .lead {
+    display: none;
+  }
 }
 
 .greeting {
@@ -161,7 +235,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
   opacity: var(--reveal, 0);
 }
@@ -232,18 +306,41 @@
     height: auto;
     min-height: calc(var(--screen-h) * 1.25);
     align-items: flex-end;
-    padding: calc(var(--screen-h) * 0.52) var(--gutter) 34px;
+    /* leave the upper half for the city, but never starve the column */
+    padding: max(calc(72px + env(safe-area-inset-top, 0px)), min(42vh, 320px)) var(--gutter) 34px;
   }
 
   .arrival .frame {
-    padding-bottom: 70px;
+    /* denser hero: clear the top bar, center the stack, grow with content */
+    align-items: center;
+    justify-content: center;
     min-height: var(--screen-h);
+    padding-top: calc(84px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .compact .frame {
+    align-items: flex-start;
+    min-height: var(--screen-h);
+    padding-top: calc(78px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   }
 
   .column,
-  .arrival .column {
+  .arrival .column,
+  .compact .column {
     width: 100%;
+    max-height: none;
+    overflow: visible;
     transform: translate3d(0, calc((1 - var(--reveal, 0)) * 30px), 0);
+  }
+
+  .arrival .column {
+    gap: 14px;
+  }
+
+  .arrival .headline {
+    font-size: clamp(28px, 8vw, 40px);
   }
 }
 

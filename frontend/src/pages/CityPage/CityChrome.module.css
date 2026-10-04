@@ -5,7 +5,7 @@
   right: 0;
   top: 0;
   padding: calc(10px + env(safe-area-inset-top, 0px)) var(--gutter) 0;
-  background: linear-gradient(180deg, var(--color-top-fade), transparent 88%);
+  background: linear-gradient(180deg, rgba(4, 6, 12, 0.28), transparent 88%);
   pointer-events: none;
 }
 
@@ -21,16 +21,16 @@
   gap: 8px 18px;
   min-height: 56px;
   padding: 6px 8px 6px 14px;
-  border: 1px solid var(--color-line-thin);
+  border: 1px solid rgba(200, 246, 255, 0.22);
   background:
-    linear-gradient(135deg, var(--color-holo-1), transparent 42%),
-    var(--color-glass-dense);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
   clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   box-shadow:
-    0 1px 0 var(--color-sheen) inset,
-    0 18px 40px var(--color-shade);
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 12px 32px rgba(2, 4, 10, 0.28);
 }
 
 .bar[data-exploring='true'] .links {
@@ -78,7 +78,7 @@
   min-height: 40px;
   padding: 0 11px;
   color: var(--color-text-muted);
-  font: 500 13px/1 var(--font-body);
+  font: 500 15px/1 var(--font-body);
   letter-spacing: 0.02em;
   text-decoration: none;
   white-space: nowrap;
@@ -141,7 +141,7 @@
 }
 
 .clock span {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -162,7 +162,7 @@
 
 .badge small {
   font-weight: 400;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 
@@ -193,7 +193,7 @@
   border: 1px solid var(--color-line);
   background: color-mix(in srgb, var(--color-ice) 14%, var(--color-glass));
   color: var(--color-ice-bright);
-  font: 600 13px/1 var(--font-body);
+  font: 600 15px/1 var(--font-body);
   white-space: nowrap;
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
   transition: background 0.2s var(--ease-out-soft), border-color 0.2s, color 0.2s;
@@ -224,7 +224,7 @@
   gap: 10px;
   min-height: 28px;
   color: var(--color-text-muted);
-  font-size: 13px;
+  font-size: 15px;
   text-decoration: none;
 }
 

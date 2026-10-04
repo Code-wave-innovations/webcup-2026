@@ -2,6 +2,7 @@ import { useEffect, useRef, type RefObject } from 'react'
 import { frameBus, frameState } from '../../experience/director/frameState'
 import type { Session } from '../../features/auth/authService'
 import { formatLocalTime } from '../../lib/format'
+import { useNow } from '../../lib/useNow'
 import { Icon, NovaMark } from '../../ui/Icon'
 import { CitizenNav } from '../Console/CitizenNav'
 import { CITY_SECTIONS } from './citySections'
@@ -10,22 +11,13 @@ import styles from './CityChrome.module.css'
 
 const current = (active: boolean) => (active ? 'true' : undefined)
 
-/** Local time follows the sunset of the flyover. */
+/** Wall clock of the visitor's device. */
 function Clock() {
-  const timeRef = useRef<HTMLElement>(null)
-  useEffect(
-    () =>
-      frameBus.subscribe(() => {
-        const time = formatLocalTime(frameState.dusk)
-        const element = timeRef.current
-        if (element && element.textContent !== time) element.textContent = time
-      }),
-    [],
-  )
+  const now = useNow()
   return (
     <div className={styles.clock} aria-label="Heure locale">
-      <b ref={timeRef}>18:42</b>
-      <span>Heure locale, sol 214</span>
+      <b>{formatLocalTime(now)}</b>
+      <span>Heure locale</span>
     </div>
   )
 }

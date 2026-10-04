@@ -78,11 +78,14 @@ export function useApiForm<TValues, TResult>({ labels, submit, validate, onSucce
       return rest
     })
 
+  /** Shows field errors without calling the API (e.g. a multi-step "Continuer"). */
+  const applyErrors = (fields: Record<string, string>) => fail(fields, null)
+
   const summary: SummaryError[] = Object.entries(errors).map(([name, message]) => ({
     id: fieldId(name),
     label: labels[name] ?? name,
     message,
   }))
 
-  return { fieldId, errors, formError, summary, summaryId, pending, handleSubmit, clearError }
+  return { fieldId, errors, formError, summary, summaryId, pending, handleSubmit, clearError, applyErrors }
 }
