@@ -11,6 +11,8 @@ export interface Session {
   role: Role
   token?: string
   email?: string
+  /** Real API login/register: bind into `nova-auth-citizen` / `nova-auth-staff`. */
+  auth?: AuthResponse
 }
 
 /**
@@ -64,6 +66,7 @@ export function sessionFromApi(token: string, user: ApiUser): Session {
     role: citizen ? 'resident' : 'council',
     token,
     email: user.email,
+    auth: { token, user },
   }
 }
 

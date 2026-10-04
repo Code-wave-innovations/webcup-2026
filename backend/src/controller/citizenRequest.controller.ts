@@ -149,10 +149,12 @@ const citizenRequestController = {
     const input = createSchema.parse(req.body);
     const guardFields = formGuardFieldsSchema.parse(req.body);
     const user = req.user;
+    // D04: only a citizen account owns the request; staff/anonymous leave contact_name + contact_email.
+    const citizen = user?.role === "CITIZEN" ? user : undefined;
     await assertNotInMaintenance(user);
 
-    // D04: visitors without an account can only contact the city, and must leave a way to reply.
-    if (!user) {
+    // Visitors (and staff testing the form) can only send CONTACT, with a way to reply.
+    if (!citizen) {
       if (input.type !== "CONTACT") throw badRequest("You must be logged in for this type of request");
       if (!input.contact_name || !input.contact_email) {
         throw badRequest("contact_name and contact_email are required when not logged in");
@@ -220,15 +222,15 @@ const citizenRequestController = {
       {
         ...fields,
         service_id: serviceId,
-        citizen_id: user?.id,
+        citizen_id: citizen?.id,
         attachment,
         data: data as Prisma.InputJsonObject | undefined,
       },
-      user?.id
+      citizen?.id
     );
 
-    if (user) {
-      await notifyUser(user.id, {
+    if (citizen) {
+      await notifyUser(citizen.id, {
         type: "REQUEST_CREATED",
         title: `Demande ${request.reference} bien reçue`,
         link: `/requests/${request.id}`,

@@ -17,7 +17,7 @@ export const CITY_SECTIONS: readonly CitySectionInfo[] = [
   { id: 'services', rail: 'Dôme central', nav: 'Services', anchor: DISTRICTS[1].anchor },
   { id: 'signaler', rail: 'Dôme 3', nav: 'Signaler', anchor: DISTRICTS[2].anchor },
   { id: 'etat', rail: 'Serre 1', nav: 'État de la ville', anchor: DISTRICTS[3].anchor },
-  { id: 'conseil', rail: 'Tour du Conseil', nav: 'Haut Conseil', anchor: DISTRICTS[4].anchor },
+  { id: 'conseil', rail: 'Tour du Conseil', nav: 'Contact', anchor: DISTRICTS[4].anchor },
   { id: 'observatoire', rail: 'Observatoire', nav: 'Parler à Nova', anchor: DISTRICTS[5].anchor },
   { id: 'registre', rail: "Vue d'ensemble", nav: 'Registre' },
 ]

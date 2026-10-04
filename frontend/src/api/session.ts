@@ -1,14 +1,20 @@
+import { useLocation } from 'react-router'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { queryClient } from './queryClient'
 import type { AuthResponse, Role, User } from './types'
 
 /*
-  One session for the three profiles (citizen, agent, admin): the JWT returned by /api/auth/login and
-  the account it belongs to, kept in localStorage so the visitor finds their space again (D03).
+  Two JWT slots (same browser can hold both):
+  - nova-auth-citizen → habitant, used by /ville, /nova, sas, console citoyenne
+  - nova-auth-staff   → AGENT/ADMIN, used by /agent and /admin
+  Signing into one space never overwrites the other.
 */
 
-const STORAGE_KEY = 'nova-auth'
+export const CITIZEN_STORAGE_KEY = 'nova-auth-citizen'
+export const STAFF_STORAGE_KEY = 'nova-auth-staff'
+/** Pre-split single key — migrated once into the matching slot. */
+const LEGACY_STORAGE_KEY = 'nova-auth'
 
 interface SessionState {
   token: string | null
@@ -18,55 +24,161 @@ interface SessionState {
   clear: () => void
 }
 
-export const useSessionStore = create<SessionState>()(
-  persist(
-    (set) => ({
-      token: null,
-      user: null,
-      setSession: (token, user) => set({ token, user }),
-      setUser: (user) => set({ user }),
-      clear: () => set({ token: null, user: null }),
-    }),
-    { name: STORAGE_KEY, storage: createJSONStorage(() => localStorage), partialize: (s) => ({ token: s.token, user: s.user }) },
-  ),
-)
+const emptySession = (): Omit<SessionState, 'setSession' | 'setUser' | 'clear'> => ({
+  token: null,
+  user: null,
+})
 
-export const useSessionUser = () => useSessionStore((s) => s.user)
-export const useRole = (): Role | null => useSessionStore((s) => s.user?.role ?? null)
-export const useSignedIn = () => useSessionStore((s) => s.token !== null)
+function createSessionStore(storageKey: string) {
+  return create<SessionState>()(
+    persist(
+      (set) => ({
+        ...emptySession(),
+        setSession: (token, user) => set({ token, user }),
+        setUser: (user) => set({ user }),
+        clear: () => set(emptySession()),
+      }),
+      {
+        name: storageKey,
+        storage: createJSONStorage(() => localStorage),
+        partialize: (s) => ({ token: s.token, user: s.user }),
+      },
+    ),
+  )
+}
+
+export const useCitizenSessionStore = createSessionStore(CITIZEN_STORAGE_KEY)
+export const useStaffSessionStore = createSessionStore(STAFF_STORAGE_KEY)
+
+/** @deprecated Prefer the citizen/staff stores; kept for gradual call-site updates. */
+export const useSessionStore = useCitizenSessionStore
 
 export const isStaffRole = (role: Role | null | undefined) => role === 'AGENT' || role === 'ADMIN'
 
-/**
- * Cached answers belonged to the previous account: drop the unused ones, and reload the ones on screen
- * with the new identity (`clear()` would leave the screens' queries pending forever).
- */
+/** Back-office URL space. */
+export const isStaffPath = (pathname: string): boolean =>
+  pathname.startsWith('/agent') || pathname.startsWith('/admin')
+
+function migrateLegacyAuth(): void {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(LEGACY_STORAGE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw) as { state?: { token?: string | null; user?: User | null } }
+    const token = parsed.state?.token
+    const user = parsed.state?.user
+    if (token && user) {
+      if (user.role === 'CITIZEN' && !useCitizenSessionStore.getState().token) {
+        useCitizenSessionStore.getState().setSession(token, user)
+      } else if (isStaffRole(user.role) && !useStaffSessionStore.getState().token) {
+        useStaffSessionStore.getState().setSession(token, user)
+      }
+    }
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
+  } catch {
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
+  }
+}
+
+migrateLegacyAuth()
+
+/** Bearer for the current UI space — citizen film ↔ citizen JWT, back-office ↔ staff JWT. */
+export function authTokenForSpace(pathname = typeof window !== 'undefined' ? window.location.pathname : '/'): string | null {
+  if (isStaffPath(pathname)) return useStaffSessionStore.getState().token
+  return useCitizenSessionStore.getState().token
+}
+
+export const useCitizenUser = () => useCitizenSessionStore((s) => s.user)
+export const useStaffUser = () => useStaffSessionStore((s) => s.user)
+
+export const useAgentUser = () => {
+  const user = useStaffUser()
+  return user?.role === 'AGENT' ? user : null
+}
+
+export const useAdminUser = () => {
+  const user = useStaffUser()
+  return user?.role === 'ADMIN' ? user : null
+}
+
+/** User of the current URL space (staff path → staff slot, else citizen slot). */
+export function useSessionUser(): User | null {
+  const { pathname } = useLocation()
+  const citizen = useCitizenUser()
+  const staff = useStaffUser()
+  return isStaffPath(pathname) ? staff : citizen
+}
+
+export function useRole(): Role | null {
+  return useSessionUser()?.role ?? null
+}
+
+export function useSignedIn(): boolean {
+  return useSessionUser() !== null
+}
+
+export const useCitizenSignedIn = () => useCitizenSessionStore((s) => s.token !== null)
+export const useStaffSignedIn = () => useStaffSessionStore((s) => s.token !== null)
+export const useAgentSignedIn = () => useAgentUser() !== null
+export const useAdminSignedIn = () => useAdminUser() !== null
+
 function resetServerCache(): void {
   queryClient.removeQueries({ type: 'inactive' })
   void queryClient.resetQueries({ type: 'active' })
 }
 
-/** Opens the session after a login or a registration. */
+function storeForRole(role: Role) {
+  return role === 'CITIZEN' ? useCitizenSessionStore : useStaffSessionStore
+}
+
+/** Opens the matching slot; the other space’s session is left untouched. */
 export function signIn(auth: AuthResponse): void {
-  useSessionStore.getState().setSession(auth.token, auth.user)
+  if (auth.user.role === 'CITIZEN') {
+    useCitizenSessionStore.getState().setSession(auth.token, auth.user)
+  } else if (isStaffRole(auth.user.role)) {
+    useStaffSessionStore.getState().setSession(auth.token, auth.user)
+  } else {
+    return
+  }
   resetServerCache()
 }
 
-/** Closes the session. */
-export function signOut(): void {
-  useSessionStore.getState().clear()
+export function signOutCitizen(): void {
+  useCitizenSessionStore.getState().clear()
   resetServerCache()
+}
+
+export function signOutStaff(): void {
+  useStaffSessionStore.getState().clear()
+  resetServerCache()
+}
+
+/** Signs out the current URL space (or both when `all`). */
+export function signOut(scope: 'space' | 'all' = 'space'): void {
+  if (scope === 'all') {
+    useCitizenSessionStore.getState().clear()
+    useStaffSessionStore.getState().clear()
+    resetServerCache()
+    return
+  }
+  if (typeof window !== 'undefined' && isStaffPath(window.location.pathname)) signOutStaff()
+  else signOutCitizen()
 }
 
 export const SESSION_EXPIRED_EVENT = 'nova:session-expired'
 
-/** expired: the token is no longer valid; revoked: every device of the account was signed out */
 export type SessionEndReason = 'expired' | 'revoked'
 
-/** Called by the HTTP client when the API refuses the token: each space redirects or warns. */
+/** Ends the session slot that matched the refused Bearer (by current path). */
 export function expireSession(reason: SessionEndReason = 'expired'): void {
-  if (!useSessionStore.getState().token) return
-  signOut()
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '/'
+  if (isStaffPath(pathname)) {
+    if (!useStaffSessionStore.getState().token) return
+    signOutStaff()
+  } else {
+    if (!useCitizenSessionStore.getState().token) return
+    signOutCitizen()
+  }
   window.dispatchEvent(new CustomEvent<SessionEndReason>(SESSION_EXPIRED_EVENT, { detail: reason }))
 }
 
@@ -76,15 +188,21 @@ export function onSessionExpired(listener: (reason: SessionEndReason) => void): 
   return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handler)
 }
 
-/** BO-05: the server issued a new token (other devices signed out): keep this session on it. */
+/** BO-05: new token after revoking other devices — staff Mon compte. */
 export function replaceToken(token: string): void {
-  const { user, setSession } = useSessionStore.getState()
+  const { user, setSession } = useStaffSessionStore.getState()
   if (user) setSession(token, user)
 }
 
-// Signing in or out in another tab applies here too
+/** Update the account copy in the slot that matches this user’s role. */
+export function setSessionUser(user: User): void {
+  const store = storeForRole(user.role)
+  if (store.getState().token) store.getState().setUser(user)
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
-    if (event.key === STORAGE_KEY) void useSessionStore.persist.rehydrate()
+    if (event.key === CITIZEN_STORAGE_KEY) void useCitizenSessionStore.persist.rehydrate()
+    if (event.key === STAFF_STORAGE_KEY) void useStaffSessionStore.persist.rehydrate()
   })
 }
