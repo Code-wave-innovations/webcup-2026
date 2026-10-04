@@ -4,7 +4,10 @@ import type { FlightPhase } from '../city/explore/flightPath'
 import { director } from '../director/director'
 import { useDirectorStore } from '../director/directorStore'
 import { speechProgress } from '../nova/behavior/novaBrain'
-import { novaNow, useNovaStore } from '../nova/behavior/novaStore'
+import { isSpeaking, isVoiceBusy, speakMessage, stopSpeaking, subscribeSpeaking, warmSpeech } from '../../hooks/useSpeakMessage'
+import { DISTRICTS } from '../city/districts'
+import { POKE_QUIPS } from '../nova/behavior/quips'
+import { nova, novaNow, useNovaStore } from '../nova/behavior/novaStore'
 import { soundEngine } from './soundEngine'
 import { useSoundStore } from './soundStore'
 import { flightCue, flightMix, reactionSounds, syllable, syllableGap } from './sounds'
@@ -16,7 +19,7 @@ const KEY_EVERY = 25
 
 /**
  * Plays the film with sound once the visitor allows it. Nothing here is called by the features: Nova's
- * state of mind gives its voice (each reaction is already a gesture, a posture or a line), the director
+ * state of mind gives its voice (each reaction is already a gesture, a posture or a line, read aloud), the director
  * gives the ambience, and the DOM gives the interface clicks.
  */
 export function SoundDirector() {
@@ -26,13 +29,25 @@ export function SoundDirector() {
     soundEngine.setEnabled(enabled)
     if (!enabled) return
 
-    // Nova's voice: a chirp per reaction
+    // Nova's voice: a chirp per reaction, and each line of its bubble read aloud
     const unsubscribe = useNovaStore.subscribe((next, prev) => {
       for (const sound of reactionSounds(prev.brain, next.brain)) {
         if ('cue' in sound) soundEngine.cue(sound.cue)
         else soundEngine.chirp(sound.chirp)
       }
+      const line = next.brain.speech
+      if (line && line.id !== prev.brain.speech?.id) void speakMessage(line.text)
+      else if (!line && prev.brain.speech) stopSpeaking()
     })
+    // its mouth moves for as long as a recording plays
+    let mouth = isSpeaking()
+    const unsubscribeVoice = subscribeSpeaking(() => {
+      if (mouth === isSpeaking()) return
+      mouth = isSpeaking()
+      nova.talk(mouth)
+    })
+    // the lines of the visit are generated ahead, so that they play as soon as they are said
+    void warmSpeech([...DISTRICTS.flatMap((d) => (d.intro ? [d.intro] : [])), ...POKE_QUIPS])
 
     // the interface: a glass tick on hover and press, a soft click per keystroke
     let hovered: Element | null = null
@@ -110,7 +125,8 @@ export function SoundDirector() {
       const now = novaNow()
       const { brain } = useNovaStore.getState()
       const talking = speechProgress(brain.speech, now).talking || brain.talking
-      if (!talking) nextSyllable = now + 0.05
+      // the murmurs keep quiet while Nova's voice is on its way or playing
+      if (!talking || isVoiceBusy()) nextSyllable = now + 0.05
       else if (now >= nextSyllable) {
         soundEngine.play([syllable(brain.speech?.emotion ?? brain.emotion, random)])
         nextSyllable = now + syllableGap(random)
@@ -119,6 +135,9 @@ export function SoundDirector() {
 
     return () => {
       unsubscribe()
+      // silenced before unsubscribing, so that the mouth stops too
+      stopSpeaking()
+      unsubscribeVoice()
       cancelAnimationFrame(frame)
       document.removeEventListener('pointerover', onOver)
       document.removeEventListener('pointerdown', onDown, { capture: true })

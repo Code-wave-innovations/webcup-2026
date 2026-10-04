@@ -17,8 +17,8 @@ interface ExploreHudProps {
 }
 
 /**
- * The explore mode's interface: the button that takes off from the flyover; in the air a heads-up display (heading,
- * altitude, speed, time to landing); on a site its name, the other sites to fly to, the controls and the way back.
+ * The explore mode's interface: in the air a heads-up display (heading, altitude, speed, time to landing);
+ * on a site its name, the other sites to fly to, the controls and the way back.
  */
 export function ExploreHud({ exploring, ready, phone }: ExploreHudProps) {
   const { site, destination, flight, leaving } = useDirectorStore((s) => s.explore)
@@ -47,16 +47,7 @@ export function ExploreHud({ exploring, ready, phone }: ExploreHudProps) {
     setStick((x / len) * scale, (-y / len) * scale)
   }
 
-  if (!ready) return null
-
-  if (!exploring) {
-    return (
-      <button type="button" className={styles.enter} onClick={exploreActions.enter}>
-        <Icon name="rocket" />
-        <span>Explorer la ville</span>
-      </button>
-    )
-  }
+  if (!ready || !exploring) return null
 
   const here = site ? poiById(site) : null
   const airborne = flight !== null && flight !== 'landing' && !leaving && destination !== null

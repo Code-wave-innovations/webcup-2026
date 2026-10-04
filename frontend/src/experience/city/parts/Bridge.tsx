@@ -5,7 +5,6 @@ import {
   BufferAttribute,
   BufferGeometry,
   CylinderGeometry,
-  InstancedBufferAttribute,
   InstancedMesh,
   Matrix4,
   Mesh,
@@ -33,18 +32,6 @@ const ROAD_EDGE = BRIDGE.roadHalf + BRIDGE.sidewalk
 const POST_SPACING = 1.5
 const RAIL_SEGMENTS = 420
 const UP = new Vector3(0, 1, 0)
-
-/** A unit box standing on y = 0, its top shrunk to `taper` of its base (pylon legs and mast). */
-function taperedBox(taper: number): BufferGeometry {
-  const box = new BoxGeometry(1, 1, 1)
-  box.translate(0, 0.5, 0)
-  const position = box.getAttribute('position')
-  for (let i = 0; i < position.count; i++) {
-    if (position.getY(i) > 0.5) position.setXYZ(i, position.getX(i) * taper, position.getY(i), position.getZ(i) * taper)
-  }
-  box.computeVertexNormals()
-  return box
-}
 
 const _dir = new Vector3()
 const _yaw = new Quaternion()
@@ -105,8 +92,7 @@ const disposeParts = (parts: BridgeParts) => {
 }
 
 /**
- * The cable-stayed bridge over the lake: a box-girder deck with sidewalks and steel railings, an A-shaped concrete
- * pylon straddling it with a mast, two fans of glowing stays on each side, twin-column piers and lamp posts.
+ * The lake viaduct: a box-girder deck with sidewalks and steel railings, twin-column piers and lamp posts.
  */
 export function Bridge() {
   const { uniforms, pointScale } = useCity()
@@ -114,12 +100,10 @@ export function Bridge() {
   const parts = useMemo<BridgeParts>(() => {
     const layout = layoutBridge()
     const { road, length } = layout
-    const pylonTop = layout.mast.to.y
 
     const deckMaterial = createWorldMaterial(uniforms, roadVert, roadFrag, { uLongueur: { value: length } })
-    const concrete = createWorldMaterial(uniforms, towerVert, bridgeFrag, { uMat: { value: 0 }, uHautPylone: { value: pylonTop } })
-    const steel = createWorldMaterial(uniforms, towerVert, bridgeFrag, { uMat: { value: 1 }, uHautPylone: { value: pylonTop } })
-    const cable = createWorldMaterial(uniforms, towerVert, bridgeFrag, { uMat: { value: 2 }, uHautPylone: { value: pylonTop } })
+    const concrete = createWorldMaterial(uniforms, towerVert, bridgeFrag, { uMat: { value: 0 }, uHautPylone: { value: 7 } })
+    const steel = createWorldMaterial(uniforms, towerVert, bridgeFrag, { uMat: { value: 1 }, uHautPylone: { value: 7 } })
 
     const deck = new Mesh(sweepProfile(road, deckProfile(BRIDGE.roadHalf, BRIDGE.sidewalk, BRIDGE.depth, false), 520), deckMaterial)
 
@@ -149,29 +133,13 @@ export function Bridge() {
     postGeometry.translate(0, 0.5, 0)
     const posts = instanced(postGeometry, steel, postMatrices)
 
-    // the pylon: legs, strut under the deck, mast
-    const legs = instanced(
-      taperedBox(0.62),
+    const capGeometry = new BoxGeometry(1, 1, 1)
+    capGeometry.translate(0, 0.5, 0)
+    const caps = instanced(
+      capGeometry,
       concrete,
-      layout.legs.map((leg) => memberMatrix(leg, layout.across, 1.35, 1.9).clone()),
+      layout.caps.map((cap) => memberMatrix(cap, layout.across, 0.55, 1.15).clone()),
     )
-    const strutGeometry = new BoxGeometry(1, 1, 1)
-    strutGeometry.translate(0, 0.5, 0)
-    const struts = instanced(strutGeometry, concrete, [
-      memberMatrix(layout.strut, layout.across, 1.0, 1.6).clone(),
-      ...layout.caps.map((cap) => memberMatrix(cap, layout.across, 0.55, 1.15).clone()),
-    ])
-    const mast = instanced(taperedBox(0.72), concrete, [memberMatrix(layout.mast, layout.across, 1.5, 1.9).clone()])
-
-    // stays: thin cylinders from the deck anchor up to the mast (local y runs along the cable for the light pulse)
-    const stayGeometry = new CylinderGeometry(1, 1, 1, 6, 1, true)
-    stayGeometry.translate(0, 0.5, 0)
-    const stays = instanced(
-      stayGeometry,
-      cable,
-      layout.stays.map((stay) => memberMatrix(stay, layout.across, 0.075, 0.075).clone()),
-    )
-    stayGeometry.setAttribute('aGraine', new InstancedBufferAttribute(Float32Array.from(layout.stays, (_, n) => (n * 0.618) % 1), 1))
 
     // piers: twin columns with their footings at the water line
     const columnGeometry = new CylinderGeometry(0.3, 0.38, 1, 12)
@@ -195,8 +163,8 @@ export function Bridge() {
       layout.lamps.map((lamp) => memberMatrix({ from: lamp.foot, to: lamp.foot.clone().setY(lamp.foot.y + 1) }, lamp.reach, 1, 1).clone()),
     )
 
-    // lights: warm lamp heads, the pylon's blinking red aviation light
-    const lightCount = layout.lamps.length + 1
+    // lights: warm lamp heads along the sidewalks
+    const lightCount = layout.lamps.length
     const positions = new Float32Array(lightCount * 3)
     const sizes = new Float32Array(lightCount)
     const phases = new Float32Array(lightCount)
@@ -207,11 +175,6 @@ export function Bridge() {
       phases[n] = -1
       colors.set([1.0, 0.7, 0.4], n * 3)
     })
-    const top = layout.lamps.length
-    positions.set([layout.mast.to.x, layout.mast.to.y + 0.35, layout.mast.to.z], top * 3)
-    sizes[top] = 2.6
-    phases[top] = 0.37
-    colors.set([1, 0.14, 0.06], top * 3)
     const lightGeometry = new BufferGeometry()
     lightGeometry.setAttribute('position', new BufferAttribute(positions, 3))
     lightGeometry.setAttribute('aTaille', new BufferAttribute(sizes, 1))
@@ -228,9 +191,9 @@ export function Bridge() {
     const lights = new Points(lightGeometry, lightMaterial)
     lights.frustumCulled = false
 
-    const meshes = [deck, rails, posts, legs, struts, mast, stays, columns, footings, lamps]
+    const meshes = [deck, rails, posts, caps, columns, footings, lamps]
     meshes.forEach((mesh) => (mesh.frustumCulled = false))
-    return { meshes, lights, materials: [deckMaterial, concrete, steel, cable, lightMaterial] }
+    return { meshes, lights, materials: [deckMaterial, concrete, steel, lightMaterial] }
   }, [uniforms, pointScale])
   useDisposeOnUnmount(parts, disposeParts)
 

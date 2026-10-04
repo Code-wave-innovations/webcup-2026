@@ -62,12 +62,13 @@ export function TopBar({ session, active, alert, exploring, onQuit, onToggleExpl
         </div>
         <button
           type="button"
-          className={styles.round}
-          aria-label={exploring ? 'Reprendre le survol' : 'Marcher dans la ville'}
+          className={styles.explore}
+          aria-label={exploring ? 'Reprendre le survol' : 'Explorer la ville'}
           aria-pressed={exploring}
           onClick={onToggleExplore}
         >
-          <Icon name="walk" />
+          <Icon name="rocket" />
+          <span>{exploring ? 'Reprendre le survol' : 'Explorer la ville'}</span>
         </button>
         <button type="button" className={styles.round} aria-label="Quitter la ville et revenir au contrôle d'accès" onClick={onQuit}>
           <Icon name="logout" />

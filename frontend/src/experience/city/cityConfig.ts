@@ -57,23 +57,11 @@ export const RING = { radius: 35, height: 3.7, tube: 0.42, deckWidth: 6, deckThi
 /** Road surface above the path points of the ring and the bridge (where the cars drive). */
 export const ROAD_LIFT = RING.deckThick / 2
 
-/**
- * The cable-stayed bridge over the lake: an A-shaped pylon straddling the deck, `pylonAt` metres along the bridge
- * from the ring, its apex `pylonHeight` above the road and a mast above it carrying two fans of stays.
- */
+/** The lake viaduct: a box-girder deck on twin-column piers, no tower above the road. */
 export const BRIDGE = {
   roadHalf: 3.1,
   sidewalk: 0.9,
   depth: 1.6,
-  pylonAt: 50,
-  pylonHeight: 26,
-  mast: 8,
-  /** the legs' feet, either side of the deck, on the lake bed */
-  legSpread: 5.6,
-  /** stays per side in each fan: a short back span towards the ring (the flyover passes by it), a long one south */
-  staysBack: 7,
-  staysOut: 11,
-  staySpacing: 2.6,
 } as const
 
 /** The bridge over the lake, from the ring to the valley road. */

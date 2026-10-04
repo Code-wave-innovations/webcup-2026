@@ -49,10 +49,11 @@ export function loginPath(persona: Persona, retour?: string, ended: 'expired' | 
 
 /**
  * Where to go after signing in: the requested page when the role may open it (never another site,
- * never the login page), otherwise the home of the role's space.
+ * never the login page), otherwise the home of the space they signed into when the role may open it
+ * (admins may land on /agent or /admin; agents always on /agent).
  */
-export function destinationAfterLogin(role: Role, retour: string | null): string {
-  const home = homePath(personaOf(role))
+export function destinationAfterLogin(role: Role, retour: string | null, space: Persona = personaOf(role)): string {
+  const home = homePath(role === 'ADMIN' ? space : 'AGENT')
   if (!retour || !/^\/(agent|admin)(\/|$|\?)/.test(retour) || /^\/(agent|admin)\/connexion/.test(retour)) return home
   if (retour.startsWith('/admin') && role !== 'ADMIN') return home
   return retour

@@ -4,7 +4,7 @@ import { BRIDGE, BRIDGE_PATH, ROAD_LIFT } from '../cityConfig'
 import { relief } from './relief'
 import { acrossOf, type SweepCurve } from './sweep'
 
-/** A straight structural member between two points (a pylon leg, a stay, a pier column). */
+/** A straight structural member between two points (a pier column or a cap beam). */
 export interface Member {
   from: Vector3
   to: Vector3
@@ -22,25 +22,19 @@ export interface BridgeLayout {
   /** the road surface's centre line, parametrised by arc length (uniform t) */
   road: SweepCurve
   length: number
-  legs: Member[]
-  /** cross beam between the legs, under the deck */
-  strut: Member
-  mast: Member
-  stays: Member[]
   /** twin pier columns, and the beam on top of each pair */
   columns: Member[]
   caps: Member[]
   /** footings at the water line, for columns standing in the lake */
   footings: Vector3[]
   lamps: Lamp[]
-  /** across direction at the pylon (horizontal, right of the travel from the ring) */
+  /** across direction at mid-span (horizontal, right of the travel from the ring) */
   across: Vector3
 }
 
 const ROAD_EDGE = BRIDGE.roadHalf + BRIDGE.sidewalk
 const PIER_SPACING = 18
 const LAMP_SPACING = 16
-const LAKE_BED = -2.6
 /** lamp posts this close to the flyover camera are left out (it skims the deck before the first district) */
 const CAMERA_CLEARANCE = 3
 
@@ -60,7 +54,7 @@ function frameAt(road: SweepCurve, length: number, d: number) {
   return { point, tangent, across }
 }
 
-/** Lays the cable-stayed bridge out along BRIDGE_PATH: deck line, A-pylon, stays, piers and lamps. */
+/** Lays the viaduct out along BRIDGE_PATH: deck line, twin-column piers and lamps. */
 export function layoutBridge(): BridgeLayout {
   const spline = new CatmullRomCurve3(BRIDGE_PATH.map(([x, y, z]) => new Vector3(x, y + ROAD_LIFT, z)))
   const road: SweepCurve = {
@@ -69,49 +63,13 @@ export function layoutBridge(): BridgeLayout {
     getLength: () => spline.getLength(),
   }
   const length = road.getLength()
+  const mid = frameAt(road, length, length * 0.5)
 
-  // the pylon: two legs from the lake bed either side of the deck, meeting at the apex above its middle
-  const pylon = frameAt(road, length, BRIDGE.pylonAt)
-  const apex = pylon.point.clone().setY(pylon.point.y + BRIDGE.pylonHeight)
-  const legs = [-1, 1].map((side) => ({
-    from: pylon.point.clone().addScaledVector(pylon.across, side * BRIDGE.legSpread).setY(LAKE_BED),
-    to: apex.clone(),
-  }))
-  const strutY = pylon.point.y - BRIDGE.depth - 0.45
-  const legAt = (y: number) => BRIDGE.legSpread * (1 - (y - LAKE_BED) / (apex.y - LAKE_BED))
-  const strut = {
-    from: pylon.point.clone().addScaledVector(pylon.across, -legAt(strutY)).setY(strutY),
-    to: pylon.point.clone().addScaledVector(pylon.across, legAt(strutY)).setY(strutY),
-  }
-  const mast = { from: apex.clone(), to: apex.clone().setY(apex.y + BRIDGE.mast) }
-
-  // two fans of stays per side (back to the ring and out over the lake), the longest anchored highest on the mast
-  const stays: Member[] = []
-  for (const along of [-1, 1]) {
-    const count = along < 0 ? BRIDGE.staysBack : BRIDGE.staysOut
-    for (let k = 0; k < count; k++) {
-      const d = BRIDGE.pylonAt + along * (5 + k * BRIDGE.staySpacing)
-      const anchor = frameAt(road, length, d)
-      const height = 1.2 + (k * (BRIDGE.mast - 1.8)) / (BRIDGE.staysOut - 1)
-      for (const side of [-1, 1]) {
-        stays.push({
-          from: anchor.point.clone().addScaledVector(anchor.across, side * (ROAD_EDGE - 0.12)).setY(anchor.point.y + 0.25),
-          to: apex
-            .clone()
-            .addScaledVector(pylon.across, side * 0.42)
-            .addScaledVector(pylon.tangent, along * 0.45)
-            .setY(apex.y + height),
-        })
-      }
-    }
-  }
-
-  // twin columns every PIER_SPACING metres (not under the pylon), from the lake bed or the ground to the girder
+  // twin columns every PIER_SPACING metres, from the lake bed or the ground to the girder
   const columns: Member[] = []
   const caps: Member[] = []
   const footings: Vector3[] = []
   for (let d = 9; d < length - 4; d += PIER_SPACING) {
-    if (Math.abs(d - BRIDGE.pylonAt) < 10) continue
     const { point, across } = frameAt(road, length, d)
     const top = point.y - BRIDGE.depth - 0.35
     for (const side of [-1, 1]) {
@@ -124,13 +82,12 @@ export function layoutBridge(): BridgeLayout {
     caps.push({ from: point.clone().addScaledVector(across, -2.5).setY(top + 0.25), to: point.clone().addScaledVector(across, 2.5).setY(top + 0.25) })
   }
 
-  // lamp posts on the sidewalks, alternating sides, clear of the pylon
+  // lamp posts on the sidewalks, alternating sides, kept clear of the flyover camera
   const lamps: Lamp[] = []
   const camera = flyoverSamples()
   let side = 1
   for (let d = 6; d < length - 2; d += LAMP_SPACING / 2) {
     side = -side
-    if (Math.abs(d - BRIDGE.pylonAt) < 6) continue
     const { point, across } = frameAt(road, length, d)
     const foot = point.clone().addScaledVector(across, side * (ROAD_EDGE - 0.3)).setY(point.y + 0.18)
     const reach = across.clone().multiplyScalar(-side)
@@ -140,7 +97,7 @@ export function layoutBridge(): BridgeLayout {
     lamps.push({ foot, reach, head })
   }
 
-  return { road, length, legs, strut, mast, stays, columns, caps, footings, lamps, across: pylon.across }
+  return { road, length, columns, caps, footings, lamps, across: mid.across }
 }
 
 /** Shortest distance from point `p` to the segment of `member`. */

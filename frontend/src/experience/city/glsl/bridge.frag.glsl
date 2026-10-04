@@ -1,5 +1,5 @@
-// The cable-stayed bridge's structure (with tower.vert): uMat 0 = pale concrete (pylon, piers), 1 = painted steel
-// (railings, lamp posts), 2 = stay cables (steel, with an LED line that lights up at night and pulses upwards).
+// The viaduct's structure (with tower.vert): uMat 0 = pale concrete (piers), 1 = painted steel
+// (railings, lamp posts), 2 = unused stay-cable look kept for the ring-road columns that share this shader.
 uniform float uMat; uniform float uHautPylone; varying vec3 vPos; varying vec3 vN; varying vec3 vL; varying float vG;
 void main(){
   if(vPos.y<uCoupe) discard;
@@ -27,7 +27,7 @@ void main(){
   col+=cielBase(reflect(-V,N))*spec*0.18*(1.0-step(1.5,uMat)*0.5);
   vec3 led=mix(vec3(0.45,0.88,1.0),vec3(1.0,0.2,0.1),uAlerte);
   if(uMat<0.5){
-    // floodlit from its base at night, warm, fading up the pylon; a cool LED crown at the top
+    // floodlit from its base at night, warm, fading up the column; a cool LED crown at the top
     float haut=clamp(vPos.y/max(uHautPylone,1.0),0.0,1.0);
     col+=vec3(1.0,0.78,0.55)*alb*uNuit*(1.05*exp(-haut*2.8)+0.12);
     col+=led*smoothstep(0.985,1.0,haut)*uNuit*1.4*step(vPos.y,uHautPylone*1.02);
