@@ -103,7 +103,6 @@ export default function RequestsPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title={persona === 'ADMIN' ? 'Toutes les demandes' : 'Demandes citoyennes'}
-        codes={['F22', 'D17', 'D04']}
         lead={
           stats
             ? `${stats.awaiting_pickup} demande${stats.awaiting_pickup > 1 ? 's attendent' : ' attend'} une prise en charge. Les urgentes sont marquées en rouge, les nouvelles en ambre, les retards d’une horloge.`

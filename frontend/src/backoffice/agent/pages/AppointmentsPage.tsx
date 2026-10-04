@@ -86,7 +86,6 @@ export default function AppointmentsPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Rendez-vous"
-        codes={['F39', 'F40']}
         lead="Votre agenda avec les habitants, à l’heure de Terra Nova. Cliquez sur un rendez-vous pour le préparer, indiquer la présence et noter."
       />
 

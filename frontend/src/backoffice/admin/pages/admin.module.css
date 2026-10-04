@@ -169,6 +169,21 @@
   gap: 6px;
 }
 
+.usageReading {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.usageAction {
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border-left: 2px solid var(--color-ice);
+  background: var(--color-glass-light);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .priority {
   display: inline-flex;
   align-items: center;

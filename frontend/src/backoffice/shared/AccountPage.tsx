@@ -39,7 +39,7 @@ export default function AccountPage() {
   if (!user) return null
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader title="Mon compte" codes={['F53', 'F54', 'D02']} lead={`${user.email} · ${ROLE_LABEL[user.role]}. Votre profil et la sécurité de vos connexions.`} />
+      <PageHeader title="Mon compte" lead={`${user.email} · ${ROLE_LABEL[user.role]}. Votre profil et la sécurité de vos connexions.`} />
       <div className={[layout.grid, layout.cols2].join(' ')}>
         <ProfilePanel />
         <PasswordPanel />

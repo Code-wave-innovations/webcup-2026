@@ -41,7 +41,6 @@ export default function AnnouncementsPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader simulated
         title="Annonces municipales"
-        codes={['D06', 'D18', 'F30']}
         lead="Publiez les informations utiles à tous. Une annonce marquée importante notifie immédiatement tous les habitants."
         actions={
           <Button icon="plus" onClick={() => setDraft(EMPTY)}>

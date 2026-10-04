@@ -33,7 +33,6 @@ export default function SettingsPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader
         title="Paramètres de la plateforme"
-        codes={['D07', 'D08', 'F37', 'F53']}
         lead="Réglages globaux, appliqués dès l’enregistrement. Chaque réglage indique qui l’a modifié en dernier."
       />
       {settings.isPending ? (

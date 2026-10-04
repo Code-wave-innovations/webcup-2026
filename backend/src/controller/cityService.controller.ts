@@ -115,14 +115,15 @@ const cityServiceController = {
     const service = await cityServiceModel.getOne(where);
     if (!service) throw notFound("Service not found");
 
-    // F28: usage counter used to surface the most consulted services
-    await cityServiceModel.incrementViews(service.id);
+    // F28: only a resident's visit counts. Staff reading a sheet must not inflate "most used".
+    const counted = !isStaff(req.user);
+    if (counted) await cityServiceModel.incrementViews(service.id);
 
     const locale = resolveLocale(req);
     const [translated] = await translateServices([service], locale);
     res.json({
       ...withAvailability(translated),
-      view_count: service.view_count + 1,
+      view_count: service.view_count + (counted ? 1 : 0),
       procedures: await translate("Procedure", service.procedures, locale),
     });
   },
