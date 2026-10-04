@@ -49,6 +49,18 @@ export interface ManagedUser extends User {
   /** F37: too many wrong passwords lately */
   login_locked: boolean
   locked_until: string | null
+  /** F34: a reset code handed over by the city is waiting to be used until then (GET /api/users/:id) */
+  reset_code_expires_at?: string | null
+}
+
+/** F34: how the agent checked who they are talking to before handing over a reset code */
+export type IdentityCheck = 'ID_DOCUMENT' | 'IN_PERSON_KNOWN' | 'PHONE_QUESTIONS'
+
+/** POST /api/users/:id/reset-code: the only time the code is readable */
+export interface IssuedResetCode {
+  code: string
+  expires_at: string
+  minutes: number
 }
 
 /** GET /api/users/stats (admin) */
@@ -241,6 +253,76 @@ export interface NotificationPage {
   meta: PageMeta & { unread: number }
 }
 
+/* ─── Appointments (F39, F40) ───────────────────────────────────────────── */
+
+/** Where a moment falls in the city: every day and time in the server's time zone (never the browser's) */
+export interface CityClock {
+  /** "2026-10-07" */
+  day: string
+  /** "mardi 7 octobre 2026" */
+  day_label: string
+  /** "09:30" */
+  start_time: string
+  end_time: string
+  /** "Indian/Antananarivo" */
+  time_zone: string
+}
+
+/** GET /api/appointments/slots: a bookable slot, with its places left */
+export interface AppointmentSlot extends CityClock {
+  id: number
+  service_id: number
+  agent_id: number | null
+  starts_at: string
+  ends_at: string
+  location: string
+  capacity: number
+  booked: number
+  remaining: number
+  preparation_notes: string | null
+  is_active: boolean
+  /** "mardi 7 octobre 2026, 09:30 – 10:00" */
+  label: string
+  service: { id: number; slug: string; name: string; address: string | null; contact_phone: string | null; contact_email: string | null }
+  agent: { id: number; name: string; last_name: string } | null
+  /** F38: the service is interrupted during this slot (booking would be refused): why, and when it is back */
+  blocked: { reason: string; alternative: string | null; back_at: string | null } | null
+}
+
+export type AppointmentStatus = 'BOOKED' | 'COMPLETED' | 'NO_SHOW' | 'CANCELLED'
+
+/** An appointment as the API presents it (F39: everything to remove any doubt and to prepare) */
+export interface Appointment {
+  id: number
+  reference: string
+  status: AppointmentStatus
+  reason: string
+  created_at: string
+  cancelled_at: string | null
+  service_id: number
+  slot_id: number
+  procedure: { id: number; slug: string; title: string } | null
+  citizen?: { id: number; name: string; last_name: string; email: string; phone: string | null } | null
+  /** staff only */
+  agent_notes?: string | null
+  when: CityClock & { starts_at: string; ends_at: string; duration_minutes: number; label: string }
+  where: { location: string; service_address: string | null }
+  with: string | null
+  service: AppointmentSlot['service']
+  preparation: { notes: string | null; required_documents: unknown[]; bring: string[]; contact: { phone: string | null; email: string | null } }
+  /** F40: null offset and moment when the citizen asked for no reminder */
+  reminder: { offset_minutes: number | null; scheduled_for: string | null; sent_at: string | null }
+  calendar_url: string
+}
+
+export interface BookingInput {
+  slot_id: number
+  reason: string
+  procedure_id?: number
+  /** null: no reminder; absent: the city's default */
+  reminder_offset_minutes?: number | null
+}
+
 /* ─── Citizen requests (D04, D11, F25) ───────────────────────────────────── */
 
 export type RequestType = 'CONTACT' | 'PROCEDURE' | 'INCIDENT'
@@ -426,6 +508,7 @@ export interface Announcement {
   summary: string | null
   content: string
   category: AnnouncementCategory
+  /** F30: every resident was notified */
   is_important: boolean
   is_pinned: boolean
   published_at: string | null
@@ -434,16 +517,61 @@ export interface Announcement {
 
 /* ─── Alerts (D18, F29, F31) ─────────────────────────────────────────────── */
 
-export interface ActiveAlert {
+export type AlertSeverity = 'INFO' | 'WARNING' | 'CRITICAL'
+export type AlertAudience = 'ALL' | 'DISTRICTS' | 'VULNERABLE'
+
+/** F31: advice for one part of the public ("Personnes âgées : …"); plain text in older rows */
+export interface AlertRecommendation {
+  title?: string
+  text: string
+  audience?: string
+}
+
+/** GET /api/alerts (staff) */
+export interface CityAlert {
   id: number
+  created_at: string
   title: string
   message: string
+  /** free: GENERAL, FLOOD, HEATWAVE… */
   category: string
-  severity: 'INFO' | 'WARNING' | 'CRITICAL'
-  audience: 'ALL' | 'DISTRICTS' | 'VULNERABLE'
+  severity: AlertSeverity
+  audience: AlertAudience
+  /** what people must do, shown first */
+  instructions: string | null
+  recommendations: (string | AlertRecommendation)[] | null
+  source: string | null
   starts_at: string
+  /** null: until it is closed */
   ends_at: string | null
+  is_active: boolean
+  /** D18: notify the people concerned when it starts */
+  notify: boolean
+  notified_at: string | null
+  recipients: number
   districts: { id: number; code: string; name: string }[]
+  created_by: { id: number; name: string; last_name: string } | null
+}
+
+/** GET /api/alerts/active: what residents see, with whether it targets the signed-in person */
+export interface ActiveAlert extends CityAlert {
+  concerns_me: boolean
+}
+
+export interface AlertInput {
+  title: string
+  message: string
+  category?: string
+  severity: AlertSeverity
+  audience: AlertAudience
+  district_ids: number[]
+  instructions?: string | null
+  recommendations?: AlertRecommendation[] | null
+  source?: string | null
+  /** ISO; absent: now */
+  starts_at?: string
+  ends_at?: string | null
+  notify: boolean
 }
 
 /* ─── Terra Nova feed (D19) ──────────────────────────────────────────────── */

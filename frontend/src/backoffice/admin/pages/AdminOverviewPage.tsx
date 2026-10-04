@@ -202,7 +202,7 @@ export default function AdminOverviewPage() {
                   centerLabel="ouvertes"
                   summary="Répartition des demandes ouvertes par type"
                   slices={[
-                    { label: 'Messages', value: openByType.CONTACT ?? 0, color: 'var(--series-1)' },
+                    { label: 'Contacts', value: openByType.CONTACT ?? 0, color: 'var(--series-1)' },
                     { label: 'Démarches', value: openByType.PROCEDURE ?? 0, color: 'var(--series-2)' },
                     { label: 'Signalements', value: openByType.INCIDENT ?? 0, color: 'var(--series-3)' },
                   ]}

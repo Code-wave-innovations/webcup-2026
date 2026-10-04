@@ -1,59 +1,78 @@
+import { useEffect, useRef } from 'react'
 import { Pill, Plate } from '../../ui/Badges'
 import { Button } from '../../ui/Button'
 import { Icon } from '../../ui/Icon'
 import text from '../../ui/text.module.css'
-import { RESOLVED, STATUSES, type Report } from './reportModel'
-import { useReportStore } from './reportStore'
+import { announce } from '../../ui/toastStore'
+import { STATUSES, signalForStatus, urgencyLabel } from './reportModel'
+import { useReportStore, type TrackedReport } from './reportStore'
 import styles from './ReportPanel.module.css'
 
-/** Where the report stands, on a four-station lifeline. */
-export function ReportTracker({ report }: { report: Report }) {
-  const fromApi = useReportStore((s) => s.fromApi)
-  const { advance, reset } = useReportStore.getState()
-  const status = STATUSES[report.status]
-  const resolved = report.status === RESOLVED
+/** Where the report stands. The status comes from the API; nothing here advances it by hand. */
+export function ReportTracker({ report }: { report: TrackedReport }) {
+  const reset = useReportStore((s) => s.reset)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const step = signalForStatus(report.status)
+  const refused = report.status === 'REJECTED'
+  const resolved = step.index === 3 && !refused
+
+  useEffect(() => {
+    titleRef.current?.focus()
+  }, [report.id])
+
+  const copy = () => {
+    void navigator.clipboard.writeText(report.code).then(
+      () => announce('Référence copiée'),
+      () => announce('Sélectionnez la référence pour la copier'),
+    )
+  }
 
   return (
     <>
       <div className={styles.line}>
         <Plate>{report.code}</Plate>
-        <Pill tone={status.tone}>{status.name}</Pill>
+        <Pill tone={step.tone}>{step.name}</Pill>
       </div>
-      <h3>{report.title}</h3>
-      <p className={text.note}>
-        {report.sector}, {report.category.toLowerCase()}, urgence {report.urgency.toLowerCase()}
+      <h3 ref={titleRef} tabIndex={-1}>
+        Demande envoyée
+      </h3>
+      <p className={styles.confirm} role="status">
+        {report.confirmation}
       </p>
-      <ol className={[styles.timeline, resolved && styles.resolved].filter(Boolean).join(' ')}>
-        {STATUSES.map((step, i) => {
-          const state = i < report.status || resolved ? 'done' : i === report.status ? 'current' : 'upcoming'
-          return (
-            <li key={step.name} className={styles[state]} aria-current={i === report.status ? 'step' : undefined}>
-              <span className={styles.rail}>
-                <span className={styles.station}>{state === 'done' && <Icon name="check" size={13} stroke={3} />}</span>
-                {i < STATUSES.length - 1 && <span className={styles.track} />}
-              </span>
-              <span className={styles.step}>
-                <b>{step.name}</b>
-                <span className={text.note}>{i <= report.status ? step.note : 'À venir.'}</span>
-              </span>
-              <span className={styles.time}>{report.times[i] ?? ''}</span>
-            </li>
-          )
-        })}
-      </ol>
-      {fromApi ? (
-        <Button variant="ghost" small onClick={reset}>
-          Signaler autre chose
-        </Button>
-      ) : resolved ? (
-        <Button variant="ghost" small onClick={reset}>
-          Signaler autre chose
-        </Button>
+      <p className={text.note}>
+        {report.title}. {report.location}
+        {report.districtName ? `, ${report.districtName}` : ''}. {report.category}, urgence estimée {urgencyLabel(report.urgency).toLowerCase()}.
+      </p>
+      {refused ? (
+        <p className={text.note}>Ce signalement a été refusé. Le motif est dans le message du service.</p>
       ) : (
-        <Button variant="ghost" small onClick={advance}>
-          Faire avancer la démonstration
-        </Button>
+        <ol className={[styles.timeline, resolved && styles.resolved].filter(Boolean).join(' ')}>
+          {STATUSES.map((item, i) => {
+            const state = i < step.index || resolved ? 'done' : i === step.index ? 'current' : 'upcoming'
+            return (
+              <li key={item.name} className={styles[state]} aria-current={i === step.index ? 'step' : undefined}>
+                <span className={styles.rail}>
+                  <span className={styles.station}>{state === 'done' && <Icon name="check" size={13} stroke={3} />}</span>
+                  {i < STATUSES.length - 1 && <span className={styles.track} />}
+                </span>
+                <span className={styles.step}>
+                  <b>{i === step.index ? step.name : item.name}</b>
+                  <span className={text.note}>{i <= step.index ? item.note : 'À venir.'}</span>
+                </span>
+                <span className={styles.time}>{i === 0 ? report.receivedAt : ''}</span>
+              </li>
+            )
+          })}
+        </ol>
       )}
+      <div className={styles.geo}>
+        <Button type="button" variant="ghost" small onClick={copy}>
+          Copier la référence
+        </Button>
+        <Button type="button" variant="ghost" small onClick={reset}>
+          Signaler autre chose
+        </Button>
+      </div>
     </>
   )
 }

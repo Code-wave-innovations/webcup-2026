@@ -6,7 +6,7 @@ import prisma from "../lib/prisma";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors";
 import { notifyUser } from "../lib/notify";
 import { assertServiceAvailable } from "../lib/availability";
-import { HHMM_RE, formatSlotLabel } from "../lib/datetime";
+import { HHMM_RE, formatSlotLabel, slotClock } from "../lib/datetime";
 import { MAX_REMINDER_OFFSET_MINUTES, sendDueReminders } from "../lib/scheduler";
 import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zDate, zId } from "../lib/validation";
 import { resolveLocale } from "../lib/translations";
@@ -65,8 +65,8 @@ const bookSchema = z.object({
   slot_id: zId,
   reason: z.string().trim().min(3).max(2000),
   procedure_id: zId.optional(),
-  // Defaults to the platform setting reminder_default_minutes
-  reminder_offset_minutes: zReminder.optional(),
+  // Defaults to the platform setting reminder_default_minutes; null: no reminder (F40)
+  reminder_offset_minutes: zReminder.nullable().optional(),
 });
 
 const listQuerySchema = paginationSchema.extend({
@@ -75,6 +75,11 @@ const listQuerySchema = paginationSchema.extend({
   service_id: zId.optional(),
   // Staff only: appointments of the slots assigned to me
   mine: zBool.optional(),
+  // A period of the agenda (staff) or of one's own appointments
+  from: zDate.optional(),
+  to: zDate.optional(),
+  // Staff only: one citizen's appointments (their record, F34)
+  citizen_id: zId.optional(),
 });
 
 const staffUpdateSchema = z.object({
@@ -119,13 +124,35 @@ const appointmentController = {
       include: { ...slotInclude, ...bookedCount },
     });
     const locale = resolveLocale(req);
+    // F38 / F39: a slot during an interruption of its service would be refused at booking; it is said
+    // up front, with the reason and the return, instead of being offered
+    const interruptions = slots.length
+      ? await prisma.serviceInterruption.findMany({
+          where: {
+            service_id: { in: [...new Set(slots.map((slot) => slot.service_id))] },
+            impact: "UNAVAILABLE",
+            starts_at: { lte: slots[slots.length - 1].ends_at },
+            OR: [{ ends_at: null }, { ends_at: { gt: slots[0].starts_at } }],
+          },
+          select: { service_id: true, reason: true, alternative: true, starts_at: true, ends_at: true },
+        })
+      : [];
+    const blockingOf = (slot: { service_id: number; starts_at: Date; ends_at: Date }) => {
+      const found = interruptions.find(
+        (i) => i.service_id === slot.service_id && i.starts_at < slot.ends_at && (i.ends_at === null || i.ends_at > slot.starts_at)
+      );
+      return found ? { reason: found.reason, alternative: found.alternative, back_at: found.ends_at } : null;
+    };
     res.json(
       slots
         .map(({ _count, ...slot }) => ({
+          blocked: blockingOf(slot),
           ...slot,
           booked: _count.appointments,
           remaining: slot.capacity - _count.appointments,
           label: formatSlotLabel(slot.starts_at, slot.ends_at, locale),
+          // F39: day and times in the city's time zone, so the browser never regroups them in its own
+          ...slotClock(slot.starts_at, slot.ends_at, locale),
         }))
         .filter((slot) => staffView || slot.remaining > 0)
     );
@@ -245,7 +272,10 @@ const appointmentController = {
   book: async (req: Request, res: Response) => {
     const { reminder_offset_minutes, ...rest } = bookSchema.parse(req.body);
     await assertNotInMaintenance(req.user);
-    const input = { ...rest, reminder_offset_minutes: reminder_offset_minutes ?? (await getSetting("reminder_default_minutes")) };
+    const input = {
+      ...rest,
+      reminder_offset_minutes: reminder_offset_minutes === undefined ? await getSetting("reminder_default_minutes") : reminder_offset_minutes,
+    };
     const citizenId = req.user!.id;
 
     const preview = await prisma.appointmentSlot.findUnique({ where: { id: input.slot_id } });
@@ -279,7 +309,7 @@ const appointmentController = {
         throw new HttpError(409, "OVERLAPPING_APPOINTMENT", `You already have appointment ${overlapping.reference} at that time`);
       }
 
-      const reminderDue = slot.starts_at.getTime() - input.reminder_offset_minutes * 60_000 <= Date.now();
+      const reminderDue = input.reminder_offset_minutes !== null && slot.starts_at.getTime() - input.reminder_offset_minutes * 60_000 <= Date.now();
       return tx.appointment.create({
         data: {
           reference: generateAppointmentReference(),
@@ -314,15 +344,20 @@ const appointmentController = {
 
   // Citizens: their appointments. Staff: everyone's.
   getAll: async (req: Request, res: Response) => {
-    const { scope, status, service_id, mine, ...pagination } = listQuerySchema.parse(req.query);
+    const { scope, status, service_id, mine, from, to, citizen_id, ...pagination } = listQuerySchema.parse(req.query);
     const user = req.user!;
     const now = new Date();
+    const startsAt: Prisma.DateTimeFilter = {
+      ...(scope === "upcoming" ? { gte: now } : scope === "past" ? { lt: now } : {}),
+      ...(from ? { gte: scope === "upcoming" && from < now ? now : from } : {}),
+      ...(to ? { lte: to } : {}),
+    };
     const where: Prisma.AppointmentWhereInput = {
       status,
       service_id,
-      ...(isStaff(user) ? {} : { citizen_id: user.id }),
+      ...(isStaff(user) ? (citizen_id ? { citizen_id } : {}) : { citizen_id: user.id }),
       slot: {
-        ...(scope === "upcoming" ? { starts_at: { gte: now } } : scope === "past" ? { starts_at: { lt: now } } : {}),
+        ...(Object.keys(startsAt).length ? { starts_at: startsAt } : {}),
         ...(isStaff(user) && mine ? { agent_id: user.id } : {}),
       },
     };
@@ -386,7 +421,8 @@ const appointmentController = {
   // F40: the citizen chooses when to be reminded
   updateReminder: async (req: Request, res: Response) => {
     const appointment = await loadVisible(req);
-    const { reminder_offset_minutes } = z.object({ reminder_offset_minutes: zReminder }).parse(req.body);
+    const { reminder_offset_minutes } = z.object({ reminder_offset_minutes: zReminder.nullable() }).parse(req.body);
+    if (appointment.status !== "BOOKED") throw conflict("Only a booked appointment has a reminder");
     const updated = await prisma.appointment.update({
       where: { id: appointment.id },
       data: { reminder_offset_minutes, reminder_sent_at: null },

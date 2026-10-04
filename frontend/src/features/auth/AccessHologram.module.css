@@ -709,3 +709,38 @@
   display: grid;
   gap: 12px;
 }
+
+/* F34: how to get a code from the city, said before asking for it */
+.recoverInfo {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  background: var(--color-glass-light);
+  border-left: 2px solid var(--color-ice);
+}
+
+.recoverInfo svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--color-ice);
+}
+
+.recoverInfo strong {
+  color: var(--color-text);
+}
+
+.forgot {
+  align-self: center;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--color-ice);
+  text-decoration: underline dotted;
+  text-underline-offset: 4px;
+}
+
+.forgot:hover {
+  color: var(--color-ice-bright);
+}

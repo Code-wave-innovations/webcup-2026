@@ -72,6 +72,25 @@
   gap: 12px;
 }
 
+.geo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.confirm {
+  margin: 0;
+  font-weight: 600;
+}
+
+.preview {
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border: 1px solid var(--color-line);
+}
+
 /* tracking: a lifeline with four stations */
 .timeline {
   display: flex;

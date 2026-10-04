@@ -1,13 +1,36 @@
+import { useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchOwnRequest, requestKeys } from '../../api/requests'
+import { useCitizenSessionStore } from '../../api/session'
+import { useAuthStore } from '../auth/authStore'
+import { useMaintenanceMode } from '../maintenance/maintenanceMode'
+import { PlatformIncident } from '../maintenance/PlatformIncident'
 import { ReportForm } from './ReportForm'
 import { ReportTracker } from './ReportTracker'
-import { RequestConfirmation } from './RequestConfirmation'
 import { useReportStore } from './reportStore'
 
-/** Report a problem, then follow it until it is resolved. */
+/** Report a problem, then follow it with the status the services actually set. */
 export function ReportPanel() {
   const report = useReportStore((s) => s.report)
-  const confirmation = useReportStore((s) => s.confirmation)
+  const syncStatus = useReportStore((s) => s.syncStatus)
+  const citizenToken = useCitizenSessionStore((s) => s.token)
+  // Film JWT only if the citizen slot is empty (mirrored airlock login / legacy).
+  const readOnly = useMaintenanceMode()
+  const filmToken = useAuthStore((s) => s.session?.token)
+  const token = citizenToken ?? filmToken
+  const live = useQuery({
+    queryKey: [...requestKeys.detail(report?.id ?? 0), 'film'],
+    queryFn: () => fetchOwnRequest(report!.id, token ?? ''),
+    enabled: !!report && !!token,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+
+  useEffect(() => {
+    if (live.data) syncStatus(live.data.status)
+  }, [live.data, syncStatus])
+
   if (report) return <ReportTracker report={report} />
-  if (confirmation) return <RequestConfirmation />
+  if (readOnly) return <PlatformIncident nested />
   return <ReportForm />
 }

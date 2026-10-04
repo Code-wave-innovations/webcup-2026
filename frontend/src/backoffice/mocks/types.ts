@@ -138,23 +138,6 @@ export interface Announcement {
 export type AlertSeverity = 'INFO' | 'WARNING' | 'CRITICAL'
 export type AlertAudience = 'ALL' | 'DISTRICTS' | 'VULNERABLE'
 
-export interface Alert {
-  id: number
-  title: string
-  message: string
-  category: string
-  severity: AlertSeverity
-  audience: AlertAudience
-  district_ids: number[]
-  instructions: string | null
-  recommendations: string[]
-  source: string | null
-  starts_at: string
-  ends_at: string | null
-  is_active: boolean
-  notified: number
-}
-
 /** F30: a global broadcast (one row per send; the backend fans it out as Notification rows). */
 export interface Broadcast {
   id: number

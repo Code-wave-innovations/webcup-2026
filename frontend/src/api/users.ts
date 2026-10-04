@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { http } from './client'
 import { queryClient } from './queryClient'
-import type { ManagedUser, Paginated, Role, StaffMember, User, UserSecurity, UserStats } from './types'
+import type { IdentityCheck, IssuedResetCode, ManagedUser, Paginated, Role, StaffMember, User, UserSecurity, UserStats } from './types'
 
 // F34 / D08 / D09: accounts as the staff sees them (/api/users). Agents only reach citizen
 // accounts and never their e-mail, password or role; admins reach every account.
@@ -106,6 +106,22 @@ export const useUnlockUser = () =>
 export const useDeleteUser = () =>
   useMutation({
     mutationFn: (id: number) => http.delete(`/users/${id}`).then((r) => r.data),
+    onSuccess: refreshUsers,
+  })
+
+/* F34: getting back into one's account, with the city's help */
+
+/** After the agent checked the person's identity: a one-time code, shown once, that the person types in the airlock */
+export const useIssueResetCode = () =>
+  useMutation({
+    mutationFn: ({ id, ...input }: { id: number; verification: IdentityCheck; identity_confirmed: true; note?: string }) =>
+      http.post<IssuedResetCode>(`/users/${id}/reset-code`, input).then((r) => r.data),
+    onSuccess: refreshUsers,
+  })
+
+export const useCancelResetCode = () =>
+  useMutation({
+    mutationFn: (id: number) => http.delete(`/users/${id}/reset-code`).then((r) => r.data),
     onSuccess: refreshUsers,
   })
 

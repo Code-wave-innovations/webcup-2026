@@ -105,6 +105,11 @@ model User {
   // F53: TOTP secret (set by setup, active once two_factor_enabled_at is set)
   two_factor_secret     String?
   two_factor_enabled_at DateTime?
+  // F34: one-time code an agent hands over after checking the person's identity, so that they set a
+  // new password themselves (the agent never sees it). Only the hash is kept; single use, 30 min.
+  reset_code_hash       String?
+  reset_code_expires_at DateTime?
+  reset_code_by_id      Int?
 
   district          District?               @relation(fields: [district_id], references: [id], onDelete: SetNull)
   requests          CitizenRequest[]        @relation("RequestCitizen")
@@ -334,12 +339,17 @@ model Alert {
   starts_at       DateTime      @default(now())
   ends_at         DateTime?
   is_active       Boolean       @default(true)
+  // D18: notify the people concerned when the alert starts (at once, or by the scheduler when programmed)
+  notify          Boolean       @default(false)
+  notified_at     DateTime?
+  recipients      Int           @default(0)
   created_by_id   Int?
 
   created_by User?           @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
   districts  AlertDistrict[]
 
   @@index([is_active, starts_at])
+  @@index([notify, notified_at])
 }
 
 model AlertDistrict {
@@ -482,8 +492,8 @@ model Appointment {
   status                  AppointmentStatus @default(BOOKED)
   // Agent-side notes, never shown to the citizen
   agent_notes             String?           @db.Text
-  // F40: how long before the appointment the reminder is sent
-  reminder_offset_minutes Int               @default(1440)
+  // F40: how long before the appointment the reminder is sent; null: the citizen asked for none
+  reminder_offset_minutes Int?              @default(1440)
   reminder_sent_at        DateTime?
   cancelled_at            DateTime?
 

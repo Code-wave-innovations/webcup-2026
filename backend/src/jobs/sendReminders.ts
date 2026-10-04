@@ -3,10 +3,11 @@
 // Cron (every 5 min): cd ~/<app folder> && <node path from cPanel> dist/src/jobs/sendReminders.js
 require("dotenv").config();
 import prisma from "../lib/prisma";
-import { sendDueReminders } from "../lib/scheduler";
+import { sendDueReminders, sendStartedAlerts } from "../lib/scheduler";
 
-sendDueReminders()
-  .then((sent) => console.log(`${new Date().toISOString()} reminders sent: ${sent}`))
+// D18: the alerts programmed for later are notified by the same pass
+Promise.all([sendDueReminders(), sendStartedAlerts()])
+  .then(([sent, alerts]) => console.log(`${new Date().toISOString()} reminders sent: ${sent}, alerts notified: ${alerts}`))
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;

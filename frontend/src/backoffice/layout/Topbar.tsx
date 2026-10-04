@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { messageFor } from '../../api/errors'
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '../../api/notifications'
 import { useRequest } from '../../api/requests'
-import { signOut } from '../../api/session'
+import { signOutStaff } from '../../api/session'
 import type { AppNotification } from '../../api/types'
 import { flatNav } from '../nav'
 import type { Persona } from '../mocks/types'
@@ -161,7 +161,7 @@ export function Topbar({ persona, onOpenMenu, onOpenPalette }: TopbarProps) {
   // RequireStaff then shows the login page, which returns here after the next sign-in
   const signOutNow = () => {
     close()
-    signOut()
+    signOutStaff()
     toast('Vous êtes déconnecté·e.', 'info')
   }
 

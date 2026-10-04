@@ -98,9 +98,9 @@ Sont supprimés :
 
 ## 6. Étapes
 
-- [ ] Backend : `from`, `to` et `citizen_id` sur la liste ; champs de rappel ; `null` pour « Pas de rappel » ; `{ sent }`
-- [ ] `src/api/appointments.ts` et ses types
-- [ ] `AppointmentsPage` : agenda, statuts, notes, rappel affiché
+- [x] Backend : `from`, `to` et `citizen_id` sur la liste ; champs de rappel ; `null` pour « Pas de rappel » ; `{ sent }`
+- [x] `src/api/appointments.ts` et ses types
+- [x] `AppointmentsPage` : agenda, statuts, notes, rappel affiché (jours et heures de la ville, « Absent » seulement après le début)
 - [ ] `SlotsPage` : calendrier, générateur côté serveur, modification, suppression, rappels à la demande
 - [ ] Badge `appointmentsToday` et tuile du tableau de bord
 - [ ] Rendez-vous dans la fiche citoyen (BO-04)

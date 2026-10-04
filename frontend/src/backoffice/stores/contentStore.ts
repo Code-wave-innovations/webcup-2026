@@ -1,18 +1,16 @@
 import { create } from 'zustand'
-import { ALERTS, ANNOUNCEMENTS, BROADCASTS } from '../mocks/content'
+import { ANNOUNCEMENTS, BROADCASTS } from '../mocks/content'
 import { CITIZENS } from '../mocks/people'
-import type { Alert, AlertAudience, Announcement, Broadcast } from '../mocks/types'
+import type { AlertAudience, Announcement, Broadcast } from '../mocks/types'
 import { toast } from './toastStore'
 
 interface ContentState {
   announcements: Announcement[]
-  alerts: Alert[]
   broadcasts: Broadcast[]
 }
 
 export const useContentStore = create<ContentState>()(() => ({
   announcements: ANNOUNCEMENTS,
-  alerts: ALERTS,
   broadcasts: BROADCASTS,
 }))
 
@@ -29,7 +27,7 @@ export function estimateAudience(audience: AlertAudience | 'STAFF', districtIds:
   return pool.filter((c) => c.is_vulnerable && inDistricts(c)).length * scale
 }
 
-/* Simulated content management (D06, D18, F29, F30, F31). */
+/* Simulated content management (D06, F30); alerts (D18, F29, F31) are bound to the API. */
 
 export function saveAnnouncement(input: Omit<Announcement, 'id' | 'created_at' | 'published_at'> & { id?: number }, actorId: number) {
   const now = new Date().toISOString()
@@ -54,22 +52,6 @@ export function setAnnouncementStatus(id: number, status: Announcement['status']
   const announcement = useContentStore.getState().announcements.find((a) => a.id === id)
   if (!announcement) return
   saveAnnouncement({ ...announcement, status }, actorId)
-}
-
-export function createAlert(input: Omit<Alert, 'id' | 'notified' | 'is_active' | 'starts_at' | 'ends_at'>) {
-  const notified = estimateAudience(input.audience, input.district_ids)
-  const alert: Alert = { ...input, id: nextId++, notified, is_active: true, starts_at: new Date().toISOString(), ends_at: null }
-  useContentStore.setState((s) => ({ alerts: [alert, ...s.alerts] }))
-  toast(`Alerte diffusée à ${notified.toLocaleString('fr-FR')} personnes`, 'alert')
-}
-
-export function closeAlert(id: number) {
-  const alert = useContentStore.getState().alerts.find((a) => a.id === id)
-  if (!alert) return
-  useContentStore.setState((s) => ({
-    alerts: s.alerts.map((a) => (a.id === id ? { ...a, is_active: false, ends_at: new Date().toISOString() } : a)),
-  }))
-  toast(`Alerte « ${alert.title} » terminée`, 'info')
 }
 
 export function sendBroadcast(input: Pick<Broadcast, 'title' | 'body' | 'audience' | 'district_ids'>, actorId: number, silent = false) {

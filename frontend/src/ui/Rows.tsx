@@ -24,6 +24,6 @@ export function RowButtons(props: HTMLAttributes<HTMLDivElement>) {
   return <div className={styles.rows} {...props} />
 }
 
-export function RowButton({ type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button type={type} className={styles.row} {...props} />
+export function RowButton({ type = 'button', className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button type={type} className={[styles.row, className].filter(Boolean).join(' ')} {...props} />
 }

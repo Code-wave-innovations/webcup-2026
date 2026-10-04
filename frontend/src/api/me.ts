@@ -1,8 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { startRegistration, type PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/browser'
 import { http } from './client'
+import { deleteMyAccount } from './deleteAccount'
 import { queryClient } from './queryClient'
-import { replaceToken, useSessionStore } from './session'
+import { replaceToken, setSessionUser } from './session'
 import type { MySecurity, PasskeyInfo, TwoFactorSetup, User } from './types'
 
 // D03 / D08: the signed-in account, as the server sees it now (role or deactivation may have changed)
@@ -30,7 +31,11 @@ const USER_KEYS = [
 ] as const satisfies readonly (keyof User)[]
 
 /** GET /api/me adds counters to the account; the session only keeps the account itself. */
-const toSessionUser = (me: User): User => Object.fromEntries(USER_KEYS.map((key) => [key, me[key]])) as unknown as User
+const toSessionUser = (me: User): User =>
+  ({
+    ...(Object.fromEntries(USER_KEYS.map((key) => [key, me[key]])) as unknown as User),
+    district: me.district,
+  }) as User
 
 /** Refreshes the session's copy of the account, so a role change shows without signing in again. */
 export const useMe = (enabled = true) =>
@@ -38,7 +43,7 @@ export const useMe = (enabled = true) =>
     queryKey: meKeys.all,
     queryFn: async () => {
       const me = (await http.get<User>('/me')).data
-      useSessionStore.getState().setUser(toSessionUser(me))
+      setSessionUser(toSessionUser(me))
       return me
     },
     enabled,
@@ -57,12 +62,16 @@ export const useMySecurity = () =>
 
 const refreshSecurity = () => void queryClient.invalidateQueries({ queryKey: mySecurityKeys.all })
 
+export type ProfileUpdate = Partial<
+  Pick<User, 'name' | 'last_name' | 'phone' | 'address' | 'district_id' | 'is_vulnerable' | 'locale' | 'preferences'>
+>
+
 export const useUpdateMe = () =>
   useMutation({
     /** `preferences` replaces the stored object: merge it with the current one first */
-    mutationFn: (changes: Partial<Pick<User, 'name' | 'last_name' | 'phone' | 'preferences'>>) => http.patch<User>('/me', changes).then((r) => r.data),
+    mutationFn: (changes: ProfileUpdate) => http.patch<User>('/me', changes).then((r) => r.data),
     onSuccess: (user) => {
-      useSessionStore.getState().setUser(toSessionUser(user))
+      setSessionUser(toSessionUser(user))
       void queryClient.invalidateQueries({ queryKey: meKeys.all })
     },
   })
@@ -122,3 +131,6 @@ export const useDeletePasskey = () =>
     mutationFn: (id: number) => http.delete(`/me/passkeys/${id}`).then((r) => r.data),
     onSuccess: refreshSecurity,
   })
+
+/** F33: citizen deletes own account — password re-entry required. */
+export const useDeleteMyAccount = () => useMutation({ mutationFn: deleteMyAccount })

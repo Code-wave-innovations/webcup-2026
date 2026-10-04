@@ -22,6 +22,7 @@ interface LoginPanelProps {
   onCaps: (event: KeyboardEvent<HTMLInputElement>) => void
   /** absent in the light version (F96): no face login */
   onFace?: () => void
+  onForgot: () => void
   onBack: () => void
 }
 
@@ -40,6 +41,7 @@ export function LoginPanel({
   onToggleReveal,
   onCaps,
   onFace,
+  onForgot,
   onBack,
 }: LoginPanelProps) {
   const checking = state.status === 'checking'
@@ -127,6 +129,10 @@ export function LoginPanel({
             <Icon name="face" size={14} /> Votre visage sera associé au compte qui entre maintenant.
           </p>
         )}
+        {/* F34: forgotten code, or a lock that will not wait: the city checks who you are and gives you a code */}
+        <button type="button" className={styles.forgot} disabled={checking} onClick={onForgot}>
+          Code oublié ? J’ai un code de la mairie
+        </button>
         <Button type="button" variant="ghost" className={styles.back} disabled={checking} onClick={onBack}>
           Retour
         </Button>

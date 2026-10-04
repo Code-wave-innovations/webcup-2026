@@ -48,6 +48,9 @@ export function IdentifyPanel({ identifier, error, checking, identifierRef, onCh
             'Continuer'
           )}
         </Button>
+        <ButtonRouteLink to="/ville/contact" variant="ghost" small className={styles.staffLink}>
+          Écrire à la mairie
+        </ButtonRouteLink>
         <ButtonRouteLink to="/agent" variant="ghost" small className={styles.staffLink}>
           Accès agent / administration
         </ButtonRouteLink>

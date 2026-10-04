@@ -27,17 +27,21 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 
 | Method & path | Access | Feature |
 |---|---|---|
-| `POST /api/auth/register` (JSON or multipart; optional file `profile`) · `POST /api/auth/login` · `GET /api/auth/exists?email=` (`{ exists }`, no session) · `GET /api/auth/by-email?email=` (passwordless session, same payload as login; still asks the code when the account has a second factor) | public | D01, D03 |
+| `POST /api/auth/register` (JSON or multipart; optional file `profile`) · `POST /api/auth/login` · `GET /api/auth/exists?email=` (`{ exists }`, no session) | public | D01, D03 |
+| `POST /api/auth/face` (multipart `email` + `image`): the API asks the face engine (`/verify`, liveness) whether it is that person, then answers like login (a second factor still asks its code). `FACE_MISMATCH` counts as a failed login; `FACE_NOT_ENROLLED`, `FACE_UNUSABLE`, `FACE_UNAVAILABLE` (no `FACE_API_URL`) do not | public | D03, F34 |
+| `POST /api/auth/recover` `{ email, code, password }`: new password with the one-time code an agent handed over; signs every other device out, notifies the holder. A wrong code counts as a failed login | public | F34 |
 | `POST /api/auth/2fa/verify { challenge_token, code \| recovery_code }` · `POST /api/auth/2fa/setup { setup_token }` · `POST /api/auth/2fa/activate { setup_token, code }` | public (step tokens) | F53 |
 | `POST /api/auth/passkey/options { email? }` · `POST /api/auth/passkey/verify { challenge_token, response }` | public | D02 |
 | `GET/PATCH /api/me` · `PATCH /api/me/password` · `POST /api/me/onboarding/complete` | logged in | D03, D12, D14, F23/F24 (`preferences`) |
+| `POST /api/me/face` (multipart `img0`…`img9`): links the frames to one's own face in the engine (`{ committed }`) | logged in | D03, F34 |
 | `GET /api/me/security` · `DELETE /api/me/devices/:id` · `POST /api/me/sessions/revoke` (new token) · `POST /api/me/2fa/setup\|enable\|disable` · `POST /api/me/passkeys/register/options\|verify` · `GET /api/me/passkeys` · `DELETE /api/me/passkeys/:id` | logged in | D02, F53, F54 |
 | `DELETE /api/me` body `{ password, confirm: true }` | citizen | F33 |
-| `GET /api/users` · `GET/PATCH/DELETE /api/users/:id` · `POST /api/users/:id/unlock-login` | staff (agents: citizens only, no email/password/role changes) | D08, D09, F34 |
+| `GET /api/users` · `GET/PATCH /api/users/:id` · `POST /api/users/:id/unlock-login` | staff (agents: citizens only, no email/password/role changes; the holder is notified of each change) | D08, D09, F34 |
+| `POST /api/users/:id/reset-code` `{ verification: ID_DOCUMENT\|IN_PERSON_KNOWN\|PHONE_QUESTIONS, identity_confirmed: true, note? }` → `{ code, expires_at }` shown once (30 min, single use, hash only in DB) · `DELETE /api/users/:id/reset-code` | staff (agents: citizens only) | F34 |
 | `GET /api/users/staff` | staff | F22 (active agents and admins a request can be assigned to) |
 | `POST /api/users` | admin | D08 |
 | `GET /api/security/overview` (adds `locked_accounts`, `two_factor`) · `GET /api/security/login-attempts` · `GET /api/security/new-devices?hours=24` | admin | F37, F53, F54 |
-| `GET /api/users/stats` · `GET /api/users/:id/security` · `GET /api/users/:id/devices` · `POST /api/users/:id/revoke-sessions` · `POST /api/users/:id/2fa/reset` · `DELETE /api/users/:id/passkeys` | admin | D08, F53, F54, D02 |
+| `DELETE /api/users/:id` · `GET /api/users/stats` · `GET /api/users/:id/security` · `GET /api/users/:id/devices` · `POST /api/users/:id/revoke-sessions` · `POST /api/users/:id/2fa/reset` · `DELETE /api/users/:id/passkeys` | admin | D08, F53, F54, D02 |
 | `GET /api/audit-logs?actor_id=&entity=&entity_id=&action=&from=&to=&q=&page=` | staff (agents: no `security.*`/`auth.*` entry, no IP) | F47, F48 |
 | `GET /api/audit-logs/export.csv` (same filters, UTF-8 with BOM, `;`) · `GET /api/audit-logs/stats?days=14` | admin | F47 |
 | `GET /api/permissions` | staff | D08, D09 (the roles matrix of `src/lib/permissions.ts`) |
@@ -64,15 +68,16 @@ Demo accounts: `admin@novaterra.local` (Ada) and `noa.admin@novaterra.local`; ag
 | `GET /api/announcements` · `GET /api/announcements/:id` | public | D06 |
 | `POST /api/announcements` · `PATCH /:id` · `POST /:id/publish` · `DELETE /:id` | staff | D06, F30 |
 | `GET /api/alerts/active` · `GET /api/alerts/:id` | public | D18, F29, F31 |
-| `GET /api/alerts` · `POST /api/alerts` · `PATCH /:id` · `POST /:id/close` | staff | D18, F29, F31 |
+| `GET /api/alerts` · `POST /api/alerts` · `PATCH /:id` · `POST /:id/close` | staff | D18, F29, F31 (`notify` sends the notifications when the alert starts: at once, or from the scheduler for a programmed `starts_at`; `recipients` keeps the count) |
+| `GET /api/notifications/audience?audience=&district_ids=1,3` | staff | D18, F29, F31 (`{ count }` of the people an alert would notify) |
 | `GET /api/notifications` · `GET /unread-count` · `PATCH /:id/read` · `POST /read-all` · `DELETE /:id` | logged in | F30 |
 | `GET /api/service-interruptions?service_id=&scope=current\|upcoming\|active\|all` | public | F38 |
 | `POST /api/service-interruptions` · `PATCH /:id` · `POST /:id/end` · `DELETE /:id` | staff | F38 |
 | `GET /api/transit/lines` · `/lines/:idOrCode?day=` (stops with `times` and `times_by_direction`) · `/stops?district_id=&q=` · `/stops/:id?day=&at=` · `/disruptions` | public | F36 |
 | `POST/PATCH/DELETE /api/transit/lines[/:id]` · `PATCH /lines/:id/status` · `PUT /lines/:id/stops` · `PUT /lines/:id/timetable` (`departures` list, or `first`/`last`/`every_minutes`/`minutes_between_stops`/`return_trip` generated in both directions by default) · stops CRUD | staff | F36 |
-| `GET /api/appointments/slots?service_id=&from=&to=` | public | F39 |
+| `GET /api/appointments/slots?service_id=&agent_id=&from=&to=` (staff: `all=true` adds full and inactive slots) | public | F39 (each slot has `label`, and `day`, `day_label`, `start_time`, `end_time`, `time_zone` in the server time zone; `blocked: { reason, alternative, back_at }` when an interruption of the service covers it, F38) |
 | `POST /api/appointments/slots` · `POST /slots/bulk` · `PATCH/DELETE /slots/:id` | staff | F39 |
-| `POST /api/appointments` · `GET /api/appointments` · `GET /:id` · `GET /:id/ics` · `POST /:id/cancel` · `PATCH /:id/reminder` | logged in (own) / staff | F39, F40 |
+| `POST /api/appointments` · `GET /api/appointments?scope=&status=&mine=&from=&to=&citizen_id=` · `GET /:id` · `GET /:id/ics` · `POST /:id/cancel` · `PATCH /:id/reminder` | logged in (own) / staff (`mine`, `citizen_id`) | F39, F40 (`reminder_offset_minutes: null` = no reminder: the scheduler skips it and the `.ics` has no alarm; omitted = `reminder_default_minutes`) |
 | `PATCH /api/appointments/:id` (status, agent_notes) · `POST /api/appointments/reminders/run` | staff · admin | F39, F40 |
 | `GET /api/terra-nova/requests` | staff | D19 (needs `TERRA_NOVA_API_KEY`, sent as `X-Webcup-Api-Key`) |
 | `GET /api/settings/public` | public | D07, D08 (home blocks, registrations, maintenance, contacts, emergency numbers, default reminder) |
@@ -128,7 +133,7 @@ Booking returns `when` (ISO dates, duration, time zone, readable label), `where`
 ### Deploying on cPanel
 
 - cPanel serves Node apps through Passenger. After deploying, log in as admin and call `GET /api/security/client-ip`: if `x_forwarded_for` holds your IP, add `TRUST_PROXY=1` to the app's environment variables and restart. Without a known client IP, per-IP limits are skipped and only the per-account lock applies.
-- Passenger stops idle apps, which pauses the in-process reminder job. Add a cPanel Cron Job every 5 minutes: `cd ~/<app folder> && <node path shown by cPanel> dist/src/jobs/sendReminders.js` (`npm run reminders` locally).
+- Passenger stops idle apps, which pauses the in-process reminder job (it also notifies the programmed alerts once they start, D18). Add a cPanel Cron Job every 5 minutes: `cd ~/<app folder> && <node path shown by cPanel> dist/src/jobs/sendReminders.js` (`npm run reminders` locally).
 - Set `TZ` in the app's environment variables so timetables and appointment labels use the city's time zone.
 
 ### CRUD generator (simple tables)

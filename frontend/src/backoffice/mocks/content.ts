@@ -1,4 +1,4 @@
-import type { Alert, Announcement, Broadcast } from './types'
+import type { Announcement, Broadcast } from './types'
 import { daysAgo, hoursAgo, minutesAgo } from './time'
 
 export const ANNOUNCEMENTS: Announcement[] = [
@@ -34,26 +34,6 @@ export const ANNOUNCEMENTS: Announcement[] = [
   },
 ]
 
-export const ALERTS: Alert[] = [
-  {
-    id: 1, title: 'Montée des eaux dans le Quartier Sud', message: 'Une montée inhabituelle du niveau de l’eau est observée dans le Quartier Sud.',
-    category: 'FLOOD', severity: 'CRITICAL', audience: 'DISTRICTS', district_ids: [3],
-    instructions: 'Évitez les berges et les sous-sols, montez dans les étages et suivez les consignes des secours.',
-    recommendations: [], source: 'Centre de surveillance environnementale', starts_at: hoursAgo(2), ends_at: null, is_active: true, notified: 214,
-  },
-  {
-    id: 2, title: 'Vague de chaleur extrême', message: 'Une vague de chaleur extrême touche plusieurs secteurs de la ville.',
-    category: 'HEATWAVE', severity: 'WARNING', audience: 'VULNERABLE', district_ids: [1, 2],
-    instructions: 'Restez au frais, hydratez-vous et prenez des nouvelles de vos proches isolés.',
-    recommendations: ['Personnes âgées : buvez de l’eau toutes les heures.', 'Enfants : évitez les sorties entre 12h et 16h.', 'Malades chroniques : contactez le centre de santé au moindre malaise.'],
-    source: 'Agence sanitaire de Terra Nova', starts_at: hoursAgo(5), ends_at: null, is_active: true, notified: 87,
-  },
-  {
-    id: 3, title: 'Réunion publique du Haut Conseil', message: 'Réunion ouverte à tous ce soir à 19h, place du Conseil.',
-    category: 'GENERAL', severity: 'INFO', audience: 'ALL', district_ids: [], instructions: null, recommendations: [],
-    source: 'Haut Conseil de la Ville', starts_at: daysAgo(1), ends_at: hoursAgo(10), is_active: false, notified: 1240,
-  },
-]
 
 export const BROADCASTS: Broadcast[] = [
   { id: 1, title: 'Annonce importante : ouverture de la plateforme', body: 'Créez votre compte dès aujourd’hui.', audience: 'ALL', district_ids: [], recipients: 1240, read_rate: 0.72, sent_at: daysAgo(2), author_id: 1 },

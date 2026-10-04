@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useDirectorStore } from '../director/directorStore'
 import { frameBus, frameState } from '../director/frameState'
 import { nova, novaSignals } from './behavior/novaStore'
 import styles from './NovaHitZone.module.css'
@@ -13,11 +14,17 @@ const setCurious = (on: boolean) => () => {
  */
 export function NovaHitZone() {
   const ref = useRef<HTMLButtonElement>(null)
+  const consoleOpen = useDirectorStore((s) => s.console)
 
   useEffect(() => {
     const unsubscribe = frameBus.subscribe(() => {
       const button = ref.current
       if (!button) return
+      if (useDirectorStore.getState().console) {
+        if (button.dataset.visible !== 'false') button.dataset.visible = 'false'
+        novaSignals.curious = false
+        return
+      }
       const { box } = frameState.nova
       const visible = box.visible && box.height > 24
       if (button.dataset.visible !== String(visible)) button.dataset.visible = String(visible)
@@ -33,6 +40,8 @@ export function NovaHitZone() {
       novaSignals.curious = false
     }
   }, [])
+
+  if (consoleOpen) return null
 
   return (
     <button

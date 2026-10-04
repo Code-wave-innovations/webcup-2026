@@ -1,0 +1,351 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hubGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.compteStack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profileForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.profileRow {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.dangerZone {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-color: color-mix(in srgb, var(--color-alert) 45%, var(--color-line));
+}
+
+.dangerZone h2 {
+  color: var(--color-alert);
+}
+
+.consequences {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--color-text-muted);
+}
+
+.dangerButton {
+  align-self: flex-start;
+  border-color: var(--color-alert);
+  color: var(--color-alert);
+  background: color-mix(in srgb, var(--color-alert) 12%, transparent);
+}
+
+.dangerButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-alert) 22%, transparent);
+}
+
+.dialogStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.checkboxRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.95rem;
+}
+
+.checkboxRow input {
+  margin-top: 0.25rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+}
+
+
+.card h2 {
+  margin: 0;
+  font: 700 1.15rem/1.2 var(--font-display);
+  letter-spacing: 0.04em;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-line);
+  background: var(--color-glass);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  border-color: var(--color-ice);
+  color: var(--color-ice-bright);
+  box-shadow: inset 0 -2px 0 var(--color-ice);
+}
+
+.tabCount {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+
+.searchRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.searchRow input {
+  flex: 1 1 220px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-line);
+  background: var(--color-glass);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  gap: 6px 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--color-line);
+  background: var(--color-glass);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.row:hover {
+  border-color: var(--color-ice);
+  background: var(--color-glass-light);
+}
+
+.rowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.rowTitle {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0 10px;
+  border: 1px solid var(--color-line);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.pill[data-tone='waiting'] {
+  border-color: var(--color-ice);
+  color: var(--color-ice-bright);
+}
+
+.pill[data-tone='rejected'] {
+  border-color: var(--color-alert);
+  color: var(--color-alert);
+}
+
+.pill[data-tone='done'] {
+  border-color: color-mix(in srgb, var(--color-ice) 40%, var(--color-line));
+  color: var(--color-text-muted);
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.headerBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.refRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.frise {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 0;
+  margin: 8px 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.frise li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 120px;
+  min-width: 110px;
+  padding-right: 12px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.friseDot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-line);
+  background: transparent;
+}
+
+.frise li[data-state='done'] .friseDot {
+  border-color: var(--color-ice);
+  background: var(--color-ice);
+}
+
+.frise li[data-state='current'] {
+  color: var(--color-ice-bright);
+}
+
+.frise li[data-state='current'] .friseDot {
+  border-color: var(--color-ice);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ice) 25%, transparent);
+}
+
+.frise[data-tone='waiting'] li[data-state='current'] {
+  color: var(--color-ice-bright);
+}
+
+.frise[data-tone='rejected'] li[data-state='current'] {
+  color: var(--color-alert);
+}
+
+.frise[data-tone='rejected'] li[data-state='current'] .friseDot {
+  border-color: var(--color-alert);
+  background: var(--color-alert);
+}
+
+.events {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.eventTitle {
+  margin: 0;
+  font-weight: 700;
+}
+
+.eventMeta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.eventBody {
+  margin: 4px 0 0;
+}
+
+.reply {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reply[data-emphasis='true'] {
+  outline: 1px solid var(--color-ice);
+  outline-offset: 8px;
+}
+
+.recapList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recapList dt {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.recapList dd {
+  margin: 0 0 8px;
+}

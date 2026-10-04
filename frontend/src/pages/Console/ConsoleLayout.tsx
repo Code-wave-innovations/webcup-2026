@@ -3,6 +3,8 @@ import { Outlet, useLocation } from 'react-router'
 import { onSessionExpired } from '../../api/session'
 import { isLightScene } from '../../a11y/sceneMode'
 import { useDirectorStore } from '../../experience/director/directorStore'
+import { nova } from '../../experience/nova/behavior/novaStore'
+import { stopSpeaking } from '../../hooks/useSpeakMessage'
 import { announce } from '../../ui/toastStore'
 import { ConsoleTopBar } from './ConsoleTopBar'
 import styles from './ConsoleLayout.module.css'
@@ -17,6 +19,9 @@ export function ConsoleLayout() {
 
   useEffect(() => {
     useDirectorStore.getState().setConsole(true)
+    // flyover welcome / district lines must not keep typing over the reading surface
+    nova.silence()
+    stopSpeaking()
     return () => useDirectorStore.getState().setConsole(false)
   }, [])
 

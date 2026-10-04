@@ -11,13 +11,15 @@ export interface Session {
   role: Role
   token?: string
   email?: string
+  /** Real API login/register: bind into `nova-auth-citizen` / `nova-auth-staff`. */
+  auth?: AuthResponse
 }
 
 /**
  * Why a check could not decide (the face engine did not know the face, saw none, or did not answer).
  * Such a failure is not a refusal: it costs no attempt.
  */
-export type Inconclusive = 'unknown' | 'noFace' | 'unavailable' | 'mismatch'
+export type Inconclusive = 'unknown' | 'noFace' | 'unavailable' | 'mismatch' | 'disabled'
 
 export type SignInResult = { ok: true; session: Session } | { ok: false; inconclusive?: Inconclusive }
 
@@ -55,6 +57,17 @@ export function toSession(account: Account): Session {
   return { accountId: account.id, name: account.name, roleLabel: account.roleLabel, role: account.role, email: account.email }
 }
 
+/** Film chrome session from the citizen JWT slot (DevLogin / API without the demo airlock). */
+export function filmSessionFromCitizen(user: { id: number; name: string; email: string }): Session {
+  return {
+    accountId: String(user.id),
+    name: user.name,
+    roleLabel: 'Habitant·e',
+    role: 'resident',
+    email: user.email,
+  }
+}
+
 export function sessionFromApi(token: string, user: ApiUser): Session {
   const citizen = user.role === 'CITIZEN'
   return {
@@ -64,6 +77,7 @@ export function sessionFromApi(token: string, user: ApiUser): Session {
     role: citizen ? 'resident' : 'council',
     token,
     email: user.email,
+    auth: { token, user },
   }
 }
 
@@ -94,7 +108,9 @@ export const terraAuthService: AuthService = {
       const email = isEmail(key) ? key : `${key}@terra-nova.city`
       const { data } = await authHttp.post<AuthResponse>('/auth/login', { email, password: code })
       return { ok: true, session: sessionFromApi(data.token, data.user) }
-    } catch {
+    } catch (error) {
+      // F34: a suspended account is said plainly (the server only says so after the right password)
+      if (toApiError(error).code === 'ACCOUNT_DISABLED') return { ok: false, inconclusive: 'disabled' }
       return { ok: false }
     }
   },
@@ -119,22 +135,57 @@ export async function accountExists(identifier: string): Promise<boolean> {
 }
 
 /**
- * Passwordless session via `GET /api/auth/by-email` — same `{ token, user }` body as `POST /auth/login`.
- * Used after face identify once the gallery identity has been decoded to an e-mail.
+ * D03 / F34: face sign-in. The picture goes to the API, which asks the face engine whether it is the
+ * person behind `email` and only then opens the session: an e-mail alone opens nothing.
  */
-export async function sessionByEmail(identifier: string): Promise<SignInResult> {
+export async function faceSignIn(identifier: string, frame: Blob): Promise<SignInResult> {
+  const form = new FormData()
+  form.append('email', resolveAuthEmail(identifier))
+  form.append('image', frame, 'frame.jpg')
   try {
-    const { data } = await authHttp.get<AuthResponse>('/auth/by-email', {
-      params: { email: resolveAuthEmail(identifier) },
-    })
+    const { data } = await authHttp.post<AuthResponse>('/auth/face', form)
     return { ok: true, session: sessionFromApi(data.token, data.user) }
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-      if (status === 404) return { ok: false, inconclusive: 'unknown' }
-      if (status === 429) return { ok: false }
-    }
+    const api = toApiError(error)
+    if (api.code === 'FACE_NOT_ENROLLED') return { ok: false, inconclusive: 'unknown' }
+    if (api.code === 'FACE_UNUSABLE') return { ok: false, inconclusive: 'noFace' }
+    if (api.code === 'ACCOUNT_DISABLED') return { ok: false, inconclusive: 'disabled' }
+    // another face counts as a refused attempt, on the server as here
+    if (api.code === 'FACE_MISMATCH' || api.status === 429) return { ok: false }
     return { ok: false, inconclusive: 'unavailable' }
+  }
+}
+
+/** D03: links the face to the account that just signed in (the API checks it is that person's own) */
+export async function linkOwnFace(token: string, frames: Blob[]): Promise<boolean> {
+  const form = new FormData()
+  frames.forEach((frame, i) => form.append(`img${i}`, frame, `frame${i}.jpg`))
+  try {
+    const { data } = await authHttp.post<{ committed: boolean }>('/me/face', form, { headers: { Authorization: `Bearer ${token}` } })
+    return data.committed
+  } catch {
+    return false
+  }
+}
+
+export type RecoverResult = { ok: true; session: Session } | { ok: false; error: string; field?: 'code' | 'password' }
+
+/**
+ * F34: back into one's account with the code the city handed over after checking the person's
+ * identity. The person chooses the new password; their other devices are signed out.
+ */
+export async function recoverAccess(identifier: string, code: string, password: string): Promise<RecoverResult> {
+  try {
+    const { data } = await authHttp.post<AuthResponse>('/auth/recover', { email: resolveAuthEmail(identifier), code, password })
+    return { ok: true, session: sessionFromApi(data.token, data.user) }
+  } catch (error) {
+    const api = toApiError(error)
+    if (api.code === 'INVALID_RESET_CODE') {
+      const left = (api.details as { remaining_attempts?: number } | undefined)?.remaining_attempts
+      return { ok: false, field: 'code', error: `${messageFor(api)}${left !== undefined && left <= 2 ? ` Encore ${left} essai${left > 1 ? 's' : ''} avant le blocage.` : ''}` }
+    }
+    if (api.code === 'VALIDATION_ERROR') return { ok: false, field: 'password', error: 'Le mot de passe doit contenir au moins 8 caractères.' }
+    return { ok: false, error: messageFor(api) }
   }
 }
 

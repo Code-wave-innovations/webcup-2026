@@ -1,91 +1,91 @@
 import { create } from 'zustand'
+import type { RequestStatus } from '../../api/types'
+import type { UrgencyHint } from '../../api/requests'
 import { useDirectorStore } from '../../experience/director/directorStore'
-import { frameState } from '../../experience/director/frameState'
-import { formatLocalTime } from '../../lib/format'
-import { announce } from '../../ui/toastStore'
+import { anchorForDistrict } from './districtAnchor'
 import type { ReportSuggestion } from './analyzeReport'
-import { RESOLVED, STATUSES, type Category, type Report, type ReportStatus, type Sector, type Urgency } from './reportModel'
+import { signalForStatus, type Category } from './reportModel'
 
 export interface ReportDraft {
   text: string
+  location: string
   category: Category
-  sector: Sector
-  urgency: Urgency
+  districtId: number | null
+  urgency: UrgencyHint
   /** the fields were filled in by NOVA's reading */
   suggested: boolean
 }
 
-/** D16: what the server sent back after the report was recorded. */
-export interface ReportConfirmation {
-  message: string
-  reference: string
+/** A report the API accepted, followed on the flyover until the visitor sends another. */
+export interface TrackedReport {
+  id: number
+  code: string
   title: string
-  category: Category
-  sector: Sector
-  urgency: Urgency
+  category: string
+  districtName: string
+  districtCode: string | null
+  location: string
+  urgency: UrgencyHint
+  status: RequestStatus
+  confirmation: string
+  receivedAt: string
 }
 
-const EMPTY_DRAFT: ReportDraft = { text: '', category: 'Vie quotidienne', sector: 'Dôme 3', urgency: 'Moyenne', suggested: false }
+const EMPTY_DRAFT: ReportDraft = {
+  text: '',
+  location: '',
+  category: 'Autre',
+  districtId: null,
+  urgency: 'NORMAL',
+  suggested: false,
+}
 
 interface ReportState {
   draft: ReportDraft
-  confirmation: ReportConfirmation | null
-  report: Report | null
-  /** a report that came from POST /api/requests: no demonstration advance */
-  fromApi: boolean
+  report: TrackedReport | null
   editDraft: (patch: Partial<ReportDraft>) => void
   applySuggestion: (suggestion: ReportSuggestion) => void
-  accept: (confirmation: ReportConfirmation) => void
-  follow: () => void
-  advance: () => void
+  accept: (report: TrackedReport) => void
+  syncStatus: (status: RequestStatus) => void
   reset: () => void
 }
 
-const now = () => formatLocalTime(frameState.dusk)
-const showSignal = (status: ReportStatus | -1) => useDirectorStore.getState().setSignalStatus(status)
+const showSignal = (status: RequestStatus, districtCode: string | null) => {
+  const director = useDirectorStore.getState()
+  const { beam } = signalForStatus(status)
+  director.setSignalStatus(beam)
+  if (beam >= 0) director.setSignalAnchor(anchorForDistrict(districtCode))
+}
 
-/** The visitor's report: the draft being written, then the confirmation, then the tracked request. */
+/** The visitor's report: the draft being written, then the tracked request lighting the beam over its district. */
 export const useReportStore = create<ReportState>()((set, get) => ({
   draft: EMPTY_DRAFT,
-  confirmation: null,
   report: null,
-  fromApi: false,
   editDraft: (patch) => set((s) => ({ draft: { ...s.draft, ...patch } })),
-  applySuggestion: (suggestion) => set((s) => ({ draft: { ...s.draft, ...suggestion, suggested: true } })),
-  accept: (confirmation) => {
-    set({ confirmation, report: null, fromApi: true, draft: EMPTY_DRAFT })
-    showSignal(0)
-    announce(`Demande ${confirmation.reference} envoyée`)
-  },
-  follow: () => {
-    const { confirmation } = get()
-    if (!confirmation) return
-    set({
-      report: {
-        code: confirmation.reference,
-        title: confirmation.title,
-        category: confirmation.category,
-        sector: confirmation.sector,
-        urgency: confirmation.urgency,
-        status: 0,
-        times: [now()],
+  applySuggestion: (suggestion) =>
+    set((s) => ({
+      draft: {
+        ...s.draft,
+        category: suggestion.category,
+        districtId: suggestion.districtId ?? s.draft.districtId,
+        urgency: suggestion.urgency,
+        suggested: true,
       },
-      confirmation: null,
-      fromApi: true,
-    })
+    })),
+  accept: (report) => {
+    set({ report, draft: EMPTY_DRAFT })
+    showSignal(report.status, report.districtCode)
   },
-  advance: () => {
-    const { report, fromApi } = get()
-    if (!report || fromApi || report.status >= RESOLVED) return
-    const status = (report.status + 1) as ReportStatus
-    const times = [...report.times]
-    times[status] = now()
-    set({ report: { ...report, status, times } })
-    showSignal(status)
-    announce(`${report.code} : ${STATUSES[status].name.toLowerCase()}`)
+  syncStatus: (status) => {
+    const { report } = get()
+    if (!report || report.status === status) return
+    set({ report: { ...report, status } })
+    showSignal(status, report.districtCode)
   },
   reset: () => {
-    set({ report: null, confirmation: null, fromApi: false, draft: EMPTY_DRAFT })
-    showSignal(-1)
+    set({ report: null, draft: EMPTY_DRAFT })
+    const director = useDirectorStore.getState()
+    director.setSignalStatus(-1)
+    director.setSignalAnchor('trois')
   },
 }))

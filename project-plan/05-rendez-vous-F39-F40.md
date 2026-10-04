@@ -159,12 +159,12 @@ Valeur : `meta.total` de `GET /api/appointments?mine=true&from=<aujourd'hui>&to=
 
 ## 6. Étapes
 
-- [ ] Backend : `citizen_id`, `from` et `to` dans la liste ; rappel `null` (« Pas de rappel »)
-- [ ] `src/api/appointments.ts`, avec le téléchargement `.ics` en blob
-- [ ] Parcours `/ville/rendez-vous/nouveau` (4 étapes, récapitulatif, confirmation, gestion des conflits)
-- [ ] `/ville/espace/rendez-vous` : annulation, changement de rappel, fichier `.ics`
-- [ ] Liens depuis la fiche service, l'accueil et « Mon espace »
-- [ ] Back-office : `AppointmentsPage`, `SlotsPage`, badge
+- [x] Backend : `citizen_id`, `from` et `to` dans la liste ; rappel `null` (« Pas de rappel ») ; en plus : jour et heures des créneaux dans le fuseau de la ville (`day`, `start_time`…), et `blocked` pour un créneau pendant une interruption (F38)
+- [x] `src/api/appointments.ts`, avec le téléchargement `.ics` en blob
+- [x] Parcours `/ville/rendez-vous/nouveau` (4 étapes, récapitulatif, confirmation, gestion des conflits)
+- [x] `/ville/rendez-vous` (pas encore d'« espace ») : annulation, changement de rappel, fichier `.ics` ; rappel affiché sur tous les écrans par `ReminderWatcher`, notification du navigateur sur demande
+- [x] Liens depuis la fiche service, l'accueil (« Prochain rendez-vous ») et la barre des pages console ; « Mon espace » n'existe pas encore
+- [ ] Back-office : `AppointmentsPage` (fait), `SlotsPage`, badge (déjà réel via `dashboard/stats`)
 - [ ] Rendez-vous du citoyen dans `CitizensPage` (PLAN-01)
 
 ## 7. Critères d'acceptation

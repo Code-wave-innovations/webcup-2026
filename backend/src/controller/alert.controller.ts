@@ -2,10 +2,9 @@ import type { Request, Response } from "express";
 import { audit, fieldsOf } from "../lib/audit";
 import { AlertAudience, AlertSeverity, Prisma } from "@prisma/client";
 import { z } from "zod";
-import alertModel, { activeAlertWhere, audienceUserWhere, concernsUser } from "../model/alert.model";
+import alertModel, { activeAlertWhere, concernsUser, sendAlertNotifications } from "../model/alert.model";
 import { badRequest, notFound } from "../lib/errors";
-import { notifyUsers } from "../lib/notify";
-import { pageMeta, paginationSchema, parseId, toSkipTake, zBool, zDate, zId, zJson } from "../lib/validation";
+import { fieldError, pageMeta, paginationSchema, parseId, toSkipTake, zBool, zDate, zId, zJson } from "../lib/validation";
 import { resolveLocale, translate, translateOne } from "../lib/translations";
 import { isStaff } from "../middleware/auth";
 
@@ -85,21 +84,17 @@ const alertController = {
       throw badRequest("district_ids is required when audience is DISTRICTS");
     }
 
+    if (input.ends_at && input.ends_at <= (input.starts_at ?? new Date())) {
+      throw fieldError("ends_at", "ends_at must be after starts_at");
+    }
+
     const alert = await alertModel.create(
-      { ...input, recommendations: toJson(recommendations), created_by_id: req.user!.id },
+      { ...input, notify, recommendations: toJson(recommendations), created_by_id: req.user!.id },
       district_ids
     );
 
-    let notified = 0;
-    if (notify && alert.starts_at <= new Date()) {
-      notified = await notifyUsers(audienceUserWhere(alert.audience, district_ids), {
-        type: "ALERT",
-        title: alert.title,
-        body: alert.instructions ?? alert.message,
-        link: `/alerts/${alert.id}`,
-        data: { alert_id: alert.id, severity: alert.severity, category: alert.category },
-      });
-    }
+    // D18: an alert programmed for later is notified by the scheduler when it starts (lib/scheduler.ts)
+    const notified = notify && alert.starts_at <= new Date() ? ((await sendAlertNotifications(alert)) ?? 0) : 0;
     await audit(req, {
       action: "alert.created",
       entity: "Alert",
@@ -109,7 +104,7 @@ const alertController = {
       fields: ["severity", "audience", "category"],
       metadata: { notified, districts: district_ids },
     });
-    res.status(201).json({ ...alert, notified });
+    res.status(201).json({ ...alert, recipients: notified, notified, scheduled: alert.starts_at > new Date() });
   },
 
   update: async (req: Request, res: Response) => {

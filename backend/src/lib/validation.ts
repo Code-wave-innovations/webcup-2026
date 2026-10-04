@@ -51,15 +51,26 @@ export const pageMeta = ({ page, limit }: Pagination, total: number) => ({
   pages: Math.ceil(total / limit),
 });
 
-export const parseId = (value: string | undefined): number => {
-  const id = Number(value);
+// Express 5 types route params as `string | string[]` (wildcards); `:id` is always a string.
+export type ParamValue = string | string[] | undefined;
+
+export const paramValue = (value: ParamValue): string => {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === undefined || raw === "") throw badRequest("Invalid id");
+  return raw;
+};
+
+export const parseId = (value: ParamValue): number => {
+  const id = Number(paramValue(value));
   if (!Number.isInteger(id) || id <= 0) throw badRequest("Invalid id");
   return id;
 };
 
 // Routes like /services/:idOrSlug accept a numeric id or a slug.
-export const idOrSlugWhere = (value: string) =>
-  /^\d+$/.test(value) ? { id: Number(value) } : { slug: value };
+export const idOrSlugWhere = (value: ParamValue) => {
+  const raw = paramValue(value);
+  return /^\d+$/.test(raw) ? { id: Number(raw) } : { slug: raw };
+};
 
 export const slugify = (value: string) =>
   value

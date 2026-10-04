@@ -5,6 +5,7 @@ import { ConsoleLayout } from '../pages/Console/ConsoleLayout'
 import { NotFoundPage } from '../pages/Console/NotFoundPage'
 import { FilmLoadingScreen } from './FilmLoadingScreen'
 import { LightLayout } from './LightLayout'
+import { RequireRole, RequireSession } from './guards'
 
 /*
  * F96: the film (three.js, Nova's model, the director) is only reached through these imports, so the light
@@ -43,6 +44,14 @@ const BackofficeApp = lazy(() => import('../backoffice/BackofficeApp'))
 const NovaBench = import.meta.env.DEV ? lazy(() => import('../dev/NovaBench')) : null
 /** Check of the console chain (layout, API, session, forms), development only. */
 const ConsoleTestPage = import.meta.env.DEV ? lazy(() => import('../dev/ConsoleTestPage')) : null
+/** D04: write to municipal services (console over the dimmed city). */
+const ContactPage = lazy(() => import('../pages/Console/ContactPage'))
+const BookAppointmentPage = lazy(() => import('../pages/Console/BookAppointmentPage'))
+const MyAppointmentsPage = lazy(() => import('../pages/Console/MyAppointmentsPage'))
+const EspaceHubPage = lazy(() => import('../pages/Espace/EspaceHubPage'))
+const DemandesListPage = lazy(() => import('../pages/Espace/DemandesListPage'))
+const DemandeDetailPage = lazy(() => import('../pages/Espace/DemandeDetailPage'))
+const ComptePage = lazy(() => import('../pages/Espace/ComptePage'))
 
 function App() {
   return (
@@ -87,6 +96,35 @@ function App() {
                   }
                 />
               )}
+              <Route
+                path="contact"
+                element={
+                  <Suspense fallback={null}>
+                    <ContactPage />
+                  </Suspense>
+                }
+              />
+              {/* F39 / F40: appointments with an agent, for a signed-in resident */}
+              <Route
+                path="rendez-vous"
+                element={
+                  <RequireRole roles={['CITIZEN']}>
+                    <Suspense fallback={null}>
+                      <MyAppointmentsPage />
+                    </Suspense>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="rendez-vous/nouveau"
+                element={
+                  <RequireRole roles={['CITIZEN']}>
+                    <Suspense fallback={null}>
+                      <BookAppointmentPage />
+                    </Suspense>
+                  </RequireRole>
+                }
+              />
               {ConsoleTestPage && (
                 <Route
                   path="test"
@@ -119,6 +157,46 @@ function App() {
                   <Suspense fallback={null}>
                     <TransportsPage />
                   </Suspense>
+                }
+              />
+              <Route
+                path="espace"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <EspaceHubPage />
+                    </Suspense>
+                  </RequireSession>
+                }
+              />
+              <Route
+                path="espace/demandes"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <DemandesListPage />
+                    </Suspense>
+                  </RequireSession>
+                }
+              />
+              <Route
+                path="espace/demandes/:id"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <DemandeDetailPage />
+                    </Suspense>
+                  </RequireSession>
+                }
+              />
+              <Route
+                path="espace/compte"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <ComptePage />
+                    </Suspense>
+                  </RequireSession>
                 }
               />
               <Route path="*" element={<NotFoundPage />} />

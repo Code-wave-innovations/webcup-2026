@@ -161,9 +161,12 @@ Une table `NOTIFICATION_TARGETS` dans `features/notifications/` fait cette corre
 ## 6. Étapes
 
 - [ ] Backend : modèle `Broadcast` et sa migration, endpoint de diffusion, historique, estimation du public, `STAFF`
+  - [x] Estimation du public : `GET /api/notifications/audience` (personnel)
+  - [x] Alertes programmées (D18) : `Alert.notify`, `notified_at`, `recipients` ; le planificateur et la tâche cron notifient l'alerte quand elle commence, une seule fois
+  - [ ] `Broadcast`, diffusion libre et historique, `STAFF`
 - [ ] Backend (optionnel) : `/api/alerts/assist` avec les modèles intégrés, puis Claude si la clé est présente
-- [ ] `src/api/announcements.ts`, `alerts.ts` et `notifications.ts`
-- [ ] `AlertBanner` réel et mode alerte 3D ; suppression de la simulation
+- [ ] `src/api/announcements.ts`, `alerts.ts` et `notifications.ts` (`alerts.ts` fait ; `announcements.ts` en lecture seule pour le survol)
+- [x] `AlertBanner` réel et mode alerte 3D ; suppression de la simulation : `AlertCenter` dans `FilmLayout` (tous les écrans, sas compris), transmission plein écran pour chaque alerte non lue qui me concerne, puis bandeau ; une alerte critique qui me concerne met la ville en rouge et Nova lit les consignes
 - [ ] `/ville/alertes` et `/ville/alertes/:id`
 - [ ] Section Haut Conseil, `/ville/annonces` et `/ville/annonces/:id`
 - [ ] Cloche, panneau de notifications et `/ville/espace/notifications`

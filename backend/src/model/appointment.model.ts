@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import type { Prisma } from "@prisma/client";
-import { escapeIcs, formatSlotLabel, timeZone, toIcsDate } from "../lib/datetime";
+import { escapeIcs, formatSlotLabel, slotClock, toIcsDate } from "../lib/datetime";
 
 // F39 / F40 appointment helpers
 
@@ -26,7 +26,8 @@ type AppointmentRow = Prisma.AppointmentGetPayload<{ include: typeof appointment
 export const presentAppointment = (appointment: AppointmentRow, options: { locale?: string; staff?: boolean } = {}) => {
   const { slot, agent_notes, ...rest } = appointment;
   const durationMinutes = Math.round((slot.ends_at.getTime() - slot.starts_at.getTime()) / 60000);
-  const reminderAt = new Date(slot.starts_at.getTime() - appointment.reminder_offset_minutes * 60000);
+  const offset = appointment.reminder_offset_minutes;
+  const reminderAt = offset === null ? null : new Date(slot.starts_at.getTime() - offset * 60000);
   const documents = Array.isArray(appointment.procedure?.required_documents)
     ? appointment.procedure!.required_documents
     : [];
@@ -38,8 +39,9 @@ export const presentAppointment = (appointment: AppointmentRow, options: { local
       starts_at: slot.starts_at,
       ends_at: slot.ends_at,
       duration_minutes: durationMinutes,
-      time_zone: timeZone(),
       label: formatSlotLabel(slot.starts_at, slot.ends_at, options.locale),
+      // day, day_label, start_time, end_time, time_zone: in the city's time zone
+      ...slotClock(slot.starts_at, slot.ends_at, options.locale),
     },
     where: {
       location: slot.location,
@@ -53,8 +55,9 @@ export const presentAppointment = (appointment: AppointmentRow, options: { local
       bring: ["Votre référence de rendez-vous", ...documents.map(String)],
       contact: { phone: slot.service.contact_phone, email: slot.service.contact_email },
     },
+    // F40: null offset and moment: the citizen asked for no reminder
     reminder: {
-      offset_minutes: appointment.reminder_offset_minutes,
+      offset_minutes: offset,
       scheduled_for: reminderAt,
       sent_at: appointment.reminder_sent_at,
     },
@@ -86,11 +89,16 @@ export const toIcs = (appointment: AppointmentRow) => {
     `LOCATION:${escapeIcs([slot.location, slot.service.address].filter(Boolean).join(" — "))}`,
     `DESCRIPTION:${escapeIcs(description)}`,
     `STATUS:${appointment.status === "CANCELLED" ? "CANCELLED" : "CONFIRMED"}`,
-    "BEGIN:VALARM",
-    `TRIGGER:-PT${appointment.reminder_offset_minutes}M`,
-    "ACTION:DISPLAY",
-    `DESCRIPTION:${escapeIcs(`Rappel : rendez-vous ${slot.service.name}`)}`,
-    "END:VALARM",
+    // the calendar reminds at the same moment as the app, or not at all
+    ...(appointment.reminder_offset_minutes === null
+      ? []
+      : [
+          "BEGIN:VALARM",
+          `TRIGGER:-PT${appointment.reminder_offset_minutes}M`,
+          "ACTION:DISPLAY",
+          `DESCRIPTION:${escapeIcs(`Rappel : rendez-vous ${slot.service.name}`)}`,
+          "END:VALARM",
+        ]),
     "END:VEVENT",
     "END:VCALENDAR",
     "",

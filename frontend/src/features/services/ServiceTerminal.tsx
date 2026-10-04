@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState, type AnimationEvent, type CSSProperties, type MouseEvent, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router'
+import { useSlots } from '../../api/appointments'
 import { messageFor } from '../../api/errors'
 import { useProcedures } from '../../api/procedures'
 import { useCatalogue, useService, useServiceCategories } from '../../api/services'
@@ -420,6 +422,8 @@ function ServiceSheet({ preview, titleId, headingRef, onCategory, onService }: V
         </dl>
       )}
 
+      <BookingBand serviceId={service.id} slug={service.slug} unavailable={view.status === 'UNAVAILABLE'} />
+
       {service.description && (
         <section className={styles.block}>
           <h3>Présentation</h3>
@@ -488,6 +492,31 @@ function ServiceSheet({ preview, titleId, headingRef, onCategory, onService }: V
         </section>
       )}
     </article>
+  )
+}
+
+/** F39: when the service receives by appointment, its next free slot and the way to book it */
+function BookingBand({ serviceId, slug, unavailable }: { serviceId: number; slug: string; unavailable: boolean }) {
+  const slots = useSlots(serviceId)
+  const next = slots.data?.[0]
+  if (!next) return null
+  return (
+    <section className={styles.booking} aria-label="Rendez-vous">
+      <span className={styles.bookingIcon} aria-hidden="true">
+        <Icon name="calendar" size={22} />
+      </span>
+      <div>
+        <p className={styles.bookingTitle}>Rendez-vous avec un agent</p>
+        <p className={styles.muted}>
+          Prochain créneau libre : {next.day_label} à {next.start_time} · {slots.data!.length} créneau{slots.data!.length > 1 ? 'x' : ''} sur 14 jours
+        </p>
+        {unavailable && <p className={styles.blocked}>Le service est interrompu : les créneaux pendant l’interruption seront refusés.</p>}
+      </div>
+      <Link className={styles.bookingButton} to={`/ville/rendez-vous/nouveau?service=${slug}`}>
+        Prendre rendez-vous
+        <Icon name="chevron" size={16} />
+      </Link>
+    </section>
   )
 }
 

@@ -14,12 +14,13 @@ import {
   validateRegisterSecrets,
 } from './accessWizard'
 import { MAX_ATTEMPTS } from './accessLock'
-import { registerCitizen, resolveAuthEmail, terraAuthService, type Session } from './authService'
+import { recoverAccess, registerCitizen, resolveAuthEmail, terraAuthService, type Session } from './authService'
 import { faceAuthService } from './faceAuth'
 import type { LoginActivity } from './loginActivity'
 import type { LoginState } from './loginMachine'
 import { IdentifyPanel } from './panels/IdentifyPanel'
 import { LoginPanel } from './panels/LoginPanel'
+import { RecoverPanel } from './panels/RecoverPanel'
 import { RegisterIdentityPanel } from './panels/RegisterIdentityPanel'
 import { RegisterSecretsPanel } from './panels/RegisterSecretsPanel'
 import { useAccessControl } from './useAccessControl'
@@ -89,6 +90,12 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
   const [granted, setGranted] = useState<Session | null>(null)
   const [faceFrames, setFaceFrames] = useState<Blob[] | null>(null)
   const [faceLink, setFaceLink] = useState<FaceLink | null>(null)
+  // F34: back in with the code handed over by the city
+  const [resetCode, setResetCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [newConfirm, setNewConfirm] = useState('')
+  const [recoverError, setRecoverError] = useState<{ field?: 'code' | 'password' | 'confirm'; message: string } | null>(null)
+  const [recovering, setRecovering] = useState(false)
   const { data: districts = [], isLoading: districtsLoading, isError: districtsFailed } = useDistricts()
 
   const access = useAccessControl(terraAuthService, onActivity)
@@ -122,13 +129,13 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
 
   const clearError = () => setFormError(null)
 
-  const admit = async (session: Session) => {
+  /** Lets the person in; the face captured on the way (registration, unknown face) is linked by the API with the new session */
+  const admit = async (session: Session, frames: Blob[] | null = faceFrames) => {
     setGranted(session)
-    if (faceFrames) {
+    if (frames) {
       setFaceLink('linking')
-      const key = session.email ?? session.accountId
       const linked = await Promise.race([
-        faceAuthService.link(key, faceFrames),
+        faceAuthService.link(session, frames),
         wait(LINK_TIMEOUT_MS).then(() => false),
       ])
       setFaceLink(linked ? 'linked' : 'failed')
@@ -154,9 +161,15 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
 
   const onLoginSubmit = async () => {
     if (granted || state.status === 'checking') return
-    const session = await access.submit(identifier, code)
-    if (session) {
-      void admit(session)
+    setFormError(null)
+    const result = await access.submit(identifier, code)
+    if (result?.ok) {
+      void admit(result.session)
+      return
+    }
+    // F34: a suspended account is told why, and where to go (no attempt is counted)
+    if (result && !result.ok && result.inconclusive === 'disabled') {
+      setFormError('Ce compte est suspendu par la mairie. Présentez-vous au guichet ou appelez la mairie pour le réactiver.')
       return
     }
     codeRef.current?.focus()
@@ -168,6 +181,26 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
     const result = await access.attempt(() => faceAuthService.identify(frame, identifier))
     if (result?.ok) void admit(result.session)
     return result
+  }
+
+  const openRecover = () => {
+    setFormError(null)
+    setRecoverError(null)
+    setStep('recover')
+  }
+
+  const onRecoverSubmit = async () => {
+    if (recovering || granted) return
+    if (resetCode.replace(/[^a-z0-9]/gi, '').length < 8) return setRecoverError({ field: 'code', message: 'Saisissez les 8 caractères du code remis par la mairie.' })
+    if (newPassword.length < 8) return setRecoverError({ field: 'password', message: 'Le code d’accès doit contenir au moins 8 caractères.' })
+    if (newPassword !== newConfirm) return setRecoverError({ field: 'confirm', message: 'Les deux codes ne correspondent pas.' })
+    setRecoverError(null)
+    setRecovering(true)
+    const result = await recoverAccess(identifier, resetCode, newPassword)
+    setRecovering(false)
+    if (!result.ok) return setRecoverError({ field: result.field, message: result.error })
+    publish.current?.({ type: 'granted', name: result.session.name })
+    void admit(result.session)
   }
 
   const onRegisterNext = () => {
@@ -188,7 +221,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
     if (!faceLogin) void registerOnBackend()
   }
 
-  const registerOnBackend = async () => {
+  const registerOnBackend = async (frames: Blob[] | null = null) => {
     if (districtId == null) {
       setFormError('Impossible de charger les quartiers.')
       setStep('register-1')
@@ -222,8 +255,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
       }
       return
     }
-    setGranted(result.session)
-    onGranted(result.session)
+    void admit(result.session, frames)
   }
 
   const submit = async (event: FormEvent) => {
@@ -233,6 +265,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
     if (step === 'login') return void onLoginSubmit()
     if (step === 'register-1') return onRegisterNext()
     if (step === 'register-2') return void onRegisterCreate()
+    if (step === 'recover') return void onRecoverSubmit()
   }
 
   const strikes = state.strikes
@@ -330,7 +363,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
                 code={code}
                 state={state}
                 secondsLeft={secondsLeft}
-                error={loginErrorMessage(state, secondsLeft)}
+                error={formError ?? loginErrorMessage(state, secondsLeft)}
                 codeRef={codeRef}
                 codeSightRef={codeSightRef}
                 capsLock={capsLock}
@@ -343,7 +376,34 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
                 onToggleReveal={() => setRevealed((v) => !v)}
                 onCaps={readCapsLock}
                 onFace={faceLogin ? () => setLoginMode('face') : undefined}
+                onForgot={openRecover}
                 onBack={backToIdentify}
+              />
+            )}
+            {step === 'recover' && (
+              <RecoverPanel
+                identifier={identifier.trim()}
+                code={resetCode}
+                password={newPassword}
+                confirm={newConfirm}
+                error={recoverError}
+                submitting={recovering}
+                onCodeChange={(value) => {
+                  setRecoverError(null)
+                  setResetCode(value)
+                }}
+                onPasswordChange={(value) => {
+                  setRecoverError(null)
+                  setNewPassword(value)
+                }}
+                onConfirmChange={(value) => {
+                  setRecoverError(null)
+                  setNewConfirm(value)
+                }}
+                onBack={() => {
+                  setRecoverError(null)
+                  setStep('login')
+                }}
               />
             )}
             {step === 'register-1' && (
@@ -397,10 +457,12 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
                 {faceLogin ? (
                   <Suspense fallback={<p className={styles.statusText}>Ouverture du lecteur…</p>}>
                     <RegisterFacePanel
-                      email={resolveAuthEmail(identifier)}
                       name={name.trim() || 'citoyen'}
                       busy={registering}
-                      onEnrolled={() => void registerOnBackend()}
+                      onEnrolled={(frames) => {
+                        setFaceFrames(frames)
+                        void registerOnBackend(frames)
+                      }}
                       onSkip={() => void registerOnBackend()}
                       onBack={() => setStep('register-2')}
                     />
@@ -442,8 +504,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef, face
                             if (retry.turnstileRequired) setTurnstileToken(null)
                             return
                           }
-                          setGranted(retry.session)
-                          onGranted(retry.session)
+                          void admit(retry.session)
                         })()
                       }
                     }}

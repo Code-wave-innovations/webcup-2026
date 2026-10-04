@@ -1,0 +1,685 @@
+/* F39: booking an appointment — the city's glass, a rail of hexagons, a summary that lights up line by line */
+
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.loading {
+  color: var(--color-text-muted);
+}
+
+/* ─── the rail of steps ─────────────────────────────────────────────────── */
+
+.rail {
+  --progress: 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* the line between the nodes, filled in light up to the current step */
+.rail::before,
+.rail::after {
+  content: '';
+  position: absolute;
+  top: 19px;
+  left: 12.5%;
+  height: 2px;
+}
+
+.rail::before {
+  right: 12.5%;
+  background: var(--color-line-thin);
+}
+
+.rail::after {
+  width: calc(75% * var(--progress));
+  background: linear-gradient(90deg, var(--color-ice), var(--color-ice-bright));
+  box-shadow: 0 0 12px var(--color-ice-halo);
+  transition: width 0.6s var(--ease-out-soft);
+}
+
+.rail li {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.rail button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  background: none;
+}
+
+.rail button:disabled {
+  cursor: default;
+}
+
+.node {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 40px;
+  font: 600 14px/1 var(--font-display);
+  color: var(--color-text-muted);
+  background: var(--color-glass-dense);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  box-shadow: inset 0 0 0 2px var(--color-line);
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+
+.nodeLabel {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.rail li[data-state='done'] .node {
+  color: var(--color-ink);
+  background: var(--color-ice);
+}
+
+.rail li[data-state='done'] button:hover .nodeLabel {
+  color: var(--color-ice-bright);
+  text-decoration: underline;
+}
+
+.rail li[data-state='current'] .node {
+  color: var(--color-ink);
+  background: var(--color-ice-bright);
+  animation: beacon 1.8s ease-in-out infinite;
+}
+
+.rail li[data-state='current'] .nodeLabel {
+  color: var(--color-ice-bright);
+}
+
+@keyframes beacon {
+  50% {
+    filter: drop-shadow(0 0 10px var(--color-ice)) brightness(1.15);
+  }
+}
+
+/* ─── layout ────────────────────────────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 20px;
+  align-items: start;
+}
+
+.stage {
+  min-height: 420px;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: stepIn 0.45s var(--ease-out-soft) both;
+}
+
+.step h2 {
+  font: 600 clamp(20px, 2.2vw, 26px) / 1.2 var(--font-display);
+}
+
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+    filter: blur(4px);
+  }
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  font-weight: 600;
+  color: var(--color-progress);
+  border: 1px solid currentColor;
+  background: rgba(255, 197, 107, 0.08);
+}
+
+.notice svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ─── step 1: services ──────────────────────────────────────────────────── */
+
+.services {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.serviceCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px;
+  text-align: left;
+  background: var(--color-glass-light);
+  border: 1px solid var(--color-line-thin);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.3s var(--ease-out-soft);
+  animation: rise 0.5s var(--ease-out-soft) both;
+  animation-delay: calc(var(--i) * 60ms);
+}
+
+.serviceCard:hover,
+.serviceCard[aria-pressed='true'] {
+  border-color: var(--color-line);
+  background: var(--color-hover);
+  transform: translateY(-2px);
+}
+
+.serviceCard small {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-progress) !important;
+}
+
+.glyph {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 48px;
+  color: var(--color-ice);
+  background: var(--color-holo-1);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* ─── step 2: days ──────────────────────────────────────────────────────── */
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 112px;
+  padding: 10px 4px;
+  overflow: hidden;
+  background: var(--color-glass-light);
+  border: 1px solid var(--color-line-thin);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.3s var(--ease-out-soft);
+  animation: rise 0.45s var(--ease-out-soft) both;
+  animation-delay: calc(var(--i) * 30ms);
+}
+
+.day:not(:disabled):hover {
+  border-color: var(--color-line);
+  background: var(--color-hover);
+  transform: translateY(-3px);
+}
+
+.day[aria-pressed='true'] {
+  border-color: var(--color-ice);
+  background: linear-gradient(180deg, var(--color-hover), var(--color-holo-1));
+  box-shadow: inset 0 0 0 1px var(--color-ice);
+}
+
+/* a closed day is hatched, and says why */
+.day:disabled {
+  cursor: not-allowed;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(143, 233, 255, 0.04) 6px 12px), var(--color-glass);
+}
+
+.weekday {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.date {
+  font: 600 26px/1.05 var(--font-display);
+}
+
+.day:disabled .date {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.month {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.open,
+.closed {
+  margin-top: auto;
+  font-size: 11.5px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.open {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-ok);
+  font-weight: 600;
+}
+
+/* how full the day is, as a gauge */
+.open i {
+  width: 70%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-ok) calc(var(--fill) * 100%), var(--color-line-thin) 0);
+}
+
+.closed {
+  color: var(--color-text-muted);
+}
+
+/* ─── step 3: hours ─────────────────────────────────────────────────────── */
+
+.part {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.partLabel {
+  font: 600 11px/1.2 var(--font-body);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-ice);
+}
+
+.times {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--color-glass-light);
+  border: 1px solid var(--color-line-thin);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.3s var(--ease-out-soft);
+  animation: rise 0.4s var(--ease-out-soft) both;
+  animation-delay: calc(var(--i) * 35ms);
+}
+
+.time strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 18px/1 var(--font-display);
+}
+
+.time strong svg {
+  color: var(--color-ice);
+}
+
+.time small {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.time:hover {
+  border-color: var(--color-line);
+  background: var(--color-hover);
+  transform: translateY(-2px);
+}
+
+.time[aria-pressed='true'] {
+  border-color: var(--color-ice);
+  box-shadow: inset 0 0 0 1px var(--color-ice);
+}
+
+/* a slot during an interruption of the service: visible, not bookable, with the reason above */
+.time:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255, 197, 107, 0.06) 6px 12px), var(--color-glass);
+}
+
+.time:disabled strong {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-progress);
+}
+
+.time:disabled:hover {
+  transform: none;
+  border-color: var(--color-line-thin);
+}
+
+.interruption {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-text);
+  border-left: 3px solid var(--color-progress);
+  background: rgba(255, 197, 107, 0.08);
+}
+
+.interruption svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--color-progress);
+}
+
+/* ─── step 4: details ───────────────────────────────────────────────────── */
+
+.textarea,
+.select {
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-field);
+  border: 1px solid var(--color-line-thin);
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--color-ice);
+  box-shadow: 0 0 0 3px var(--color-ice-halo);
+}
+
+.reminders {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.reminders legend {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.reminderGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.reminder {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  cursor: pointer;
+  background: var(--color-glass-light);
+  border: 1px solid var(--color-line-thin);
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.reminder input {
+  position: absolute;
+  opacity: 0;
+}
+
+.reminder svg {
+  color: var(--color-ice);
+}
+
+.reminder small {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.reminder:hover {
+  border-color: var(--color-line);
+}
+
+.reminder[data-checked='true'] {
+  border-color: var(--color-ice);
+  background: var(--color-hover);
+  box-shadow: inset 0 0 0 1px var(--color-ice);
+}
+
+/* the bell swings when its option is chosen */
+.reminder[data-checked='true'] svg {
+  animation: ring 0.9s var(--ease-out-soft);
+  transform-origin: 50% 10%;
+}
+
+@keyframes ring {
+  20% {
+    transform: rotate(16deg);
+  }
+  40% {
+    transform: rotate(-12deg);
+  }
+  60% {
+    transform: rotate(7deg);
+  }
+  80% {
+    transform: rotate(-3deg);
+  }
+}
+
+.reminder:has(input:focus-visible) {
+  outline: 2px solid var(--color-ice-bright);
+  outline-offset: 2px;
+}
+
+.reminderPlan {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-ice-bright);
+}
+
+.prepare {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--color-ember);
+  background: rgba(255, 177, 92, 0.06);
+}
+
+.prepare ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prepare li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prepare li svg {
+  color: var(--color-ok);
+}
+
+.submitRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* ─── the summary ───────────────────────────────────────────────────────── */
+
+.summary {
+  position: sticky;
+  top: 96px;
+}
+
+.summary[data-ready] {
+  box-shadow: 0 0 40px var(--color-ice-halo);
+}
+
+.summaryKicker {
+  font: 600 11px/1.2 var(--font-body);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-ice);
+}
+
+.recap {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.recapLine {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--color-line-thin);
+}
+
+.recapLine:last-child {
+  border-bottom: 0;
+}
+
+.recapLine dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.recapLine[data-filled] dt svg {
+  color: var(--color-ice);
+}
+
+.recapLine dd {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+/* a value lights up as it is chosen */
+.recapValue {
+  font-weight: 600;
+  animation: lightUp 0.7s var(--ease-out-soft);
+}
+
+.recapLine dd small {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+@keyframes lightUp {
+  from {
+    color: var(--color-ice-bright);
+    text-shadow: 0 0 14px var(--color-ice);
+  }
+}
+
+.pending {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.confirmed {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.confirmedTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 20px/1.2 var(--font-display);
+  color: var(--color-ok);
+}
+
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summary {
+    position: static;
+    order: -1;
+  }
+
+  .reminderGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .days {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .nodeLabel {
+    font-size: 11px;
+  }
+}

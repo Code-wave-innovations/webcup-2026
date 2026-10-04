@@ -75,6 +75,12 @@ const MESSAGES: Record<string, string> = {
   TWO_FACTOR_ALREADY_ENABLED: 'La double vérification est déjà activée.',
   UNKNOWN_PASSKEY: 'Cette clé d’accès n’est enregistrée sur aucun compte.',
   INVALID_PASSKEY: 'La clé d’accès n’a pas pu être vérifiée.',
+  ACCOUNT_DISABLED: 'Ce compte est suspendu par la mairie. Présentez-vous au guichet ou appelez la mairie pour le réactiver.',
+  INVALID_RESET_CODE: 'Code incorrect ou expiré. Vérifiez-le, ou demandez un nouveau code à la mairie.',
+  FACE_MISMATCH: 'Ce visage ne correspond pas au compte.',
+  FACE_UNUSABLE: 'Aucun visage exploitable sur l’image.',
+  FACE_NOT_ENROLLED: 'Aucun visage n’est encore associé à ce compte.',
+  FACE_UNAVAILABLE: 'La reconnaissance faciale est indisponible pour le moment. Entrez avec votre code.',
   INTERNAL_ERROR: 'Une erreur est survenue. Réessayez dans un instant.',
 }
 

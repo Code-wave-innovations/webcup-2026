@@ -47,6 +47,7 @@ const MESSAGES: Record<Exclude<Phase, 'searching'>, string> = {
   unknown: 'Visage inconnu. Entrez une fois avec votre code : il sera associé à votre compte.',
   mismatch: 'Ce visage ne correspond pas à l’identifiant saisi. Vérifiez l’e-mail, ou entrez avec votre code.',
   unavailable: 'La reconnaissance faciale ne répond pas. Entrez avec votre code.',
+  disabled: 'Ce compte est suspendu par la mairie. Présentez-vous au guichet ou appelez la mairie.',
   denied: 'Caméra refusée ou indisponible. Entrez avec votre code.',
 }
 
@@ -100,6 +101,7 @@ export function FaceScan({ identify, onUnknown, onUseCode, onActivity }: FaceSca
     }
     if (reason === 'mismatch') return setPhase('mismatch')
     if (reason === 'unavailable') return setPhase('unavailable')
+    if (reason === 'disabled') return setPhase('disabled')
     setBlurry(reason === 'noFace')
     setPhase('searching')
   }, [])
@@ -112,7 +114,7 @@ export function FaceScan({ identify, onUnknown, onUseCode, onActivity }: FaceSca
   }, [phase, present, scan])
 
   const message = phase === 'searching' ? (aligned ? 'Ne bougez plus…' : blurry ? 'Je ne vous vois pas bien : approchez-vous, face à la lumière.' : 'Placez votre visage dans le cercle.') : MESSAGES[phase]
-  const stopped = phase === 'unknown' || phase === 'mismatch' || phase === 'unavailable' || phase === 'denied'
+  const stopped = phase === 'unknown' || phase === 'mismatch' || phase === 'unavailable' || phase === 'disabled' || phase === 'denied'
 
   return (
     <div className={styles.scan} data-phase={phase} data-aligned={aligned}>

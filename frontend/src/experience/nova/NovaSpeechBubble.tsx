@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useDirectorStore } from '../director/directorStore'
 import { frameBus, frameState } from '../director/frameState'
 import { speechProgress } from './behavior/novaBrain'
 import { novaNow, useNovaStore } from './behavior/novaStore'
@@ -15,6 +16,7 @@ const MARGIN = 12
  */
 export function NovaSpeechBubble() {
   const speech = useNovaStore((s) => s.brain.speech)
+  const consoleOpen = useDirectorStore((s) => s.console)
   const bubbleRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLParagraphElement>(null)
 
@@ -24,6 +26,12 @@ export function NovaSpeechBubble() {
         const bubble = bubbleRef.current
         const text = textRef.current
         if (!bubble || !text) return
+        // console pages (/ville/espace, contact…): city is only a backdrop — no flyover bubble
+        if (useDirectorStore.getState().console) {
+          bubble.dataset.visible = 'false'
+          bubble.dataset.typing = 'false'
+          return
+        }
         const current = useNovaStore.getState().brain.speech
         const progress = speechProgress(current, novaNow())
         const head = frameState.nova.head
@@ -50,7 +58,7 @@ export function NovaSpeechBubble() {
         <p ref={textRef} />
       </div>
       <p className={styles.srOnly} aria-live="polite">
-        {speech ? `Nova : ${speech.text}` : ''}
+        {!consoleOpen && speech ? `Nova : ${speech.text}` : ''}
       </p>
     </>
   )

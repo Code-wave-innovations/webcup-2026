@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router'
-import { useSessionUser } from '../../api/session'
+import { useAdminUser, useAgentUser, useStaffUser } from '../../api/session'
 import type { Role, User } from '../../api/types'
 import type { Persona } from '../mocks/types'
 
@@ -28,9 +28,19 @@ const SIGNED_OUT: User = {
   last_login_at: null,
 }
 
-/** The signed-in staff member (the screens live under `RequireStaff`). */
+/** The signed-in staff member (AGENT or ADMIN). Ignores a leftover CITIZEN JWT. */
 export function useActor(): User {
-  return useSessionUser() ?? SIGNED_OUT
+  return useStaffUser() ?? SIGNED_OUT
+}
+
+/** Agent JWT only — null if the session is an admin (or a citizen). */
+export function useAgentActor(): User | null {
+  return useAgentUser()
+}
+
+/** Admin JWT only — null if the session is an agent (or a citizen). */
+export function useAdminActor(): User | null {
+  return useAdminUser()
 }
 
 export const homePath = (persona: Persona) => (persona === 'ADMIN' ? '/admin' : '/agent')
@@ -48,13 +58,15 @@ export function loginPath(persona: Persona, retour?: string, ended: 'expired' | 
 }
 
 /**
- * Where to go after signing in: the requested page when the role may open it (never another site,
- * never the login page), otherwise the home of the space they signed into when the role may open it
- * (admins may land on /agent or /admin; agents always on /agent).
+ * Where to go after signing in: an admin always lands on the administration, whichever login page they
+ * used (/agent/connexion included); an agent always on their workspace. The requested page (`retour`)
+ * is kept only when it belongs to that space (never another site, never the login page). Admins switch
+ * to the agent view from the shell afterwards.
  */
-export function destinationAfterLogin(role: Role, retour: string | null, space: Persona = personaOf(role)): string {
-  const home = homePath(role === 'ADMIN' ? space : 'AGENT')
-  if (!retour || !/^\/(agent|admin)(\/|$|\?)/.test(retour) || /^\/(agent|admin)\/connexion/.test(retour)) return home
-  if (retour.startsWith('/admin') && role !== 'ADMIN') return home
-  return retour
+export function destinationAfterLogin(role: Role, retour: string | null): string {
+  const space = personaOf(role)
+  const home = homePath(space)
+  if (!retour || /^\/(agent|admin)\/connexion/.test(retour)) return home
+  const prefix = space === 'ADMIN' ? '/admin' : '/agent'
+  return new RegExp(`^${prefix}(\\/|$|\\?)`).test(retour) ? retour : home
 }

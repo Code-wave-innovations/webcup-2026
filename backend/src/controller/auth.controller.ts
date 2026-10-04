@@ -38,6 +38,8 @@ import { clientIp } from "../lib/rateLimit";
 import { getSetting } from "../lib/settings";
 import { assertTurnstileIfNeeded } from "../lib/turnstile";
 import { saveUpload } from "../lib/upload";
+import { verifyFace } from "../lib/faceGateway";
+import { resetCodeMatches } from "../lib/resetCode";
 import { zBool, zId, zLocale } from "../lib/validation";
 import { generateToken } from "../services/services";
 
@@ -112,7 +114,8 @@ const completeLogin = async (req: Request, res: Response, account: User, method:
   const userAgent = req.get("user-agent");
   if (!account.is_active) {
     await recordAttempt({ email: account.email, ip, userAgent, success: false, reason: "DISABLED", userId: account.id });
-    throw forbidden("This account has been disabled");
+    // F34: said plainly, and only after the person proved who they are (password, face, code)
+    throw new HttpError(403, "ACCOUNT_DISABLED", "This account has been suspended by the city");
   }
 
   if (method === "password" || method === "face") {
@@ -146,6 +149,21 @@ const completeLogin = async (req: Request, res: Response, account: User, method:
     security: { failed_attempts_since_last_login: failedSinceLastLogin, new_device: isNew, device_id: device.id },
     ...extra,
   });
+};
+
+// F34: the person sets a new password with the code an agent gave them
+const recoverSchema = z.object({
+  email: zEmail,
+  code: z.string().trim().min(8).max(20),
+  password: zPassword,
+});
+
+const faceSchema = z.object({ email: zEmail });
+
+/** A wrong code or another face counts like a wrong password toward the F37 lock */
+const refuse = async (req: Request, email: string, userId: number | undefined, failures: number, message: string, code = "INVALID_CREDENTIALS") => {
+  await recordAttempt({ email, ip: clientIp(req) ?? UNKNOWN_IP, userAgent: req.get("user-agent"), success: false, reason: "INVALID_CREDENTIALS", userId });
+  return new HttpError(401, code, message, { remaining_attempts: Math.max(0, MAX_ACCOUNT_FAILURES - failures - 1) });
 };
 
 const codeSchema = z.object({
@@ -335,14 +353,65 @@ const authController = {
     res.json({ exists: await userModel.existsByEmail(email) });
   },
 
-  // Passwordless session by email (e.g. after frontend face identify). Same payload as login.
-  getByEmail: async (req: Request, res: Response) => {
-    const { email } = byEmailQuerySchema.parse(req.query);
-    await assertLoginAllowed(req, res, email);
+  // D03 / F34: face sign-in. The server asks the face engine whether this picture is the person behind
+  // `email` (with liveness) and only then opens the session; an e-mail alone opens nothing.
+  face: async (req: Request, res: Response) => {
+    const { email } = faceSchema.parse(req.body);
+    const image = req.files?.image;
+    if (!image || Array.isArray(image)) throw new HttpError(400, "FACE_UNUSABLE", "Send one picture in the `image` field");
+    const { guard } = await assertLoginAllowed(req, res, email);
     const account = await userModel.getByEmailWithPassword(email);
-    if (!account) throw notFound("User not found");
+    // same answer for an unknown e-mail and another face: nobody learns which accounts exist
+    if (!account) throw await refuse(req, email, undefined, guard.failures, "This face does not match the account", "FACE_MISMATCH");
+    const verdict = await verifyFace(email, image);
+    if (verdict === "unusable") throw new HttpError(400, "FACE_UNUSABLE", "No usable face in the picture");
+    // the airlock then offers to link the face after a sign-in with the password (the account's existence is already public: /auth/exists)
+    if (verdict === "not_enrolled") throw new HttpError(404, "FACE_NOT_ENROLLED", "No face is linked to this account yet");
+    if (verdict === "mismatch") throw await refuse(req, email, account.id, guard.failures, "This face does not match the account", "FACE_MISMATCH");
     // a face is not a second factor: an account with one still gets the code step
     await completeLogin(req, res, account, "face");
+  },
+
+  // F34: back into one's account with the one-time code an agent handed over after checking the
+  // person's identity. The person chooses the new password; every other session is signed out.
+  recover: async (req: Request, res: Response) => {
+    const { email, code, password } = recoverSchema.parse(req.body);
+    const { ip, userAgent, guard } = await assertLoginAllowed(req, res, email);
+    const account = await userModel.getByEmailWithPassword(email);
+    const live = account?.reset_code_hash && account.reset_code_expires_at && account.reset_code_expires_at > new Date();
+    if (!account || !live || !(await resetCodeMatches(code, account.reset_code_hash))) {
+      throw await refuse(req, email, account?.id, guard.failures, "Invalid or expired code", "INVALID_RESET_CODE");
+    }
+    if (!account.is_active) {
+      await recordAttempt({ email, ip, userAgent, success: false, reason: "DISABLED", userId: account.id });
+      throw new HttpError(403, "ACCOUNT_DISABLED", "This account has been suspended by the city");
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: account.id },
+      data: {
+        password_hash: await hashPassword(password),
+        reset_code_hash: null,
+        reset_code_expires_at: null,
+        reset_code_by_id: null,
+        // every device that was signed in (maybe somebody else) is signed out
+        token_version: { increment: 1 },
+      },
+    });
+    await auditAs(actorOf(updated), req, {
+      action: "security.password_reset",
+      entity: "User",
+      entityId: updated.id,
+      label: `${updated.name} ${updated.last_name}`,
+      changes: [{ field: "password", masked: true }],
+      metadata: { method: "reset_code", issued_by: account.reset_code_by_id },
+    });
+    await notifyUser(updated.id, {
+      type: "SECURITY",
+      title: "Votre mot de passe a été changé",
+      body: "Vous avez choisi un nouveau mot de passe avec le code remis par la mairie. Vos autres appareils ont été déconnectés. Si ce n'était pas vous, contactez la mairie immédiatement.",
+    });
+    await completeLogin(req, res, updated, "password");
   },
 };
 

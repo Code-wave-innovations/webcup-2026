@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { switchScene } from '../../a11y/sceneMode'
-import { attachToken } from '../../api/session'
+import { signIn as bindApiSession } from '../../api/session'
+import type { User } from '../../api/types'
 import { AccessHologram } from '../../features/auth/AccessHologram'
 import type { Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
@@ -30,7 +31,7 @@ export default function LightAirlockPage() {
   }, [session, back, navigate])
 
   const onGranted = (granted: Session) => {
-    if (granted.token) attachToken(granted.token)
+    if (granted.auth) bindApiSession({ token: granted.auth.token, user: granted.auth.user as User })
     signIn(granted)
   }
 

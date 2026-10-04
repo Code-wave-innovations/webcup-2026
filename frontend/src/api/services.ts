@@ -53,6 +53,14 @@ export const useAdminServices = (enabled = true) =>
     enabled,
   })
 
+/** Active catalogue for citizen forms (D04 contact service picker). */
+export const usePublicServices = () =>
+  useQuery({
+    queryKey: [...serviceKeys.all, 'public'] as const,
+    queryFn: () => http.get<Paginated<CityService>>('/services', { params: { limit: 100 } }).then((r) => r.data.data),
+    staleTime: 5 * 60_000,
+  })
+
 export const useServiceCategories = () =>
   useQuery({
     queryKey: serviceKeys.categories(),
