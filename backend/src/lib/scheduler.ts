@@ -2,9 +2,19 @@ import prisma from "./prisma";
 import { auditAs } from "./audit";
 import { notifyUser } from "./notify";
 import { formatSlotLabel } from "./datetime";
-import { activeAlertWhere, sendAlertNotifications } from "../model/alert.model";
+import { activeAlertWhere, nextAlertStart, sendAlertNotifications } from "../model/alert.model";
 
-// F40: appointment reminders, and D18 programmed alerts, checked every minute by the API process.
+// F40: appointment reminders, and D18 programmed alerts. Reminders are checked every minute;
+// an alert programmed for a given hour is sent at that hour.
+export const SCHEDULER_INTERVAL_MS = 60_000;
+
+/** Wait until the next programmed alert, and never longer than a minute (reminders). */
+export function schedulerDelay(nowMs: number, nextStart: Date | null, cap = SCHEDULER_INTERVAL_MS): number {
+  if (!nextStart) return cap;
+  const wait = nextStart.getTime() - nowMs;
+  if (wait <= 0) return cap;
+  return Math.min(cap, Math.max(250, wait));
+}
 export const MAX_REMINDER_OFFSET_MINUTES = 7 * 24 * 60;
 
 export const sendDueReminders = async (now = new Date()) => {
@@ -65,10 +75,20 @@ export const sendStartedAlerts = async (now = new Date()) => {
 };
 
 export const startScheduler = () => {
+  const arm = (delay: number) => {
+    setTimeout(run, delay).unref();
+  };
   const run = () => {
-    sendDueReminders().catch((error) => console.error("Reminder job failed:", error));
-    sendStartedAlerts().catch((error) => console.error("Alert job failed:", error));
+    Promise.all([sendDueReminders(), sendStartedAlerts()])
+      .catch((error) => console.error("Scheduler failed:", error))
+      .finally(() => {
+        nextAlertStart(new Date(), true)
+          .then((next) => arm(schedulerDelay(Date.now(), next)))
+          .catch((error) => {
+            console.error("Scheduler failed:", error);
+            arm(SCHEDULER_INTERVAL_MS);
+          });
+      });
   };
   run();
-  setInterval(run, 60_000).unref();
 };
