@@ -4,7 +4,8 @@ import { warnAppointments } from "../lib/interruptions";
 import { InterruptionImpact, InterruptionType, type Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "../lib/prisma";
-import { badRequest, notFound } from "../lib/errors";
+import { badRequest, forbidden, notFound } from "../lib/errors";
+import { userHasPermission } from "../lib/roleGrants";
 import { notEndedWhere } from "../lib/availability";
 import { fieldError, parseId, zDate, zId } from "../lib/validation";
 import { resolveLocale, translate } from "../lib/translations";
@@ -49,6 +50,10 @@ const scopeWhere = (scope: string): Prisma.ServiceInterruptionWhereInput => {
 const serviceInterruptionController = {
   getAll: async (req: Request, res: Response) => {
     const { service_id, scope } = listQuerySchema.parse(req.query);
+    // History (ended interruptions) follows interruptions.manage (D09).
+    if (scope === "all" && !(req.user && (await userHasPermission(req.user.role, "interruptions.manage")))) {
+      throw forbidden("Full interruption history is reserved for staff");
+    }
     const rows = await prisma.serviceInterruption.findMany({
       where: { service_id, ...scopeWhere(scope) },
       orderBy: { starts_at: scope === "all" ? "desc" : "asc" },

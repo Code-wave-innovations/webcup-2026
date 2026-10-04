@@ -113,6 +113,10 @@ export interface Permission {
   roles: Role[]
   rule?: string
   routes: PermissionRoute[]
+  /** Staff columns the admin may toggle (CITIZEN is never editable) */
+  editable_roles?: Array<'AGENT' | 'ADMIN'>
+  /** Staff roles that must stay granted */
+  locked_roles?: Array<'AGENT' | 'ADMIN'>
 }
 
 /** POST /api/auth/login and /api/auth/register */

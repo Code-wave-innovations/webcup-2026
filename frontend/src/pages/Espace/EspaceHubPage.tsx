@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useAppointments } from '../../api/appointments'
-import { useCitizenUser } from '../../api/session'
+import { dismissFailedLoginNotice, readFailedLoginNotice, useCitizenUser } from '../../api/session'
 import { countdown } from '../../features/appointments/appointmentModel'
 import { useNow } from '../../hooks/useNow'
 import { useRequests } from '../../api/requests'
@@ -29,6 +30,10 @@ const messages = defineMessages(
     account: 'Compte',
     accountText: 'Modifier vos informations ou fermer votre compte citoyen.',
     manage: 'Gérer mon compte',
+    // F37
+    securityNotice: (n: number) =>
+      `${n} tentative${n > 1 ? 's' : ''} de connexion ${n > 1 ? 'ont échoué' : 'a échoué'} depuis votre dernière visite. Si ce n’était pas vous, changez votre mot de passe.`,
+    securityDismiss: 'Compris',
   },
   {
     lead: (name, district) => `Hello ${name}${district ? ` · ${district}` : ''}. Follow your procedures and your appointments here.`,
@@ -45,10 +50,13 @@ const messages = defineMessages(
     account: 'Account',
     accountText: 'Update your details or close your citizen account.',
     manage: 'Manage my account',
+    securityNotice: (n) =>
+      `${n} failed sign-in attempt${n > 1 ? 's' : ''} since your last visit. If that was not you, change your password.`,
+    securityDismiss: 'Got it',
   },
 )
 
-/** D03 / D11 / F33 / F39: personal hub — demandes, rendez-vous, compte. */
+/** D03 / D11 / F33 / F39: personal hub — demandes, rendez-vous, compte. F37: failed-login notice. */
 export default function EspaceHubPage() {
   const user = useCitizenUser()
   const open = useRequests({ scope: 'open', limit: 1 })
@@ -60,9 +68,26 @@ export default function EspaceHubPage() {
   const next = upcoming.data?.data[0]
   const m = useMessages(messages)
   const common = useMessages(espaceMessages)
+  const [failedAttempts, setFailedAttempts] = useState(() => readFailedLoginNotice())
+
+  const dismissSecurityNotice = () => {
+    dismissFailedLoginNotice()
+    setFailedAttempts(null)
+  }
 
   return (
     <ConsolePage title={common.espace} lead={user ? m.lead(user.name, district) : undefined}>
+      {failedAttempts != null && failedAttempts > 0 && (
+        <GlassPanel className={styles.securityNotice} role="status">
+          <p>{m.securityNotice(failedAttempts)}</p>
+          <div className={styles.cardActions}>
+            <button type="button" className={styles.dismiss} onClick={dismissSecurityNotice}>
+              {m.securityDismiss}
+            </button>
+          </div>
+        </GlassPanel>
+      )}
+
       <div className={styles.hubGrid}>
         <GlassPanel className={styles.card}>
           <h2>{common.requests}</h2>
@@ -104,8 +129,8 @@ export default function EspaceHubPage() {
               {next ? (
                 <p>
                   {m.next}
-                  <strong>{next.service.name}</strong>, {m.slot(next.when.day_label, next.when.start_time, next.when.end_time)} · {next.where.location}{' '}
-                  ({countdown(next.when.starts_at, now)})
+                  <strong>{next.service.name}</strong>, {m.slot(next.when.day_label, next.when.start_time, next.when.end_time)} ·{' '}
+                  {next.where.location} ({countdown(next.when.starts_at, now)})
                   {upcoming.data.meta.total > 1 ? m.upcoming(upcoming.data.meta.total) : ''}
                 </p>
               ) : (

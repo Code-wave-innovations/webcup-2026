@@ -20,7 +20,11 @@ export function PageHeader({ title, lead, actions, simulated }: PageHeaderProps)
           <p className={styles.codes}>
             <span className={styles.simulated}>
               <Icon name="info" size={13} />
-              Données simulées<span className="bo-sr-only"> : cet écran n’est pas encore relié à l’API</span>
+              Données simulées · navigateur seulement
+              <span className="bo-sr-only">
+                {' '}
+                : les actions restent locales ; elles ne modifient pas l’API. Hors rôle, le serveur refuse toujours.
+              </span>
             </span>
           </p>
         )}

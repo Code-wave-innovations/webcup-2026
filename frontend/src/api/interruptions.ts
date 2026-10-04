@@ -3,8 +3,8 @@ import { http } from './client'
 import { queryClient, REFRESH } from './queryClient'
 import type { InterruptionScope, ServiceInterruption } from './types'
 
-// F38: maintenance and incidents of the services (GET /api/service-interruptions, public;
-// writing is open to the staff)
+// F38: maintenance and incidents (GET /api/service-interruptions: current/upcoming/active public;
+// scope=all is staff-only history — D09). Writing is open to the staff.
 
 export const interruptionKeys = {
   all: ['interruptions'] as const,

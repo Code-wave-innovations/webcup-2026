@@ -64,8 +64,13 @@ export function AirlockPage() {
   const onGranted = (granted: Session) => {
     signIn(granted)
     // Keep the API JWT in sync (contact, espace, demandes…) — demo-only airlock logins have no `auth`.
+    // Pass the full AuthResponse so F37 can surface failed_attempts_since_last_login on Mon espace.
     if (granted.auth) {
-      bindApiSession({ token: granted.auth.token, user: granted.auth.user as User })
+      bindApiSession({
+        token: granted.auth.token,
+        user: granted.auth.user as User,
+        security: granted.auth.security,
+      })
     }
     setStep('granted')
     departure.current = setTimeout(

@@ -220,6 +220,7 @@ Le fichier `stores/userStore.ts` et la fonction `configStore.togglePermission` s
 4. **D09.**
    - Un citoyen connecté qui ouvre `/admin` voit l'écran « réservé au personnel ».
    - `curl -H "Authorization: Bearer <token citoyen>" …/api/users` répond `403`.
+   - **Preuve perceptible (4 oct. 2026) :** `RolesPage` propose « Tester maintenant » (statut HTTP réel) ; `GET /api/service-interruptions?scope=all` est réservé au personnel. Spec : `docs/superpowers/specs/2026-10-04-admin-data-protection-design.md`.
 5. **F33.**
    - Avec le bon mot de passe, la suppression déconnecte l'habitant, et une nouvelle connexion est refusée.
    - Avec un mauvais mot de passe, un message d'erreur s'affiche et le compte reste intact.
@@ -229,7 +230,7 @@ Le fichier `stores/userStore.ts` et la fonction `configStore.togglePermission` s
    - L'admin désactive un compte, puis le réactive.
 7. **F37.**
    - Après 4 mauvais mots de passe, on lit « encore 1 essai ». Au 5ᵉ, le compte est bloqué et un compte à rebours s'affiche.
-   - Le titulaire reçoit la notification de sécurité et voit « N tentatives échouées » à sa connexion suivante.
+   - Le titulaire reçoit la notification de sécurité et voit « N tentatives échouées » à sa connexion suivante (**fait** sur `/ville/espace`, bannière dismissible).
    - L'admin voit le compte ciblé dans la page Sécurité et le débloque.
 
 ## 8. Version minimale

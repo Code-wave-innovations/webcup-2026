@@ -100,7 +100,7 @@ Fichiers front : `src/api/users.ts` (`useUsers`, `useUser`, `useStaff`, `useUser
 - Chaque permission sensible porte une icône cadenas et l'étiquette « Sensible ».
 - Mention en tête : « Les droits sont appliqués par le serveur. Ce tableau les décrit, il ne les modifie pas. »
 
-**Encart « Vérifier un droit » (D09) :** pour une permission choisie, il montre les routes qui l'appliquent et la réponse attendue pour chaque rôle. Par exemple : `POST /api/users` → Citoyen 403, Agent 403, Admin 201.
+**Encart « Vérifier un droit » (D09) :** pour une permission choisie, il montre les routes qui l'appliquent et la réponse attendue pour chaque rôle. Par exemple : `POST /api/users` → Citoyen 403, Agent 403, Admin 201. **Bouton « Tester maintenant » (4 oct. 2026) :** sonde les GET sans paramètre avec la session courante et affiche le statut HTTP réel à côté de la prédiction (preuve perceptible D09).
 
 ## 5. Nettoyage
 
@@ -119,7 +119,7 @@ Sont supprimés :
 - [x] `src/api/users.ts`, `src/api/permissions.ts`, `src/api/districts.ts`
 - [x] `UsersPage` : onglets, filtres, tiroir, création du personnel avec mot de passe provisoire, désactivation avec motif, suppression
 - [ ] `CitizensPage` : fiche, demandes, champs autorisés, déblocage faits ; rendez-vous au BO-08
-- [x] `RolesPage` en lecture seule, avec l'encart « Vérifier un droit »
+- [x] `RolesPage` en lecture seule, avec l'encart « Vérifier un droit » et le test live « Tester maintenant »
 - [ ] Nettoyage : partiel, `userStore` et `mocks/people` restent pour les écrans du BO-07 et du BO-08
 
 ## 7. Critères d'acceptation
@@ -160,10 +160,12 @@ Peut attendre :
 ## Réalisé (4 octobre 2026)
 
 - **Backend :** `GET /api/users/stats`, `login_locked` / `locked_until` (calculés par `lockState`), motif obligatoire pour désactiver (`reason`, gardé dans l'audit), `lib/permissions.ts` + `GET /api/permissions`, `npm run check:permissions` (`scripts/check-permissions.ts` lit les routeurs).
-- **Écrans :** `shared/AccountDrawer` commun à `UsersPage` et `CitizensPage` (onglets Profil, Sécurité pour l'admin, Historique), création du personnel avec mot de passe provisoire affiché une fois, `RolesPage` en lecture seule avec « Vérifier un droit ».
+- **Écrans :** `shared/AccountDrawer` commun à `UsersPage` et `CitizensPage` (onglets Profil, Sécurité pour l'admin, Historique), création du personnel avec mot de passe provisoire affiché une fois, `RolesPage` en lecture seule avec « Vérifier un droit » et test live HTTP.
 - **Nettoyage partiel :** `togglePermission`, `PERMISSIONS` et `ROLE_PERMISSIONS` sont supprimés. `stores/userStore.ts` et `mocks/people.ts` restent, réduits à la liste des comptes, car `lib/lookups` les lit encore pour les écrans du BO-07 et du BO-08.
 - **Pas fait :** les rendez-vous d'un habitant dans sa fiche (BO-08) ; `must_change_password`.
 - **Vérifié dans Chrome :** critères 2 à 5 (le 1 relève du sas citoyen, PLAN-01).
+- **Protection perceptible (4 oct. 2026, avec PLAN-01 / F37) :** spec `docs/superpowers/specs/2026-10-04-admin-data-protection-design.md` — test live RolesPage, historique interruptions `scope=all` staff-only, bannière F37 sur Mon espace, badge « Données simulées · navigateur seulement » sur BO-07/08.
+- **Matrice éditable (4 oct. 2026) :** Agent/Admin cochables (`PATCH /api/permissions/:key`, `requirePermission`, overrides `role_grants`) ; Citoyen verrouillé ; `permissions.manage` et `staff.manage` non retirables à Admin. Spec : `docs/superpowers/specs/2026-10-04-editable-role-matrix-design.md`.
 
 ## Complément F34 (4 octobre 2026)
 

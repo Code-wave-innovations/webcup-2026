@@ -176,7 +176,7 @@ Le détail est dans le BO-00.
 | BO-01 | À faire | |
 | BO-02 | À faire | |
 | BO-03 | À faire | |
-| BO-04 | À faire | |
+| BO-04 | En cours | Quasi fait (voir plan) ; + test live RolesPage / protection perceptible D09 (4 oct.) |
 | BO-05 | À faire | |
 | BO-06 | À faire | |
 | BO-07 | À faire | |

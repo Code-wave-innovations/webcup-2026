@@ -87,7 +87,7 @@ export default function NotificationsPage() {
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
       <PageHeader simulated
         title="Notifications globales"
-        lead="Prévenez les habitants au bon moment. Les annonces importantes et les alertes envoient aussi des notifications automatiquement."
+        lead="Maquette locale : les envois ne touchent pas l’API. Prévenez les habitants au bon moment ; annonces importantes et alertes déclencheront aussi des notifications une fois branché."
       />
 
       <motion.div className={layout.stats} variants={stagger}>

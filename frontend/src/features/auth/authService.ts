@@ -68,6 +68,8 @@ interface ApiUser {
 interface AuthResponse {
   token: string
   user: ApiUser
+  /** F37: present on password / face login */
+  security?: { failed_attempts_since_last_login: number; new_device?: boolean; device_id?: number }
 }
 
 export function toSession(account: Account): Session {
@@ -86,7 +88,8 @@ export function filmSessionFromCitizen(user: { id: number; name: string; email: 
   }
 }
 
-export function sessionFromApi(token: string, user: ApiUser): Session {
+export function sessionFromApi(auth: AuthResponse): Session {
+  const { token, user } = auth
   const citizen = user.role === 'CITIZEN'
   return {
     accountId: String(user.id),
@@ -96,7 +99,7 @@ export function sessionFromApi(token: string, user: ApiUser): Session {
     role: citizen ? 'resident' : 'council',
     token,
     email: user.email,
-    auth: { token, user },
+    auth,
   }
 }
 
@@ -126,7 +129,7 @@ export const terraAuthService: AuthService = {
     try {
       const email = isEmail(key) ? key : `${key}@terra-nova.city`
       const { data } = await authHttp.post<AuthResponse>('/auth/login', { email, password: code })
-      return { ok: true, session: sessionFromApi(data.token, data.user) }
+      return { ok: true, session: sessionFromApi(data) }
     } catch (error) {
       // F34: a suspended account is said plainly (the server only says so after the right password)
       if (toApiError(error).code === 'ACCOUNT_DISABLED') return { ok: false, inconclusive: 'disabled' }
@@ -163,7 +166,7 @@ export async function faceSignIn(identifier: string, frame: Blob): Promise<SignI
   form.append('image', frame, 'frame.jpg')
   try {
     const { data } = await authHttp.post<AuthResponse>('/auth/face', form)
-    return { ok: true, session: sessionFromApi(data.token, data.user) }
+    return { ok: true, session: sessionFromApi(data) }
   } catch (error) {
     const api = toApiError(error)
     if (api.code === 'FACE_NOT_ENROLLED') return { ok: false, inconclusive: 'unknown' }
@@ -196,7 +199,7 @@ export type RecoverResult = { ok: true; session: Session } | { ok: false; error:
 export async function recoverAccess(identifier: string, code: string, password: string): Promise<RecoverResult> {
   try {
     const { data } = await authHttp.post<AuthResponse>('/auth/recover', { email: resolveAuthEmail(identifier), code, password })
-    return { ok: true, session: sessionFromApi(data.token, data.user) }
+    return { ok: true, session: sessionFromApi(data) }
   } catch (error) {
     const api = toApiError(error)
     if (api.code === 'INVALID_RESET_CODE') {
@@ -223,7 +226,7 @@ export async function registerCitizen(
       form_started_at: input.form_started_at,
       turnstile_token: input.turnstile_token,
     })
-    return { ok: true, session: sessionFromApi(data.token, data.user) }
+    return { ok: true, session: sessionFromApi(data) }
   } catch (error) {
     const api = toApiError(error)
     if (api.status === 409 || api.code === 'CONFLICT') {

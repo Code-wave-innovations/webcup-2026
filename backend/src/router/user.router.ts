@@ -1,27 +1,27 @@
 import express from "express";
 import userController from "../controller/user.controller";
-import { authenticate, requireAdmin, requireStaff } from "../middleware/auth";
+import { authenticate, requirePermission } from "../middleware/auth";
+
 const userRouter = express.Router();
 
-// Agents manage citizen accounts only (F34); the controller enforces the scope.
-userRouter.use(authenticate, requireStaff);
-userRouter.get("/", userController.getAll);
-userRouter.get("/staff", userController.staff);
-userRouter.get("/stats", requireAdmin, userController.stats);
-userRouter.get("/:id", userController.getOne);
-userRouter.post("/", requireAdmin, userController.create);
-userRouter.patch("/:id", userController.update);
-userRouter.post("/:id/unlock-login", userController.unlockLogin);
-// F34: one-time code so that the person sets a new password themselves
-userRouter.post("/:id/reset-code", userController.issueResetCode);
-userRouter.delete("/:id/reset-code", userController.cancelResetCode);
-// BO-05: sign-in security of an account (admin)
-userRouter.get("/:id/security", requireAdmin, userController.security);
-userRouter.get("/:id/devices", requireAdmin, userController.devices);
-userRouter.post("/:id/revoke-sessions", requireAdmin, userController.revokeSessions);
-userRouter.post("/:id/2fa/reset", requireAdmin, userController.resetTwoFactor);
-userRouter.delete("/:id/passkeys", requireAdmin, userController.revokePasskeys);
-// F34: deleting an account cannot be undone: admins only (the holder deletes their own from « Mon compte », F33)
-userRouter.delete("/:id", requireAdmin, userController.delete);
+userRouter.use(authenticate);
+
+userRouter.get("/staff", requirePermission("requests.process"), userController.staff);
+userRouter.get("/stats", requirePermission("staff.manage"), userController.stats);
+userRouter.get("/", requirePermission("citizens.manage"), userController.getAll);
+userRouter.get("/:id", requirePermission("citizens.manage"), userController.getOne);
+userRouter.post("/", requirePermission("staff.manage"), userController.create);
+userRouter.patch("/:id", requirePermission("citizens.manage"), userController.update);
+userRouter.post("/:id/unlock-login", requirePermission("citizens.manage"), userController.unlockLogin);
+userRouter.post("/:id/reset-code", requirePermission("citizens.manage"), userController.issueResetCode);
+userRouter.delete("/:id/reset-code", requirePermission("citizens.manage"), userController.cancelResetCode);
+
+userRouter.get("/:id/security", requirePermission("security.manage"), userController.security);
+userRouter.get("/:id/devices", requirePermission("security.manage"), userController.devices);
+userRouter.post("/:id/revoke-sessions", requirePermission("security.manage"), userController.revokeSessions);
+userRouter.post("/:id/2fa/reset", requirePermission("security.manage"), userController.resetTwoFactor);
+userRouter.delete("/:id/passkeys", requirePermission("security.manage"), userController.revokePasskeys);
+
+userRouter.delete("/:id", requirePermission("staff.manage"), userController.delete);
 
 export default userRouter;

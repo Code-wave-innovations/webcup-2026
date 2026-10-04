@@ -128,7 +128,7 @@ Ces règles sont détaillées dans le PLAN-00 et s'appliquent à tous les plans 
 | Plan | Statut | Notes |
 |---|---|---|
 | 00 | Fait (3 oct.) | Paramètres, seed du scénario, CORS, `src/api`, console `/ville/*`, formulaires accessibles, page Paramètres branchée. Écarts : § 10 du plan |
-| 01 | À faire | |
+| 01 | En cours | Preuve D09/F37 perceptible (4 oct.) : RolesPage test live, bannière Mon espace, `scope=all` interruptions staff-only — voir spec `docs/superpowers/specs/2026-10-04-admin-data-protection-design.md` |
 | 02 | À faire | |
 | 03 | À faire | |
 | 04 | À faire | |
