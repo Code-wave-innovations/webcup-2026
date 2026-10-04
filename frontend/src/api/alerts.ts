@@ -10,8 +10,15 @@ import type { ActiveAlert, AlertAudience, AlertInput, CityAlert, Paginated } fro
 export const alertKeys = {
   all: ['alerts'] as const,
   active: (viewer: string | null = null) => [...alertKeys.all, 'active', viewer] as const,
+  /** ISO time of the next alert that has not started, or null. Written by the active query. */
+  nextStart: () => [...alertKeys.all, 'next-start'] as const,
   list: () => [...alertKeys.all, 'list'] as const,
   audience: (audience: AlertAudience, districtIds: number[]) => [...alertKeys.all, 'audience', audience, districtIds] as const,
+}
+
+function headerTime(value: unknown): string | null {
+  const raw = Array.isArray(value) ? value[0] : value
+  return typeof raw === 'string' && raw.length > 0 ? raw : null
 }
 
 /**
@@ -23,7 +30,11 @@ export const useActiveAlerts = (token?: string | null) => {
   const cached = alertsForViewer(snap, alertViewerKey(token, useCitizenUser()?.id ?? null))
   return useQuery({
     queryKey: alertKeys.active(token ? 'me' : null),
-    queryFn: () => http.get<ActiveAlert[]>('/alerts/active', token ? { headers: { Authorization: `Bearer ${token}` } } : undefined).then((r) => r.data),
+    queryFn: () =>
+      http.get<ActiveAlert[]>('/alerts/active', token ? { headers: { Authorization: `Bearer ${token}` } } : undefined).then((response) => {
+        queryClient.setQueryData(alertKeys.nextStart(), headerTime(response.headers['x-alert-next-at']))
+        return response.data
+      }),
     refetchInterval: REFRESH.alerts,
     // a banner must not wait for the tab to be focused again
     refetchIntervalInBackground: true,
@@ -47,6 +58,14 @@ export const useAlertAudience = (audience: AlertAudience, districtIds: number[])
       http.get<{ count: number }>('/notifications/audience', { params: { audience, district_ids: districtIds.join(',') || undefined } }).then((r) => r.data.count),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
+  })
+
+/** The next programmed alert, filled by `useActiveAlerts`. Does not fetch on its own. */
+export const useNextAlertStart = () =>
+  useQuery<string | null>({
+    queryKey: alertKeys.nextStart(),
+    queryFn: () => Promise.resolve(null),
+    enabled: false,
   })
 
 const refresh = () => queryClient.invalidateQueries({ queryKey: alertKeys.all })

@@ -6,6 +6,7 @@ import type { Home } from '../../api/types'
 import { announcementCategoryLabel } from '../../api/announcements'
 import { SCENE, SCENE_REASON_LABEL } from '../../a11y/sceneMode'
 import { useAuthStore } from '../../features/auth/authStore'
+import { stepsOf } from '../../lib/alertText'
 import { availabilityView, formatShortMoment, plural } from '../../features/services/availability'
 import { formatPublished } from '../../lib/format'
 import { Pill } from '../../ui/Badges'
@@ -133,6 +134,8 @@ function Alerts({ alerts }: { alerts: Home['alerts'] }) {
               </small>
               <strong>{alert.title}</strong>
               <small>{alert.message}</small>
+              {alert.concerns_me && stepsOf(alert.instructions)[0] && <small>À faire : {stepsOf(alert.instructions)[0]}</small>}
+              {!alert.concerns_me && <small>Ne concerne pas votre quartier</small>}
             </div>
             <Pill tone={alert.severity === 'INFO' ? 'neutral' : 'alert'}>{SEVERITY_LABEL[alert.severity]}</Pill>
           </Row>

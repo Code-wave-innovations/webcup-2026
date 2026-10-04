@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { audit, fieldsOf } from "../lib/audit";
 import { AlertAudience, AlertSeverity, Prisma } from "@prisma/client";
 import { z } from "zod";
-import alertModel, { activeAlertWhere, concernsUser, sendAlertNotifications } from "../model/alert.model";
+import alertModel, { activeAlertWhere, concernsUser, nextAlertStart, sendAlertNotifications } from "../model/alert.model";
 import { badRequest, notFound } from "../lib/errors";
 import { fieldError, pageMeta, paginationSchema, parseId, toSkipTake, zBool, zDate, zId, zJson } from "../lib/validation";
 import { resolveLocale, translate, translateOne } from "../lib/translations";
@@ -52,7 +52,10 @@ const toJson = (value: unknown[] | null | undefined) =>
 const alertController = {
   // Public banner feed: every active alert, with concerns_me for the logged-in user.
   getActive: async (req: Request, res: Response) => {
-    const [alerts] = await alertModel.list(activeAlertWhere());
+    const now = new Date();
+    const [[alerts], nextStart] = await Promise.all([alertModel.list(activeAlertWhere(now)), nextAlertStart(now)]);
+    // The screen refetches at this instant, so a programmed outage appears when it starts, not on the next poll.
+    if (nextStart) res.set("X-Alert-Next-At", nextStart.toISOString());
     const translated = await translate("Alert", alerts, resolveLocale(req));
     res.json(translated.map((alert) => ({ ...alert, concerns_me: concernsUser(alert, req.user) })));
   },

@@ -46,13 +46,26 @@ export function sortAlerts<T extends Pick<ActiveAlert, 'concerns_me' | 'severity
   )
 }
 
-/** F29 / F31: who the alert speaks to, in words. */
+/** F29 / F31: who the alert speaks to, in the visitor's language. */
 export function zoneLabel(alert: Pick<ActiveAlert, 'audience' | 'districts'>, locale: Locale = currentLocale()): string {
   const m = messagesFor(messages, locale)
   const names = alert.districts.map((d) => d.name).join(', ')
   if (alert.audience === 'DISTRICTS') return names || m.targetedDistricts
   if (alert.audience === 'VULNERABLE') return names ? m.vulnerableIn(names) : m.vulnerable
   return m.wholeCity
+}
+
+/** setTimeout holds at most ~24.8 days */
+const MAX_TIMER_MS = 2_147_000_000
+
+/**
+ * How long to wait before asking again, so an alert appears at its start and leaves at its end
+ * instead of waiting for the next poll. Null when nothing changes ahead.
+ */
+export function alertWakeMs(now: number, moments: readonly number[]): number | null {
+  const ahead = moments.filter((moment) => Number.isFinite(moment) && moment > now)
+  if (ahead.length === 0) return null
+  return Math.min(MAX_TIMER_MS, Math.max(0, Math.min(...ahead) - now) + 500)
 }
 
 /** The alerts that must take over the screen: they concern me and I have not acknowledged them. */
