@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router'
 import { useActiveAlerts } from '../../api/alerts'
+import { useCitizenSessionStore } from '../../api/session'
 import type { ActiveAlert } from '../../api/types'
 import { useDirectorStore } from '../../experience/director/directorStore'
 import { Icon } from '../../ui/Icon'
@@ -20,10 +21,12 @@ const MAX_TIMER_MS = 2_147_000_000
  * stays in the banner until it ends. A critical one turns the city red and keeps its chime.
  */
 export function AlertCenter() {
-  const session = useAuthStore((s) => s.session)
+  const film = useAuthStore((s) => s.session)
+  const citizenToken = useCitizenSessionStore((s) => s.token)
+  const token = citizenToken ?? film?.token
   const cinematic = useDirectorStore((s) => s.cinematic)
   const { pathname } = useLocation()
-  const feed = useActiveAlerts(session?.token)
+  const feed = useActiveAlerts(token)
   const { refetch } = feed
   const alerts = useAlertFeed((s) => s.alerts)
   const acknowledged = useAlertFeed((s) => s.acknowledged)

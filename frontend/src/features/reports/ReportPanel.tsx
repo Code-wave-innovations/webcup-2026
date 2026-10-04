@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchOwnRequest, requestKeys } from '../../api/requests'
-import { useSessionStore } from '../../api/session'
+import { useCitizenSessionStore } from '../../api/session'
 import { useAuthStore } from '../auth/authStore'
 import { ReportForm } from './ReportForm'
 import { ReportTracker } from './ReportTracker'
@@ -12,8 +12,8 @@ export function ReportPanel() {
   const report = useReportStore((s) => s.report)
   const syncStatus = useReportStore((s) => s.syncStatus)
   const filmToken = useAuthStore((s) => s.session?.token)
-  const apiToken = useSessionStore((s) => s.token)
-  const token = filmToken ?? apiToken
+  const citizenToken = useCitizenSessionStore((s) => s.token)
+  const token = citizenToken ?? filmToken
   const live = useQuery({
     queryKey: [...requestKeys.detail(report?.id ?? 0), 'film'],
     queryFn: () => fetchOwnRequest(report!.id, token ?? ''),

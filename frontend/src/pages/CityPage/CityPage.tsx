@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
-import { signOutCitizen } from '../../api/session'
+import { signOutCitizen, useCitizenUser } from '../../api/session'
 import { debugJump, debugParams } from '../../experience/director/debugParams'
 import { director } from '../../experience/director/director'
 import { useSmoothScroll } from '../../app/smoothScroll'
@@ -8,7 +8,7 @@ import { useDirectorStore } from '../../experience/director/directorStore'
 import { novaScenes } from '../../experience/nova/behavior/scenes'
 import { AnnouncementList } from '../../features/announcements/AnnouncementList'
 import { ContactPanel } from '../../features/contact/ContactPanel'
-import type { Session } from '../../features/auth/authService'
+import { filmSessionFromCitizen, type Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
 import { CityGauges } from '../../features/cityStatus/CityGauges'
 import { RegistryPanel } from '../../features/registry/RegistryPanel'
@@ -36,7 +36,9 @@ const sectionIndex = (id: string) => CITY_SECTIONS.findIndex((s) => s.id === id)
 
 /** Acts III and IV: the city. Requires a session; without one, back to the airlock. */
 export function CityPage() {
-  const session = useAuthStore((s) => s.session)
+  const film = useAuthStore((s) => s.session)
+  const citizen = useCitizenUser()
+  const session = film ?? (citizen ? filmSessionFromCitizen(citizen) : null)
   const { search } = useLocation()
   // a debug jump signs in by itself once the film has landed
   if (!session) return debugJump ? null : <Navigate to={{ pathname: '/', search }} replace />

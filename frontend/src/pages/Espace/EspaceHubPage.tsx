@@ -1,6 +1,6 @@
-import { messageFor } from '../../api/errors'
+import { useCitizenUser } from '../../api/session'
 import { useRequests } from '../../api/requests'
-import { useSessionUser } from '../../api/session'
+import { messageFor } from '../../api/errors'
 import { ButtonRouteLink } from '../../ui/Button'
 import { GlassPanel } from '../../ui/GlassPanel'
 import text from '../../ui/text.module.css'
@@ -9,7 +9,7 @@ import styles from './Espace.module.css'
 
 /** D03 / D11: personal hub — entry to Mes demandes. */
 export default function EspaceHubPage() {
-  const user = useSessionUser()
+  const user = useCitizenUser()
   const open = useRequests({ scope: 'open', limit: 1 })
   const waiting = useRequests({ status: ['WAITING_CITIZEN'], limit: 1 })
   const district = user?.district?.name
