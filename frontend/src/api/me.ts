@@ -2,7 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { startRegistration, type PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/browser'
 import { http } from './client'
 import { queryClient } from './queryClient'
-import { replaceToken, useSessionStore } from './session'
+import { replaceToken, setSessionUser } from './session'
 import type { MySecurity, PasskeyInfo, TwoFactorSetup, User } from './types'
 
 // D03 / D08: the signed-in account, as the server sees it now (role or deactivation may have changed)
@@ -38,7 +38,7 @@ export const useMe = (enabled = true) =>
     queryKey: meKeys.all,
     queryFn: async () => {
       const me = (await http.get<User>('/me')).data
-      useSessionStore.getState().setUser(toSessionUser(me))
+      setSessionUser(toSessionUser(me))
       return me
     },
     enabled,
@@ -61,7 +61,7 @@ export const useUpdateMe = () =>
   useMutation({
     mutationFn: (changes: Partial<Pick<User, 'name' | 'last_name' | 'phone'>>) => http.patch<User>('/me', changes).then((r) => r.data),
     onSuccess: (user) => {
-      useSessionStore.getState().setUser(toSessionUser(user))
+      setSessionUser(toSessionUser(user))
       void queryClient.invalidateQueries({ queryKey: meKeys.all })
     },
   })

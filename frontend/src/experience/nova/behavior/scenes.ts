@@ -100,10 +100,10 @@ export const novaScenes = {
     nova.say('On continue ? Faites défiler, je vous montre la suite.', 'happy')
   },
 
-  /** a report was sent to the High Council */
-  reportSent(code: string): void {
+  /** a report was sent to the High Council. `place` is the district the beam rises over. */
+  reportSent(code: string, place?: string): void {
     nova.gesture('celebrate')
-    nova.say(`Demande ${code} envoyée ! Le faisceau au-dessus du Dôme 3, c'est elle.`, 'happy')
+    nova.say(place ? `Demande ${code} envoyée ! Le faisceau au-dessus de ${place}, c'est elle.` : `Demande ${code} envoyée !`, 'happy')
   },
 
   /** the report's status moved on */

@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router'
 import { director } from '../../experience/director/director'
 import { useDirectorStore } from '../../experience/director/directorStore'
 import { novaScenes } from '../../experience/nova/behavior/scenes'
+import { signIn as bindApiSession } from '../../api/session'
+import type { User } from '../../api/types'
 import { AccessHologram } from '../../features/auth/AccessHologram'
 import type { Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
@@ -46,6 +48,10 @@ export function AirlockPage() {
 
   const onGranted = (granted: Session) => {
     signIn(granted)
+    // Keep the API JWT in sync (D04 contact, demandes…) — demo-only airlock logins have no `auth`.
+    if (granted.auth) {
+      bindApiSession({ token: granted.auth.token, user: granted.auth.user as User })
+    }
     setStep('granted')
     departure.current = setTimeout(
       () => {

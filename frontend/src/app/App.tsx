@@ -16,6 +16,8 @@ const BackofficeApp = lazy(() => import('../backoffice/BackofficeApp'))
 const NovaBench = import.meta.env.DEV ? lazy(() => import('../dev/NovaBench')) : null
 /** Check of the console chain (layout, API, session, forms), development only. */
 const ConsoleTestPage = import.meta.env.DEV ? lazy(() => import('../dev/ConsoleTestPage')) : null
+/** D04: write to municipal services (console over the dimmed city). */
+const ContactPage = lazy(() => import('../pages/Console/ContactPage'))
 
 function App() {
   return (
@@ -27,6 +29,14 @@ function App() {
             <Route index element={<CityPage />} />
             {/* pages beyond the flyover, over the dimmed city */}
             <Route element={<ConsoleLayout />}>
+              <Route
+                path="contact"
+                element={
+                  <Suspense fallback={null}>
+                    <ContactPage />
+                  </Suspense>
+                }
+              />
               {ConsoleTestPage && (
                 <Route
                   path="test"

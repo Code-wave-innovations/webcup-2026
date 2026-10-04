@@ -1,10 +1,10 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { useMe } from '../../api/me'
-import { isStaffRole, signOut, useSessionUser, useSignedIn } from '../../api/session'
+import { isStaffRole, useCitizenUser, useStaffSignedIn, useStaffUser } from '../../api/session'
 import type { User } from '../../api/types'
 import { toast } from '../stores/toastStore'
-import { Button, ButtonLink } from '../ui/Button'
+import { ButtonLink } from '../ui/Button'
 import { AccessFrame } from './AccessFrame'
 import { loginPath, usePersona } from './persona'
 import { useSessionExpired } from './sessionNotice'
@@ -25,7 +25,7 @@ function StaffOnlyScreen({ user }: { user: User }) {
       lead={
         <>
           Vous êtes connecté·e avec le compte d’habitant <strong>{user.email}</strong>. Les outils des agents et des administrateurs ne
-          vous sont pas accessibles.
+          vous sont pas accessibles. Votre session habitant reste active sur la ville.
         </>
       }
     >
@@ -33,10 +33,9 @@ function StaffOnlyScreen({ user }: { user: User }) {
         <ButtonLink to="/ville" variant="primary" icon="globe">
           Retour à mon espace
         </ButtonLink>
-        {/* without a session, RequireStaff shows the login page, which returns here */}
-        <Button icon="swap" onClick={signOut}>
-          Changer de compte
-        </Button>
+        <ButtonLink to={loginPath(persona)} icon="swap">
+          Connexion agent / admin
+        </ButtonLink>
       </div>
     </AccessFrame>
   )
@@ -58,16 +57,18 @@ function AdminOnlyRedirect() {
 
 export function RequireStaff({ children }: { children: ReactNode }) {
   const persona = usePersona()
-  const signedIn = useSignedIn()
-  const user = useSessionUser()
+  const staffSignedIn = useStaffSignedIn()
+  const staff = useStaffUser()
+  const citizen = useCitizenUser()
   const expired = useSessionExpired()
   const { pathname, search } = useLocation()
-  const staff = signedIn && !!user && isStaffRole(user.role)
   // the server's view of the account (role, deactivation) refreshes the session's copy
-  useMe(staff)
+  useMe(staffSignedIn)
 
-  if (!signedIn || !user) return <Navigate to={loginPath(persona, pathname + search, expired)} replace />
-  if (!staff) return <StaffOnlyScreen user={user} />
-  if (persona === 'ADMIN' && user.role !== 'ADMIN') return <AdminOnlyRedirect />
+  if (!staff || !isStaffRole(staff.role)) {
+    if (citizen) return <StaffOnlyScreen user={citizen} />
+    return <Navigate to={loginPath(persona, pathname + search, expired)} replace />
+  }
+  if (persona === 'ADMIN' && staff.role !== 'ADMIN') return <AdminOnlyRedirect />
   return children
 }

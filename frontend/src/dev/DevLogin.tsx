@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { login } from '../api/auth'
-import { signOut, useSessionUser } from '../api/session'
+import { signOut, useCitizenUser, useStaffUser } from '../api/session'
 import { Button } from '../ui/Button'
 import { ErrorSummary } from '../ui/ErrorSummary'
 import { Field } from '../ui/Field'
@@ -21,7 +21,9 @@ const ACCOUNTS = [
 const LABELS = { email: 'Adresse e-mail', password: 'Mot de passe' }
 
 export function DevLogin() {
-  const user = useSessionUser()
+  const citizen = useCitizenUser()
+  const staff = useStaffUser()
+  const user = citizen ?? staff
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const form = useApiForm({
@@ -40,8 +42,9 @@ export function DevLogin() {
       <div className={styles.box}>
         <p>
           Connecté·e : <strong>{user.name} {user.last_name}</strong> ({user.role}, {user.email})
+          {citizen && staff ? ' · les deux slots sont remplis' : ''}
         </p>
-        <Button small variant="ghost" onClick={signOut}>
+        <Button small variant="ghost" onClick={() => signOut('all')}>
           Se déconnecter
         </Button>
       </div>
