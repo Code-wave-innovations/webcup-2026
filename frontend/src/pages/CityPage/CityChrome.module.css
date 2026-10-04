@@ -324,12 +324,6 @@
   }
 }
 
-@media (max-width: 1180px) {
-  .clock {
-    display: none;
-  }
-}
-
 @media (max-width: 1100px) {
   .links {
     display: none;
@@ -347,7 +341,6 @@
   }
 
   .badge small,
-  .clock span,
   .explore span,
   .light span {
     display: none;
