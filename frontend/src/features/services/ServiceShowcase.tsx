@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
 import { messageFor } from '../../api/errors'
+import { isNetworkFailure } from '../../api/essentialCache'
 import { useCatalogue, useServiceCategories } from '../../api/services'
 import type { CityService } from '../../api/types'
 import { Icon } from '../../ui/Icon'
@@ -52,10 +53,13 @@ export function ServiceShowcase() {
 
       <p className={styles.caption} aria-live="polite">
         <strong>{active?.name ?? 'À la une'}</strong>
-        <span>{active ? plural(total, 'service', 'services') : 'les services prioritaires de la ville'}</span>
+        <span>
+          {active ? plural(total, 'service', 'services') : 'les services prioritaires de la ville'}
+          {services.isError && services.data && isNetworkFailure(services.error) ? ' · dernier état connu' : ''}
+        </span>
       </p>
 
-      {services.isError ? (
+      {services.isError && !services.data ? (
         <div className={styles.offline} role="alert">
           <Icon name="alert" />
           <span>

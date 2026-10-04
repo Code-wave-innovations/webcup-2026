@@ -13,6 +13,7 @@ import { announce } from '../../ui/toastStore'
 import { analyzeReport } from './analyzeReport'
 import { CATEGORIES, MIN_REPORT_LENGTH, URGENCIES, photoError, reportSubject, type Category } from './reportModel'
 import { reportToken } from './reportToken'
+import { useOnline } from '../network/networkStatus'
 import { useReportStore } from './reportStore'
 import styles from './ReportPanel.module.css'
 
@@ -46,6 +47,7 @@ export function ReportForm() {
   const citizenToken = useCitizenSessionStore((s) => s.token)
   const filmToken = useAuthStore((s) => s.session?.token)
   const signedIn = Boolean(citizenToken || filmToken)
+  const online = useOnline()
   const { editDraft, applySuggestion, accept } = useReportStore.getState()
   const districts = useDistricts()
   const [coords, setCoords] = useState<Coords | null>(null)
@@ -174,6 +176,9 @@ export function ReportForm() {
   return (
     <form className={styles.form} noValidate onSubmit={send}>
       <ErrorSummary errors={form.summary} formError={form.formError} id={form.summaryId} />
+      {!online && (
+        <p className={text.note}>Cet appareil est hors réseau. Ce texte reste enregistré ici et partira quand vous réessaierez.</p>
+      )}
       <Field label="Que se passe-t-il ?" required error={form.errors.text} htmlFor={form.fieldId('text')}>
         {(control) => (
           <textarea

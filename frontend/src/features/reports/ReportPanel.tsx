@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { isNetworkFailure } from '../../api/essentialCache'
 import { fetchOwnRequest, requestKeys } from '../../api/requests'
 import { useCitizenSessionStore } from '../../api/session'
 import { useAuthStore } from '../auth/authStore'
@@ -30,7 +31,7 @@ export function ReportPanel() {
     if (live.data) syncStatus(live.data.status)
   }, [live.data, syncStatus])
 
-  if (report) return <ReportTracker report={report} />
+  if (report) return <ReportTracker report={report} stale={live.isError && isNetworkFailure(live.error)} />
   if (readOnly) return <PlatformIncident nested />
   return <ReportForm />
 }

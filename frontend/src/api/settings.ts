@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { readEssential, restored } from './essentialCache'
 import { http } from './client'
 import { queryClient, REFRESH } from './queryClient'
 import type { PlatformSettings, SettingsAdminView } from './types'
@@ -12,13 +13,16 @@ export const settingsKeys = {
 }
 
 /** What the citizen space needs: home blocks, registrations, maintenance, contacts. */
-export const usePublicSettings = () =>
-  useQuery({
+export const usePublicSettings = () => {
+  const snap = readEssential()
+  return useQuery({
     queryKey: settingsKeys.public(),
     queryFn: () => http.get<PlatformSettings>('/settings/public').then((r) => r.data),
     staleTime: 60_000,
     refetchInterval: REFRESH.catalogue,
+    ...restored(snap?.settings),
   })
+}
 
 export const useAdminSettings = () =>
   useQuery({
