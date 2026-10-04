@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { serviceUsage, type UsageService } from './serviceUsage'
+import { serviceUsage, type UsageService } from './serviceUsageStats'
 
 function service(partial: Partial<UsageService> & Pick<UsageService, 'id' | 'name' | 'view_count'>): UsageService {
   return { is_featured: false, is_active: true, ...partial }

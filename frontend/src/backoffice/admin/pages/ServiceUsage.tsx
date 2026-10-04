@@ -2,7 +2,7 @@ import type { CityService } from '../../../api/types'
 import { BarChart } from '../../charts/BarChart'
 import { Panel } from '../../ui/Panel'
 import styles from './admin.module.css'
-import { serviceUsage } from './serviceUsage'
+import { serviceUsage } from './serviceUsageStats'
 
 /** F28: a reading of resident visits, not the raw counter repeated on each card. */
 export function ServiceUsage({ services }: { services: CityService[] }) {
