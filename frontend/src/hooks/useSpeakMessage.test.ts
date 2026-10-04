@@ -110,7 +110,32 @@ describe('speakMessage', () => {
     expect(played).toEqual([])
   })
 
+  it("says a line refused before the visitor's first click at that click", async () => {
+    vi.stubGlobal('document', new EventTarget())
+    let allowed = false
+    vi.stubGlobal(
+      'Audio',
+      class extends EventTarget {
+        set src(value: string) {
+          played.push(value)
+        }
+        play = () => {
+          if (!allowed) return Promise.reject(new DOMException('no gesture yet', 'NotAllowedError'))
+          setTimeout(() => this.dispatchEvent(new Event('ended')), 0)
+          return Promise.resolve()
+        }
+        pause = () => {}
+      },
+    )
+    await speakMessage('Bonjour !')
+    expect(isVoiceBusy()).toBe(false)
+    allowed = true
+    document.dispatchEvent(new Event('pointerdown'))
+    await vi.waitFor(() => expect(played.filter((src) => src.startsWith('blob:'))).toEqual(['blob:0', 'blob:0']))
+  })
+
   it('stays silent when the voice cannot be had (no other voice), and tries again next time', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
     speechStatus = 503
     await speakMessage('Bonjour.')
     expect(played).toEqual([])

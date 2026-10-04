@@ -148,9 +148,10 @@ function recording(sentence: string): Promise<string | null> {
     .then((value) => fetch(`${sttApiUrl}/v1/speech?${new URLSearchParams({ text: sentence, token: value })}`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }))
     .then((res) => (res.ok ? res.blob() : Promise.reject(new Error(`speech ${res.status}`))))
     .then((blob) => URL.createObjectURL(blob))
-    .catch(() => {
+    .catch((error: unknown) => {
       // not kept: the next time it is asked for, it is tried again
       recordings.delete(sentence)
+      if (import.meta.env.DEV) console.warn(`[voix de Nova] ${sttApiUrl}/v1/speech injoignable (lancez \`npm run dev\` dans speech-to-text) :`, error)
       return null
     })
   recordings.set(sentence, loading)
@@ -162,26 +163,43 @@ function recording(sentence: string): Promise<string | null> {
   return loading
 }
 
-/** Plays one source on the shared player; resolves when it ends, fails or is stopped. */
-function play(src: string): Promise<void> {
+/**
+ * Plays one source on the shared player; resolves when it ends, fails or is stopped, with `blocked` when
+ * the browser refused to play before any click (autoplay rules).
+ */
+function play(src: string): Promise<'done' | 'blocked'> {
   const audio = audioPlayer()
   return new Promise((resolve) => {
-    const finish = () => {
-      audio.removeEventListener('ended', finish)
-      audio.removeEventListener('error', finish)
+    const finish = (outcome: 'done' | 'blocked' = 'done') => {
+      audio.removeEventListener('ended', onEnd)
+      audio.removeEventListener('error', onEnd)
       abortPlayback = null
       setState({ speaking: false })
-      resolve()
+      resolve(outcome)
     }
+    const onEnd = () => finish()
     abortPlayback = finish
-    audio.addEventListener('ended', finish)
-    audio.addEventListener('error', finish)
+    audio.addEventListener('ended', onEnd)
+    audio.addEventListener('error', onEnd)
     audio.src = src
     audio
       .play()
       .then(() => setState({ speaking: true }))
-      .catch(finish)
+      .catch((error: unknown) => finish(error instanceof DOMException && error.name === 'NotAllowedError' ? 'blocked' : 'done'))
   })
+}
+
+/** A line refused before the visitor's first click is said at that click (unless another line came since). */
+function sayAtFirstGesture(text: string, options: SpeakOptions, run: number): void {
+  const events = ['pointerdown', 'keydown'] as const
+  const resume = () => {
+    for (const event of events) document.removeEventListener(event, resume, true)
+    if (run === generation) {
+      unlockSpeech()
+      void speakMessage(text, options)
+    }
+  }
+  for (const event of events) document.addEventListener(event, resume, { capture: true, once: true })
 }
 
 /**
@@ -198,7 +216,11 @@ export async function speakMessage(text: string, options: SpeakOptions = {}): Pr
   for (const source of sources) {
     const src = await source
     if (run !== generation) return
-    if (src) await play(src)
+    if (src && (await play(src)) === 'blocked') {
+      setState({ busy: false })
+      if (run === generation) sayAtFirstGesture(text, options, run)
+      return
+    }
     if (run !== generation) return
   }
   setState({ busy: false })
