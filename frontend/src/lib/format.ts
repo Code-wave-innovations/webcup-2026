@@ -3,6 +3,12 @@ export function formatThousands(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 }
 
+/** Wall-clock HH:MM in the browser's local time zone. */
+export function formatLocalTime(moment: number): string {
+  const date = new Date(moment)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
 export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }

@@ -34,7 +34,7 @@
 }
 
 .label {
-  font: 600 12px/1.3 var(--font-body);
+  font: 600 14px/1.3 var(--font-body);
   letter-spacing: 0.06em;
   color: var(--color-text-muted);
 }
@@ -53,7 +53,7 @@
 }
 
 .unit {
-  font: 600 13px/1 var(--font-body);
+  font: 600 15px/1 var(--font-body);
   color: var(--color-text-muted);
 }
 
@@ -70,7 +70,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font: 600 12px/1 var(--font-body);
+  font: 600 14px/1 var(--font-body);
 }
 
 .good {
@@ -82,7 +82,7 @@
 }
 
 .hint {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 

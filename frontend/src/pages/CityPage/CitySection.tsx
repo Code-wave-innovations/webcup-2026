@@ -10,14 +10,21 @@ interface CitySectionProps {
   side: 'left' | 'right'
   title: ReactNode
   lead: string
+  /** denser column under the top bar (forms that must fit the sticky frame) */
+  compact?: boolean
   children: ReactNode
 }
 
 /** One district of the flyover: place, title, lead, and the feature on a glass panel. */
-export function CitySection({ info, side, title, lead, children }: CitySectionProps) {
+export function CitySection({ info, side, title, lead, compact, children }: CitySectionProps) {
   const titleId = `${info.id}-title`
   return (
-    <section className={styles.section} id={info.id} data-city-section aria-labelledby={titleId}>
+    <section
+      className={[styles.section, compact && styles.compact].filter(Boolean).join(' ')}
+      id={info.id}
+      data-city-section
+      aria-labelledby={titleId}
+    >
       <div className={[styles.frame, side === 'right' && styles.right].filter(Boolean).join(' ')}>
         <div className={styles.column} data-column>
           <div className={styles.block}>

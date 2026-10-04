@@ -20,7 +20,7 @@
 
 .age {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 15px;
   white-space: nowrap;
 }
 
@@ -32,13 +32,13 @@
 }
 
 .unassigned {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-ember);
 }
 
 .muted {
   color: var(--color-text-muted);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 /* ─── Audit feed ─────────────────────────── */
@@ -107,7 +107,7 @@
   align-items: center;
   gap: 6px;
   padding: 3px 7px;
-  font-size: 12px;
+  font-size: 14px;
   background: var(--color-glass-light);
   border: 1px solid var(--color-line-thin);
   max-width: 100%;
@@ -131,7 +131,7 @@
 }
 
 .when {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
   white-space: nowrap;
   text-align: right;
@@ -195,7 +195,7 @@ button.tile:hover {
 }
 
 .tile span {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 
@@ -291,7 +291,7 @@ button.tile:hover {
 
 .xp {
   margin-left: auto;
-  font: 600 13px/1 var(--font-display);
+  font: 600 15px/1 var(--font-display);
   color: var(--color-ember);
 }
 
@@ -304,14 +304,14 @@ button.tile:hover {
 }
 
 .tnPlan {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 
 .tnLevel {
   margin-right: 5px;
   letter-spacing: 1px;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 /* A new wave: the cards light up for a few seconds */
@@ -451,7 +451,7 @@ button.tile:hover {
   gap: 5px;
   padding: 3px 8px;
   border: 1px solid currentColor;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -542,12 +542,12 @@ button.tile:hover {
 }
 
 .choice small {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
 }
 
 .choiceError {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-alert);
 }
 

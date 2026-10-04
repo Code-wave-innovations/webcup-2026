@@ -14,7 +14,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -70,7 +70,7 @@
 }
 
 .card dt {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;

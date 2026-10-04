@@ -80,7 +80,7 @@
 }
 
 .nodeLabel {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -193,7 +193,7 @@
 }
 
 .serviceCard small {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
 }
 
@@ -268,7 +268,7 @@
 }
 
 .weekday {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -284,7 +284,7 @@
 }
 
 .month {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 
@@ -325,7 +325,7 @@
 }
 
 .partLabel {
-  font: 600 11px/1.2 var(--font-body);
+  font: 600 13px/1.2 var(--font-body);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-ice);
@@ -367,7 +367,7 @@
 }
 
 .time small {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 
@@ -484,7 +484,7 @@
 }
 
 .reminder small {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 
@@ -579,7 +579,7 @@
 }
 
 .summaryKicker {
-  font: 600 11px/1.2 var(--font-body);
+  font: 600 13px/1.2 var(--font-body);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-ice);
@@ -606,7 +606,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -629,7 +629,7 @@
 }
 
 .recapLine dd small {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
 }
 
@@ -680,6 +680,6 @@
   }
 
   .nodeLabel {
-    font-size: 11px;
+    font-size: 13px;
   }
 }

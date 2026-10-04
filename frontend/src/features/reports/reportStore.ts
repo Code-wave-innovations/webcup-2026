@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import type { RequestStatus } from '../../api/types'
 import type { UrgencyHint } from '../../api/requests'
 import { useDirectorStore } from '../../experience/director/directorStore'
@@ -57,8 +58,28 @@ const showSignal = (status: RequestStatus, districtCode: string | null) => {
   if (beam >= 0) director.setSignalAnchor(anchorForDistrict(districtCode))
 }
 
+const memory = new Map<string, string>()
+
+/** This tab keeps the draft and the reference if the page reloads during an outage. */
+const reportStorage = () =>
+  createJSONStorage(() =>
+    typeof sessionStorage === 'undefined'
+      ? {
+          getItem: (key: string) => memory.get(key) ?? null,
+          setItem: (key: string, value: string) => {
+            memory.set(key, value)
+          },
+          removeItem: (key: string) => {
+            memory.delete(key)
+          },
+        }
+      : sessionStorage,
+  )
+
 /** The visitor's report: the draft being written, then the tracked request lighting the beam over its district. */
-export const useReportStore = create<ReportState>()((set, get) => ({
+export const useReportStore = create<ReportState>()(
+  persist(
+    (set, get) => ({
   draft: EMPTY_DRAFT,
   report: null,
   editDraft: (patch) => set((s) => ({ draft: { ...s.draft, ...patch } })),
@@ -88,4 +109,14 @@ export const useReportStore = create<ReportState>()((set, get) => ({
     director.setSignalStatus(-1)
     director.setSignalAnchor('trois')
   },
-}))
+    }),
+    {
+      name: 'nova-report',
+      storage: reportStorage(),
+      partialize: (state) => ({ draft: state.draft, report: state.report }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.report) showSignal(state.report.status, state.report.districtCode)
+      },
+    },
+  ),
+)

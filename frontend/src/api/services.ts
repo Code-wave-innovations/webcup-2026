@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { catalogueFromSnapshot, readEssential, restored } from './essentialCache'
 import { homeKeys } from './home'
 import { http } from './client'
 import { interruptionKeys } from './interruptions'
@@ -26,15 +27,18 @@ export interface CatalogueFilters {
 }
 
 /** D05 / F28: the active services as citizens see them, featured first then by priority and views */
-export const useCatalogue = ({ category, q, limit = 50 }: CatalogueFilters) =>
-  useQuery({
+export const useCatalogue = ({ category, q, limit = 50 }: CatalogueFilters) => {
+  const snap = readEssential()
+  return useQuery({
     queryKey: serviceKeys.catalogue({ category, q: q || undefined, limit }),
     queryFn: () =>
       http.get<Paginated<CityService>>('/services', { params: { category: category ?? undefined, q: q || undefined, limit } }).then((r) => r.data),
     // switching category keeps the previous tiles on screen until the new ones arrive
     placeholderData: keepPreviousData,
     refetchInterval: REFRESH.catalogue,
+    ...restored(catalogueFromSnapshot(snap, { category, q, limit })),
   })
+}
 
 /** D05 / F38: one service with its procedures; each fetch counts as a view (F28) */
 export const useService = (slug: string | null) =>
@@ -54,19 +58,25 @@ export const useAdminServices = (enabled = true) =>
   })
 
 /** Active catalogue for citizen forms (D04 contact service picker). */
-export const usePublicServices = () =>
-  useQuery({
+export const usePublicServices = () => {
+  const snap = readEssential()
+  return useQuery({
     queryKey: [...serviceKeys.all, 'public'] as const,
     queryFn: () => http.get<Paginated<CityService>>('/services', { params: { limit: 100 } }).then((r) => r.data.data),
     staleTime: 5 * 60_000,
+    ...restored(snap?.serviceList),
   })
+}
 
-export const useServiceCategories = () =>
-  useQuery({
+export const useServiceCategories = () => {
+  const snap = readEssential()
+  return useQuery({
     queryKey: serviceKeys.categories(),
     queryFn: () => http.get<ServiceCategory[]>('/service-categories').then((r) => r.data),
     staleTime: 10 * 60_000,
+    ...restored(snap?.categories),
   })
+}
 
 /** F28: what citizens see on the home page, exactly as the server orders it */
 export const useHomePreview = () =>

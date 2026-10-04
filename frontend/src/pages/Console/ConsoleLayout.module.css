@@ -123,7 +123,7 @@
   justify-content: space-between;
   gap: 8px 24px;
   padding: 18px var(--gutter) calc(18px + env(safe-area-inset-bottom, 0px));
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
   border-top: 1px solid var(--color-line-thin);
 }

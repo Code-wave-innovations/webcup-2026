@@ -1,5 +1,6 @@
 import { ANNOUNCEMENT_CATEGORY_LABEL, useAnnouncements } from '../../api/announcements'
 import { messageFor } from '../../api/errors'
+import { isNetworkFailure } from '../../api/essentialCache'
 import { formatPublished } from '../../lib/format'
 import { ButtonRouteLink } from '../../ui/Button'
 import { Icon } from '../../ui/Icon'
@@ -19,6 +20,7 @@ export function AnnouncementList() {
   const review = useAlertFeed((s) => s.review)
   const list = useAnnouncements({ limit: 3 })
   const items = list.data?.data ?? []
+  const offline = list.isError && items.length > 0 && isNetworkFailure(list.error)
 
   return (
     <>
@@ -41,7 +43,9 @@ export function AnnouncementList() {
         </RowButtons>
       )}
 
-      {list.isError ? (
+      {offline && <p className={text.note}>Dernières annonces reçues. Elles se mettront à jour au retour du réseau.</p>}
+      {list.isError && items.length > 0 && !isNetworkFailure(list.error) && <p className={text.error}>{messageFor(list.error)}</p>}
+      {list.isError && items.length === 0 ? (
         <p className={text.error}>{messageFor(list.error)}</p>
       ) : items.length === 0 && !list.isPending ? (
         <p className={text.note}>Aucune annonce pour le moment.</p>

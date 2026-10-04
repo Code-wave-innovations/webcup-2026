@@ -116,7 +116,7 @@
 
 .level {
   flex: none;
-  font: 600 11px/1.2 var(--font-body);
+  font: 600 13px/1.2 var(--font-body);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--tone);
@@ -136,7 +136,7 @@
 .zone {
   flex: none;
   padding: 1px 8px;
-  font-size: 12px;
+  font-size: 14px;
   border: 1px solid var(--color-line);
 }
 
@@ -157,7 +157,7 @@
   flex: none;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
 }

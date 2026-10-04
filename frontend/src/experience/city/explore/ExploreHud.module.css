@@ -25,7 +25,7 @@
   margin: 0;
   padding: 8px 14px;
   text-align: center;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
   background: var(--color-glass-dense);
   border: 1px solid var(--color-line);
@@ -64,7 +64,7 @@
 .heading span,
 .gauge span,
 .arrival > span {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.32em;
   text-transform: uppercase;
   color: var(--color-ice);
@@ -142,7 +142,7 @@
 
 .gauge em {
   font-style: normal;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 
@@ -198,7 +198,7 @@
   align-items: center;
   gap: 6px;
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--color-ice);
@@ -234,7 +234,7 @@
 }
 
 .poiLabel {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--color-ice);
@@ -250,7 +250,7 @@
   border: 1px solid var(--color-line);
   background: var(--color-glass-dense);
   color: var(--color-ice);
-  font: 500 13px/1 var(--font-body);
+  font: 500 15px/1 var(--font-body);
   letter-spacing: 0.02em;
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
   -webkit-backdrop-filter: blur(12px) saturate(130%);
@@ -307,7 +307,7 @@
   .enter,
   .leave,
   .poiLabel {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--color-ice);

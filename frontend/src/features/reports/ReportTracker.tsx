@@ -9,7 +9,7 @@ import { useReportStore, type TrackedReport } from './reportStore'
 import styles from './ReportPanel.module.css'
 
 /** Where the report stands. The status comes from the API; nothing here advances it by hand. */
-export function ReportTracker({ report }: { report: TrackedReport }) {
+export function ReportTracker({ report, stale = false }: { report: TrackedReport; stale?: boolean }) {
   const reset = useReportStore((s) => s.reset)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const step = signalForStatus(report.status)
@@ -39,6 +39,7 @@ export function ReportTracker({ report }: { report: TrackedReport }) {
       <p className={styles.confirm} role="status">
         {report.confirmation}
       </p>
+      {stale && <p className={text.note}>Dernier état connu. La référence reste valable ; le suivi reprend au retour du réseau.</p>}
       <p className={text.note}>
         {report.title}. {report.location}
         {report.districtName ? `, ${report.districtName}` : ''}. {report.category}, urgence estimée {urgencyLabel(report.urgency).toLowerCase()}.

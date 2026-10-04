@@ -77,7 +77,7 @@ function RealtimeTranscription() {
                     </button>
                 </div>
 
-                <p className="mb-6 text-xs uppercase tracking-[0.3em] text-[#0A2342]/60">
+                <p className="mb-6 text-sm uppercase tracking-[0.3em] text-[#0A2342]/60">
                     {statusLabels[status] ?? status}
                     {listening && (
                         <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-500 align-middle" />

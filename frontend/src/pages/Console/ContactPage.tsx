@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { messageFor } from '../../api/errors'
+import { isNetworkFailure } from '../../api/essentialCache'
 import type { CreatedContact } from '../../api/requests'
 import { usePublicSettings } from '../../api/settings'
 import { ContactForm } from '../../features/contact/ContactForm'
@@ -41,7 +42,7 @@ export default function ContactPage() {
           <GlassPanel className={styles.aside}>
             <h2>Coordonnées de la mairie</h2>
             {settings.isPending && <p className={text.note}>Chargement des coordonnées…</p>}
-            {settings.isError && <p className={text.error}>{messageFor(settings.error)}</p>}
+            {settings.isError && (!contact || !isNetworkFailure(settings.error)) && <p className={text.error}>{messageFor(settings.error)}</p>}
             {contact && (
               <dl>
                 <div>

@@ -47,7 +47,7 @@
   border: 1px solid var(--color-line-thin);
   background: transparent;
   color: var(--color-text-muted);
-  font: 600 13px/1 var(--font-body);
+  font: 600 15px/1 var(--font-body);
   cursor: pointer;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
@@ -176,7 +176,7 @@
 }
 
 .field > label {
-  font: 600 12px/1.2 var(--font-body);
+  font: 600 14px/1.2 var(--font-body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -198,7 +198,7 @@
   align-items: center;
   gap: 6px;
   color: var(--color-alert);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
 }
 

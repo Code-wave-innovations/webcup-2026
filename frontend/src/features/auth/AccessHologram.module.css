@@ -112,7 +112,7 @@
   align-items: center;
   gap: 7px;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -151,7 +151,7 @@
   padding: 4px 9px;
   border: 1px solid var(--color-line-thin);
   background: var(--color-glass-light);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -180,7 +180,7 @@
 
 .hint {
   margin: -4px 0 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
   opacity: 0.85;
 }
@@ -220,7 +220,7 @@
   gap: 10px;
   padding-top: 2px;
   border-top: 1px solid var(--color-line-thin);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -233,7 +233,7 @@
 
 .reminder {
   margin-top: 4px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
 }
 
@@ -302,7 +302,7 @@
   width: 100%;
   justify-content: center;
   margin-top: 2px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--color-text-muted);
 }
@@ -402,7 +402,7 @@
   align-items: center;
   gap: 6px;
   margin-top: 6px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--color-progress);
   animation: materialize 0.3s var(--ease-out-soft);
@@ -413,7 +413,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -472,7 +472,7 @@
   align-items: center;
   gap: 6px;
   margin: 8px 0 0;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-progress);
 }
 
@@ -715,7 +715,7 @@
   display: flex;
   gap: 10px;
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.45;
   color: var(--color-text-muted);
   background: var(--color-glass-light);
@@ -735,7 +735,7 @@
 .forgot {
   align-self: center;
   padding: 4px 6px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-ice);
   text-decoration: underline dotted;
   text-underline-offset: 4px;

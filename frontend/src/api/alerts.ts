@@ -1,6 +1,8 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { alertViewerKey, alertsForViewer, readEssential, restored } from './essentialCache'
 import { http } from './client'
 import { queryClient, REFRESH } from './queryClient'
+import { useCitizenUser } from './session'
 import type { ActiveAlert, AlertAudience, AlertInput, CityAlert, Paginated } from './types'
 
 // D18 / F29 / F31: alerts in force now (GET /api/alerts/active), and their composer (staff)
@@ -16,14 +18,18 @@ export const alertKeys = {
  * Every alert in force, critical first. `token` is the citizen session's: the server then says which
  * alerts concern this person (`concerns_me`); without it only the city-wide ones do.
  */
-export const useActiveAlerts = (token?: string | null) =>
-  useQuery({
+export const useActiveAlerts = (token?: string | null) => {
+  const snap = readEssential()
+  const cached = alertsForViewer(snap, alertViewerKey(token, useCitizenUser()?.id ?? null))
+  return useQuery({
     queryKey: alertKeys.active(token ? 'me' : null),
     queryFn: () => http.get<ActiveAlert[]>('/alerts/active', token ? { headers: { Authorization: `Bearer ${token}` } } : undefined).then((r) => r.data),
     refetchInterval: REFRESH.alerts,
     // a banner must not wait for the tab to be focused again
     refetchIntervalInBackground: true,
+    ...restored(cached),
   })
+}
 
 /** The history (staff): in force, programmed and ended, most serious first */
 export const useAlerts = () =>

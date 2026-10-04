@@ -41,7 +41,7 @@
   align-items: center;
   gap: 7px;
   margin-top: 4px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
 }
 
@@ -62,7 +62,7 @@
 
 .place {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -98,7 +98,7 @@
 }
 
 .author {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -249,7 +249,7 @@
 
 .note {
   padding: 0 20px 14px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 

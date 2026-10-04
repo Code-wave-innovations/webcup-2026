@@ -136,7 +136,7 @@
 
   .table td::before {
     content: attr(data-label);
-    font: 600 11px/1.2 var(--font-body);
+    font: 600 13px/1.2 var(--font-body);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-text-muted);

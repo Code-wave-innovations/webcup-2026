@@ -172,7 +172,7 @@
   border: 0;
   border-top: 1px solid var(--color-line-thin);
   color: var(--color-text-muted);
-  font: 500 13px/1 var(--font-body);
+  font: 500 15px/1 var(--font-body);
   cursor: pointer;
   flex: none;
 }
@@ -408,7 +408,7 @@
   place-items: center;
   background: var(--color-ember);
   color: var(--color-ink);
-  font: 700 11px/1 var(--font-body);
+  font: 700 13px/1 var(--font-body);
   font-variant-numeric: tabular-nums;
   clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
   box-shadow: 0 0 8px var(--color-ember);
@@ -435,7 +435,7 @@
 .profileText {
   display: flex;
   flex-direction: column;
-  font: 600 13px/1.1 var(--font-body);
+  font: 600 15px/1.1 var(--font-body);
   white-space: nowrap;
 }
 
@@ -469,7 +469,7 @@
 }
 
 .popTitle {
-  font: 600 11px/1.2 var(--font-body);
+  font: 600 13px/1.2 var(--font-body);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-ice);
@@ -482,7 +482,7 @@
   padding: 0;
   display: grid;
   gap: 10px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
 }
 
@@ -523,7 +523,7 @@
 }
 
 .popEmpty {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
 }
 
@@ -575,7 +575,7 @@
   gap: 4px;
   margin-top: 12px;
   color: var(--color-ice);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   text-decoration: none;
 }

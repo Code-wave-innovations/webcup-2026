@@ -11,6 +11,7 @@ import { NovaSpeechBubble } from '../experience/nova/NovaSpeechBubble'
 import { useDirectorStore } from '../experience/director/directorStore'
 import { AlertCenter } from '../features/announcements/AlertCenter'
 import { ReminderWatcher } from '../features/appointments/ReminderWatcher'
+import { NetworkIncident } from '../features/network/NetworkIncident'
 import { useCitizenUser } from '../api/session'
 import { toSession } from '../features/auth/authService'
 import { useAuthStore } from '../features/auth/authStore'
@@ -80,6 +81,7 @@ export function FilmLayout() {
       <AlertCenter />
       {/* F40: the appointment reminders reach the resident on every screen of the film */}
       <ReminderWatcher />
+      <NetworkIncident />
       <NovaHitZone />
       <NovaSpeechBubble />
       {cinematic && (phase === 'entry' || phase === 'descent') && (

@@ -2,6 +2,8 @@ import { useEffect, useRef, type RefObject } from 'react'
 import { switchScene } from '../../a11y/sceneMode'
 import { frameBus, frameState } from '../../experience/director/frameState'
 import type { Session } from '../../features/auth/authService'
+import { formatLocalTime } from '../../lib/format'
+import { useNow } from '../../lib/useNow'
 import { Icon, NovaMark } from '../../ui/Icon'
 import { CitizenNav } from '../Console/CitizenNav'
 import { CITY_SECTIONS } from './citySections'
@@ -9,6 +11,17 @@ import type { LiveScroll } from './useCityScroll'
 import styles from './CityChrome.module.css'
 
 const current = (active: boolean) => (active ? 'true' : undefined)
+
+/** Wall clock of the visitor's device. */
+function Clock() {
+  const now = useNow()
+  return (
+    <div className={styles.clock} aria-label="Heure locale">
+      <b>{formatLocalTime(now)}</b>
+      <span>Heure locale</span>
+    </div>
+  )
+}
 
 interface TopBarProps {
   session: Session
@@ -45,6 +58,7 @@ export function TopBar({ session, active, alert, exploring, onQuit, onToggleExpl
           <CitizenNav variant="flyover" />
         </nav>
         <div className={styles.end}>
+          <Clock />
           <div className={styles.badge}>
             <span>{session.name}</span>
             <small>{session.roleLabel}</small>

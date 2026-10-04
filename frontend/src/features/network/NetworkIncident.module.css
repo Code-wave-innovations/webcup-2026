@@ -1,0 +1,97 @@
+.bar {
+  position: fixed;
+  /* Under the reminder card, the sound switch and Nova's bubble (7), and under toasts (8). */
+  z-index: 6;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 640px;
+  max-height: min(46vh, 360px);
+  margin-inline: auto;
+  padding: 12px 14px;
+  overflow: auto;
+  color: var(--color-text);
+  background: var(--color-glass-dense);
+  border: 1px solid var(--color-line);
+  border-left: 2px solid var(--color-alert);
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-alert);
+}
+
+.message,
+.still {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.message {
+  font-weight: 600;
+}
+
+.numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.numbers li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.numbers a {
+  color: var(--color-ice-bright);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.numbers a:hover {
+  text-decoration: underline;
+}
+
+.numbers span {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.bar button {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-alert);
+  color: var(--color-alert);
+  font-weight: 600;
+  background: transparent;
+}
+
+.bar button:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+.bar button:disabled {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    scroll-behavior: auto;
+  }
+}

@@ -27,7 +27,7 @@
 .brand small {
   display: block;
   margin-top: 4px;
-  font: 600 11px/1 var(--font-body);
+  font: 600 13px/1 var(--font-body);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--color-ice);
@@ -98,7 +98,7 @@
   margin-top: 18px;
   padding-top: 14px;
   border-top: 1px dashed var(--color-line-thin);
-  font-size: 13px;
+  font-size: 15px;
   color: var(--color-text-muted);
 }
 
