@@ -1,78 +1,153 @@
-import { useEffect } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
-import type { AuditLog } from '../mocks/types'
-import { AUDIT_LABEL, auditValue } from '../lib/labels'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
+import type { AuditEntry } from '../../api/types'
+import { usePersona } from '../layout/persona'
+import { actionText, auditField, auditValue, changeText, entityLink, shortName } from '../lib/auditText'
 import { formatDateTime, formatRelative } from '../lib/format'
-import { fullName, useUsersById } from '../lib/lookups'
+import { ROLE_LABEL } from '../lib/labels'
 import { useNow } from '../lib/useNow'
-import { startLiveAudit, useAuditStore } from '../stores/auditStore'
 import { Avatar, EmptyState } from '../ui/Feedback'
+import { Drawer } from '../ui/Overlay'
+import layout from '../ui/layout.module.css'
 import styles from './shared.module.css'
 
-const FIELD_LABEL: Record<string, string> = {
-  status: 'état',
-  priority: 'priorité',
-  assigned_agent: 'agent',
-  is_featured: 'mise en avant',
-  is_active: 'actif',
-  role: 'rôle',
-  severity: 'gravité',
-  audience: 'audience',
-  impact: 'impact',
-}
+const FLASH_MS = 2400
 
-/** F47 / F48: who did what, when, with the before → after of each change. */
-export function AuditFeed({ logs, live, showIp }: { logs: AuditLog[]; live?: boolean; showIp?: boolean }) {
-  const users = useUsersById()
+/** F47 / F48: who did what, when, on what — one line per action, the detail on click. */
+export function AuditFeed({ entries, showIp, live, empty = 'Aucune action ne correspond à ces filtres.' }: { entries: AuditEntry[]; showIp?: boolean; live?: boolean; empty?: string }) {
   const now = useNow()
-  const latestId = useAuditStore((s) => s.latestId)
+  const persona = usePersona()
+  const base = persona === 'ADMIN' ? '/admin' : '/agent'
+  const [open, setOpen] = useState<AuditEntry | null>(null)
 
+  // Entries newer than the ones already shown light up briefly
+  const newest = entries.reduce((max, entry) => Math.max(max, entry.id), 0)
+  const [seen, setSeen] = useState(newest)
   useEffect(() => {
-    if (!live) return
-    return startLiveAudit()
-  }, [live])
+    if (!live || newest <= seen) return
+    const timer = setTimeout(() => setSeen(newest), FLASH_MS)
+    return () => clearTimeout(timer)
+  }, [live, newest, seen])
 
-  if (logs.length === 0) return <EmptyState title="Aucune action" icon="scroll">Rien ne correspond à ces filtres.</EmptyState>
+  if (entries.length === 0) return <EmptyState title="Aucune action" icon="scroll">{empty}</EmptyState>
 
   return (
-    <ol className={styles.feed} aria-live={live ? 'polite' : undefined} aria-label="Journal des actions">
-      <AnimatePresence initial={false}>
-        {logs.map((log) => {
-          const actor = users.get(log.actor_id)
+    <>
+      <ol className={styles.feed} aria-live={live ? 'polite' : undefined} aria-label="Journal des actions">
+        {entries.map((entry) => {
+          const changes = entry.changes ?? []
           return (
-            <motion.li
-              key={log.id}
-              layout="position"
-              initial={{ opacity: 0, y: -12, filter: 'blur(4px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0 }}
-              className={[styles.feedItem, log.id === latestId && styles.flash].filter(Boolean).join(' ')}
-            >
-              <Avatar name={actor?.name ?? '?'} lastName={actor?.last_name} size={30} tone={actor?.role === 'ADMIN' ? 'ember' : actor?.role === 'CITIZEN' ? 'neutral' : 'ice'} />
-              <div className={styles.sentence}>
-                <strong>{fullName(actor)}</strong> {AUDIT_LABEL[log.action]} <em>{log.entity_label}</em>
-                {log.changes.length > 0 && (
-                  <div className={styles.diff}>
-                    {log.changes.map((change) => (
-                      <span key={change.field} className={styles.change}>
-                        <b>{FIELD_LABEL[change.field] ?? change.field}</b>
-                        {change.before !== null && <span className={styles.before}>{auditValue(change.before)}</span>}
-                        {change.before !== null && <span aria-hidden="true">→</span>}
-                        <span className={styles.after}>{auditValue(change.after)}</span>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <li key={entry.id} className={[styles.feedItem, live && entry.id > seen && styles.flash].filter(Boolean).join(' ')}>
+              <Avatar
+                name={entry.actor_name ?? 'Système'}
+                size={30}
+                tone={entry.actor_role === 'ADMIN' ? 'ember' : entry.actor_role === 'AGENT' ? 'ice' : 'neutral'}
+              />
+              <button type="button" className={styles.feedButton} onClick={() => setOpen(entry)}>
+                <span className={styles.sentence}>
+                  {entry.actor_name !== null && <strong>{shortName(entry.actor_name)} </strong>}
+                  {actionText(entry.action)} {entry.entity_label && <em>{entry.entity_label}</em>}
+                  {changes.length > 0 && (
+                    <span className={styles.diff}>
+                      {changes.slice(0, 3).map((change) => (
+                        <span key={change.field} className={styles.change}>
+                          {changeText(change)}
+                        </span>
+                      ))}
+                      {changes.length > 3 && <span className={styles.change}>+{changes.length - 3}</span>}
+                    </span>
+                  )}
+                </span>
+              </button>
               <span className={styles.when}>
-                {formatRelative(log.at, now)}
-                <small>{formatDateTime(log.at)}</small>
-                {showIp && <small>IP {log.ip}</small>}
+                {formatRelative(entry.created_at, now)}
+                <small>{formatDateTime(entry.created_at)}</small>
+                {showIp && entry.ip && <small>IP {entry.ip}</small>}
               </span>
-            </motion.li>
+            </li>
           )
         })}
-      </AnimatePresence>
-    </ol>
+      </ol>
+
+      <Drawer open={open !== null} onClose={() => setOpen(null)} title={open ? `${actionText(open.action)}${open.entity_label ? ` ${open.entity_label}` : ''}` : ''} kicker="F48 · Détail de l’action">
+        {open && <AuditDetail entry={open} showIp={showIp} link={entityLink(open, base)} />}
+      </Drawer>
+    </>
+  )
+}
+
+function AuditDetail({ entry, showIp, link }: { entry: AuditEntry; showIp?: boolean; link: string | null }) {
+  const changes = entry.changes ?? []
+  const metadata = Object.entries(entry.metadata ?? {})
+  return (
+    <div className={layout.stack}>
+      <dl className={layout.dl}>
+        <dt>Qui</dt>
+        <dd>{entry.actor_name ? `${entry.actor_name}${entry.actor_role ? ` (${ROLE_LABEL[entry.actor_role]})` : ''}` : 'Système'}</dd>
+        <dt>Quand</dt>
+        <dd>{formatDateTime(entry.created_at)}</dd>
+        <dt>Action</dt>
+        <dd>
+          <code>{entry.action}</code>
+        </dd>
+        <dt>Objet</dt>
+        <dd>
+          {entry.entity}
+          {entry.entity_id !== null && ` #${entry.entity_id}`}
+          {entry.entity_label && ` · ${entry.entity_label}`}
+        </dd>
+        {showIp && (
+          <>
+            <dt>Adresse IP</dt>
+            <dd>{entry.ip ?? 'inconnue'}</dd>
+          </>
+        )}
+      </dl>
+
+      {changes.length > 0 && (
+        <table className={styles.auditTable}>
+          <caption className="bo-sr-only">Valeurs avant et après</caption>
+          <thead>
+            <tr>
+              <th scope="col">Champ</th>
+              <th scope="col">Avant</th>
+              <th scope="col">Après</th>
+            </tr>
+          </thead>
+          <tbody>
+            {changes.map((change) => (
+              <tr key={change.field}>
+                <th scope="row">{auditField(change.field)}</th>
+                {'masked' in change ? (
+                  <td colSpan={2}>Modifié (donnée personnelle, non copiée dans le journal)</td>
+                ) : (
+                  <>
+                    <td className={styles.before}>{auditValue(change.from)}</td>
+                    <td className={styles.after}>{auditValue(change.to)}</td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {metadata.length > 0 && (
+        <>
+          <p className={layout.sectionLabel}>Détails</p>
+          <dl className={layout.dl}>
+            {metadata.map(([key, value]) => (
+              <div key={key} style={{ display: 'contents' }}>
+                <dt>{key === 'demo' ? 'Donnée de démonstration' : auditField(key)}</dt>
+                <dd>{auditValue(value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      )}
+
+      {link && <Link to={link}>Ouvrir l’objet</Link>}
+      <p className={layout.sectionLabel}>Une entrée du journal ne peut être ni modifiée ni supprimée (F47).</p>
+    </div>
   )
 }

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { useActor } from '../../layout/persona'
 import { fullName, useUsersById } from '../../lib/lookups'
 import { useNow } from '../../lib/useNow'
 import type { Appointment } from '../../mocks/types'
@@ -29,7 +28,6 @@ const dateInput = (ms: number) => new Date(ms - new Date(ms).getTimezoneOffset()
 
 /** F39: publish appointment slots in series, by service and agent. */
 export default function SlotsPage() {
-  const actor = useActor()
   const now = useNow()
   const users = useUsersById()
   const services = useCatalogStore((s) => s.services)
@@ -162,7 +160,7 @@ export default function SlotsPage() {
             variant="primary"
             icon="plus"
             disabled={preview === 0}
-            onClick={() => addSlots({ service_id: form.service_id, agent_id: form.agent_id, location: form.location, capacity: form.capacity, dates, start: form.start, end: form.end, duration: form.duration }, actor.id)}
+            onClick={() => addSlots({ service_id: form.service_id, agent_id: form.agent_id, location: form.location, capacity: form.capacity, dates, start: form.start, end: form.end, duration: form.duration })}
           >
             Publier les créneaux
           </Button>

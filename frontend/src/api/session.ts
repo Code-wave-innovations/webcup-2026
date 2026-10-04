@@ -60,16 +60,26 @@ export function signOut(): void {
 
 export const SESSION_EXPIRED_EVENT = 'nova:session-expired'
 
+/** expired: the token is no longer valid; revoked: every device of the account was signed out */
+export type SessionEndReason = 'expired' | 'revoked'
+
 /** Called by the HTTP client when the API refuses the token: each space redirects or warns. */
-export function expireSession(): void {
+export function expireSession(reason: SessionEndReason = 'expired'): void {
   if (!useSessionStore.getState().token) return
   signOut()
-  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+  window.dispatchEvent(new CustomEvent<SessionEndReason>(SESSION_EXPIRED_EVENT, { detail: reason }))
 }
 
-export function onSessionExpired(listener: () => void): () => void {
-  window.addEventListener(SESSION_EXPIRED_EVENT, listener)
-  return () => window.removeEventListener(SESSION_EXPIRED_EVENT, listener)
+export function onSessionExpired(listener: (reason: SessionEndReason) => void): () => void {
+  const handler = (event: Event) => listener((event as CustomEvent<SessionEndReason>).detail ?? 'expired')
+  window.addEventListener(SESSION_EXPIRED_EVENT, handler)
+  return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handler)
+}
+
+/** BO-05: the server issued a new token (other devices signed out): keep this session on it. */
+export function replaceToken(token: string): void {
+  const { user, setSession } = useSessionStore.getState()
+  if (user) setSession(token, user)
 }
 
 // Signing in or out in another tab applies here too

@@ -239,7 +239,7 @@
 
 .body {
   position: relative;
-  min-height: 236px;
+  min-height: 284px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -700,6 +700,6 @@
   }
 
   .body {
-    min-height: 200px;
+    min-height: 248px;
   }
 }

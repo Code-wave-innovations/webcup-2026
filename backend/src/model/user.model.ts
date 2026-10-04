@@ -20,6 +20,8 @@ export const publicUserSelect = {
   onboarding_completed: true,
   preferences: true,
   last_login_at: true,
+  // F53: when the second factor was turned on (never the secret itself)
+  two_factor_enabled_at: true,
   district: { select: { id: true, code: true, name: true } },
 } satisfies Prisma.UserSelect;
 

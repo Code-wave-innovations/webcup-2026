@@ -4,7 +4,8 @@ import { authenticate, optionalAuth, requireAdmin, requireStaff } from "../middl
 import { rateLimit } from "../lib/rateLimit";
 const citizenRequestRouter = express.Router();
 
-// optionalAuth: visitors can send a CONTACT request (D04)
+// optionalAuth: visitors can send a CONTACT request (D04).
+// Anonymous CONTACT is further guarded in the controller (honeypot, soft Turnstile, hard limits).
 citizenRequestRouter.post("/", rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), optionalAuth, citizenRequestController.create);
 citizenRequestRouter.get("/", authenticate, citizenRequestController.getAll);
 citizenRequestRouter.post("/bulk", authenticate, requireStaff, citizenRequestController.bulkUpdate);

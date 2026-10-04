@@ -29,6 +29,8 @@ import SlotsPage from './admin/pages/SlotsPage'
 import AuditPage from './admin/pages/AuditPage'
 import RequestsSupervisionPage from './admin/pages/RequestsSupervisionPage'
 import SettingsPage from './admin/pages/SettingsPage'
+import SecurityPage from './admin/pages/SecurityPage'
+import AccountPage from './shared/AccountPage'
 import './backoffice.css'
 
 /*
@@ -62,6 +64,8 @@ export default function BackofficeApp() {
               <Route path="citoyens" element={<CitizensPage />} />
               <Route path="activite" element={<ActivityPage />} />
               <Route path="nova-terra" element={<NovaTerraPage />} />
+              <Route path="interruptions" element={<MaintenancePage />} />
+              <Route path="compte" element={<AccountPage />} />
             </>
           ) : (
             <>
@@ -79,6 +83,8 @@ export default function BackofficeApp() {
               <Route path="traductions" element={<TranslationsPage />} />
               <Route path="rendez-vous" element={<SlotsPage />} />
               <Route path="parametres" element={<SettingsPage />} />
+              <Route path="securite" element={<SecurityPage />} />
+              <Route path="compte" element={<AccountPage />} />
             </>
           )}
           <Route path="*" element={<Navigate to={persona === 'ADMIN' ? '/admin' : '/agent'} replace />} />

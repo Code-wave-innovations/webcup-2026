@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { audit, fieldsOf } from "../lib/audit";
 import { AlertAudience, AlertSeverity, Prisma } from "@prisma/client";
 import { z } from "zod";
 import alertModel, { activeAlertWhere, audienceUserWhere, concernsUser } from "../model/alert.model";
@@ -99,26 +100,41 @@ const alertController = {
         data: { alert_id: alert.id, severity: alert.severity, category: alert.category },
       });
     }
+    await audit(req, {
+      action: "alert.created",
+      entity: "Alert",
+      entityId: alert.id,
+      label: alert.title,
+      after: alert,
+      fields: ["severity", "audience", "category"],
+      metadata: { notified, districts: district_ids },
+    });
     res.status(201).json({ ...alert, notified });
   },
 
   update: async (req: Request, res: Response) => {
-    const { district_ids, recommendations, ...input } = updateSchema.parse(req.body);
-    const alert = await alertModel.update(
-      parseId(req.params.id),
-      { ...input, recommendations: toJson(recommendations) },
-      district_ids
-    );
+    const id = parseId(req.params.id);
+    const parsed = updateSchema.parse(req.body);
+    const { district_ids, recommendations, ...input } = parsed;
+    const before = await alertModel.getOne({ id });
+    const alert = await alertModel.update(id, { ...input, recommendations: toJson(recommendations) }, district_ids);
+    await audit(req, { action: "alert.updated", entity: "Alert", entityId: id, label: alert.title, before, after: alert, fields: fieldsOf(parsed) });
     res.json(alert);
   },
 
   // End an alert now (it stays in the history)
   close: async (req: Request, res: Response) => {
-    res.json(await alertModel.update(parseId(req.params.id), { is_active: false, ends_at: new Date() }));
+    const alert = await alertModel.update(parseId(req.params.id), { is_active: false, ends_at: new Date() });
+    await audit(req, { action: "alert.closed", entity: "Alert", entityId: alert.id, label: alert.title });
+    res.json(alert);
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await alertModel.delete(parseId(req.params.id)));
+    const id = parseId(req.params.id);
+    const before = await alertModel.getOne({ id });
+    const deleted = await alertModel.delete(id);
+    await audit(req, { action: "alert.deleted", entity: "Alert", entityId: id, label: before?.title ?? null });
+    res.json(deleted);
   },
 };
 

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { useActor } from '../../layout/persona'
 import { LOCALES } from '../../mocks/config'
 import type { TranslationEntry } from '../../mocks/types'
 import { saveTranslation, useConfigStore } from '../../stores/configStore'
@@ -32,7 +31,6 @@ const coverageOf = (entry: TranslationEntry, locale: string) => {
 
 /** D14 / F27: essential content in several languages, with completeness per language. */
 export default function TranslationsPage() {
-  const actor = useActor()
   const entries = useConfigStore((s) => s.translations)
   const enabled = useConfigStore((s) => s.settings.enabled_locales).filter((l) => l !== 'fr')
   const [locale, setLocale] = useState(enabled[0] ?? 'en')
@@ -114,7 +112,7 @@ export default function TranslationsPage() {
               variant="primary"
               icon="check"
               onClick={() => {
-                saveTranslation(editing.entity, editing.entity_id, locale, draft, actor.id)
+                saveTranslation(editing.entity, editing.entity_id, locale, draft)
                 setEditing(null)
               }}
             >

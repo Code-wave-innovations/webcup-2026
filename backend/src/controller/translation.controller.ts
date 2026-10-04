@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { audit } from "../lib/audit";
 import prisma from "../lib/prisma";
 import { badRequest } from "../lib/errors";
 import { parseId, zId, zLocale } from "../lib/validation";
@@ -56,11 +57,20 @@ const translationController = {
             })
       )
     );
+    await audit(req, {
+      action: "translation.updated",
+      entity,
+      entityId: entity_id,
+      label: `${entity} #${entity_id} (${locale})`,
+      changes: Object.entries(fields).map(([field, value]) => ({ field: `${field}.${locale}`, from: null, to: value === "" ? null : value })),
+    });
     res.json(await prisma.contentTranslation.findMany({ where: key, orderBy: { field: "asc" } }));
   },
 
   delete: async (req: Request, res: Response) => {
-    res.json(await prisma.contentTranslation.delete({ where: { id: parseId(req.params.id) } }));
+    const deleted = await prisma.contentTranslation.delete({ where: { id: parseId(req.params.id) } });
+    await audit(req, { action: "translation.deleted", entity: deleted.entity, entityId: deleted.entity_id, label: `${deleted.field} (${deleted.locale})` });
+    res.json(deleted);
   },
 };
 

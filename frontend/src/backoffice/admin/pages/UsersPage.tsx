@@ -1,54 +1,73 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { motion } from 'motion/react'
-import { useActor } from '../../layout/persona'
-import { ROLE_LABEL } from '../../lib/labels'
+import { useDistricts } from '../../../api/districts'
+import { isApiError, messageFor } from '../../../api/errors'
+import type { ManagedUser, Role } from '../../../api/types'
+import { useCreateUser, useUserStats, useUsers } from '../../../api/users'
+import { useApiForm } from '../../../hooks/useApiForm'
 import { formatRelative } from '../../lib/format'
-import { districtName } from '../../lib/lookups'
+import { ROLE_LABEL } from '../../lib/labels'
+import { temporaryPassword } from '../../lib/tempPassword'
 import { useNow } from '../../lib/useNow'
-import { DISTRICTS } from '../../mocks/people'
-import type { Role, User } from '../../mocks/types'
-import { CitizenCard } from '../../shared/CitizenCard'
-import { changeRole, createStaff, setActive, unlockLogin, updateProfile, useUserStore } from '../../stores/userStore'
+import { AccountDrawer } from '../../shared/AccountDrawer'
+import { toast } from '../../stores/toastStore'
 import { Flag, Tag } from '../../ui/Badges'
 import { Button } from '../../ui/Button'
-import { Field, SearchInput, Select, Tabs, TextInput, Toggle } from '../../ui/Controls'
+import { ErrorSummary } from '../../ui/ErrorSummary'
+import { Field, SearchInput, Select, Tabs, TextInput } from '../../ui/Controls'
 import { DataTable, type Column } from '../../ui/DataTable'
-import { Avatar } from '../../ui/Feedback'
-import { Drawer, Modal } from '../../ui/Overlay'
+import { Avatar, EmptyState, Skeleton } from '../../ui/Feedback'
+import { Icon } from '../../ui/Icon'
+import { Modal } from '../../ui/Overlay'
 import { PageHeader } from '../../ui/PageHeader'
 import { Panel } from '../../ui/Panel'
 import { stagger } from '../../ui/motion'
 import layout from '../../ui/layout.module.css'
 
-type Tab = Role
-type StatusFilter = 'all' | 'active' | 'inactive' | 'locked'
+const ROLES: Role[] = ['CITIZEN', 'AGENT', 'ADMIN']
+const PAGE_SIZE = 25
 
-/** F34 / D08: citizen accounts, agents and administrators. */
+/** F34 / D08 / D09: citizen accounts, agents and administrators. Filters and the open account live in the URL. */
 export default function UsersPage() {
-  const actor = useActor()
   const now = useNow()
-  const users = useUserStore((s) => s.users)
-  const [tab, setTab] = useState<Tab>('CITIZEN')
-  const [query, setQuery] = useState('')
-  const [status, setStatus] = useState<StatusFilter>('all')
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [params, setParams] = useSearchParams()
+  const role = (ROLES.find((r) => r === params.get('role')) ?? 'CITIZEN') as Role
+  const q = params.get('q') ?? ''
+  const district = Number(params.get('quartier')) || undefined
+  const state = params.get('etat') === 'actifs' ? true : params.get('etat') === 'desactives' ? false : undefined
+  const page = Math.max(1, Number(params.get('page')) || 1)
+  const openId = Number(params.get('compte')) || null
   const [creating, setCreating] = useState(false)
-  const [draft, setDraft] = useState({ name: '', last_name: '', email: '', role: 'AGENT' as Role })
-  const [profile, setProfile] = useState<Pick<User, 'phone' | 'address' | 'district_id' | 'is_vulnerable'>>({ phone: null, address: null, district_id: null, is_vulnerable: false })
 
-  const q = query.trim().toLowerCase()
-  const rows = users
-    .filter((u) => u.role === tab)
-    .filter((u) => !q || `${u.name} ${u.last_name} ${u.email}`.toLowerCase().includes(q))
-    .filter((u) => status === 'all' || (status === 'active' ? u.is_active : status === 'inactive' ? !u.is_active : u.login_locked))
-  const editing = users.find((u) => u.id === editingId)
+  const update = (changes: Record<string, string | null>, keepPage = false) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const [key, value] of Object.entries(changes)) {
+          if (value) next.set(key, value)
+          else next.delete(key)
+        }
+        if (!keepPage) next.delete('page')
+        return next
+      },
+      { replace: true },
+    )
 
-  const openEdit = (u: User) => {
-    setEditingId(u.id)
-    setProfile({ phone: u.phone, address: u.address, district_id: u.district_id, is_vulnerable: u.is_vulnerable })
-  }
+  const [search, setSearch] = useState(q)
+  useEffect(() => {
+    if (search.trim() === q) return
+    const timer = setTimeout(() => update({ q: search.trim() || null }), 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only the typed text restarts the timer
+  }, [search])
 
-  const columns: Column<User>[] = [
+  const list = useUsers({ role, q: q || undefined, district_id: district, is_active: state, page, limit: PAGE_SIZE })
+  const stats = useUserStats().data
+  const districts = useDistricts().data ?? []
+  const meta = list.data?.meta
+
+  const columns: Column<ManagedUser>[] = [
     {
       key: 'name',
       header: 'Compte',
@@ -67,20 +86,7 @@ export default function UsersPage() {
         </span>
       ),
     },
-    {
-      key: 'role',
-      header: 'Rôle',
-      cell: (u) =>
-        u.role === 'CITIZEN' ? (
-          <Tag tone="neutral">Citoyen</Tag>
-        ) : (
-          <Select aria-label={`Rôle de ${u.name}`} value={u.role} onClick={(e) => e.stopPropagation()} onChange={(e) => changeRole(u.id, e.target.value as Role, actor.id)} disabled={u.id === actor.id}>
-            <option value="AGENT">Agent</option>
-            <option value="ADMIN">Administrateur</option>
-          </Select>
-        ),
-    },
-    { key: 'district', header: 'Quartier', hideOnPhone: true, cell: (u) => <span className={layout.muted}>{districtName(u.district_id)}</span>, sortValue: (u) => districtName(u.district_id) },
+    { key: 'district', header: 'Quartier', hideOnPhone: true, cell: (u) => <span className={layout.muted}>{u.district?.name ?? '—'}</span>, sortValue: (u) => u.district?.name ?? '' },
     {
       key: 'state',
       header: 'État',
@@ -93,36 +99,35 @@ export default function UsersPage() {
       ),
     },
     {
+      key: 'twofa',
+      header: 'Double vérification',
+      hideOnPhone: true,
+      sortValue: (u) => (u.two_factor_enabled_at ? 1 : 0),
+      cell: (u) =>
+        u.two_factor_enabled_at ? (
+          <span className={layout.row} style={{ color: 'var(--color-ok)' }}>
+            <Icon name="check" size={14} /> Oui
+          </span>
+        ) : (
+          <span className={[layout.row, layout.muted].join(' ')}>
+            <Icon name="close" size={14} /> Non
+          </span>
+        ),
+    },
+    {
       key: 'login',
       header: 'Dernière connexion',
       hideOnPhone: true,
       sortValue: (u) => (u.last_login_at ? -new Date(u.last_login_at).getTime() : 0),
       cell: (u) => <span className={layout.small}>{u.last_login_at ? formatRelative(u.last_login_at, now) : 'Jamais'}</span>,
     },
-    {
-      key: 'actions',
-      header: 'Actions',
-      align: 'end',
-      cell: (u) => (
-        <span className={layout.row} style={{ justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
-          {u.login_locked && (
-            <Button size="sm" icon="unlock" onClick={() => unlockLogin(u.id, actor.id)}>
-              Déverrouiller
-            </Button>
-          )}
-          <Toggle hideLabel label={`${u.is_active ? 'Désactiver' : 'Réactiver'} ${u.name} ${u.last_name}`} checked={u.is_active} disabled={u.id === actor.id} onChange={(v) => setActive(u.id, v, actor.id)} />
-        </span>
-      ),
-    },
   ]
-
-  const count = (role: Role) => users.filter((u) => u.role === role).length
 
   return (
     <motion.div className={layout.page} variants={stagger} initial="hidden" animate="show">
-      <PageHeader simulated
+      <PageHeader
         title="Utilisateurs"
-        codes={['F34', 'D08']}
+        codes={['F34', 'D08', 'D09']}
         lead="Gérez les comptes citoyens et le personnel. Les mots de passe ne sont jamais visibles ; un compte désactivé perd l’accès immédiatement."
         actions={
           <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
@@ -131,122 +136,182 @@ export default function UsersPage() {
         }
       />
 
-      <Tabs<Tab>
+      <Tabs<Role>
         idPrefix="users"
         label="Type de compte"
-        value={tab}
-        onChange={setTab}
+        value={role}
+        onChange={(value) => update({ role: value === 'CITIZEN' ? null : value })}
         tabs={[
-          { value: 'CITIZEN', label: 'Citoyens', count: count('CITIZEN') },
-          { value: 'AGENT', label: 'Agents', count: count('AGENT') },
-          { value: 'ADMIN', label: 'Administrateurs', count: count('ADMIN') },
+          { value: 'CITIZEN', label: 'Citoyens', count: stats?.by_role.CITIZEN },
+          { value: 'AGENT', label: 'Agents', count: stats?.by_role.AGENT },
+          { value: 'ADMIN', label: 'Administrateurs', count: stats?.by_role.ADMIN },
         ]}
       />
 
-      <Panel flush id="users-panel" role="tabpanel" aria-labelledby={`users-tab-${tab}`} title={`${rows.length} compte${rows.length > 1 ? 's' : ''}`} kicker={ROLE_LABEL[tab]}>
+      <Panel
+        flush
+        id="users-panel"
+        role="tabpanel"
+        aria-labelledby={`users-tab-${role}`}
+        aria-busy={list.isFetching}
+        title={meta ? `${meta.total} compte${meta.total > 1 ? 's' : ''}` : 'Comptes'}
+        kicker={stats ? `${ROLE_LABEL[role]} · ${stats.locked} verrouillé${stats.locked > 1 ? 's' : ''} · ${stats.inactive} désactivé${stats.inactive > 1 ? 's' : ''} au total` : ROLE_LABEL[role]}
+      >
         <div className={layout.toolbar}>
-          <SearchInput label="Nom ou e-mail (touche /)" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <Select aria-label="État du compte" value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
-            <option value="all">Tous les états</option>
-            <option value="active">Actifs</option>
-            <option value="inactive">Désactivés</option>
-            <option value="locked">Connexion verrouillée</option>
+          <SearchInput label="Nom ou e-mail (touche /)" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Select aria-label="Quartier" value={district ?? ''} onChange={(e) => update({ quartier: e.target.value || null })}>
+            <option value="">Tous les quartiers</option>
+            {districts.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </Select>
+          <Select aria-label="État du compte" value={params.get('etat') ?? ''} onChange={(e) => update({ etat: e.target.value || null })}>
+            <option value="">Tous les états</option>
+            <option value="actifs">Actifs</option>
+            <option value="desactives">Désactivés</option>
           </Select>
         </div>
-        <DataTable caption={`Comptes : ${ROLE_LABEL[tab]}`} columns={columns} rows={rows} rowKey={(u) => u.id} onRowClick={openEdit} empty="Aucun compte ne correspond." />
+        {list.data ? (
+          <DataTable caption={`Comptes : ${ROLE_LABEL[role]}`} columns={columns} rows={list.data.data} rowKey={(u) => u.id} onRowClick={(u) => update({ compte: String(u.id) }, true)} empty="Aucun compte ne correspond." />
+        ) : list.isError ? (
+          <EmptyState title={messageFor(list.error)} icon="alert" />
+        ) : (
+          <Skeleton lines={8} />
+        )}
+        {meta && meta.pages > 1 && (
+          <nav className={layout.toolbar} aria-label="Pages">
+            <Button size="sm" icon="chevronLeft" disabled={page <= 1} onClick={() => update({ page: String(page - 1) }, true)}>
+              Précédente
+            </Button>
+            <span aria-current="page">
+              Page {meta.page} sur {meta.pages}
+            </span>
+            <Button size="sm" disabled={page >= meta.pages} onClick={() => update({ page: String(page + 1) }, true)}>
+              Suivante
+            </Button>
+          </nav>
+        )}
       </Panel>
 
-      <Drawer
-        open={!!editing}
-        onClose={() => setEditingId(null)}
-        kicker={editing ? ROLE_LABEL[editing.role] : ''}
-        title={editing ? `${editing.name} ${editing.last_name}` : ''}
-        footer={
-          editing && (
-            <Button variant="primary" icon="check" onClick={() => updateProfile(editing.id, profile, actor.id)}>
-              Enregistrer
-            </Button>
-          )
-        }
-      >
-        {editing && (
-          <>
-            <CitizenCard citizen={editing} />
-            <hr className={layout.divider} />
-            <div className={layout.formGrid}>
-              <Field label="Téléphone">
-                {(id) => <TextInput id={id} value={profile.phone ?? ''} onChange={(e) => setProfile({ ...profile, phone: e.target.value || null })} />}
-              </Field>
-              <Field label="Quartier">
-                {(id) => (
-                  <Select id={id} value={profile.district_id ?? ''} onChange={(e) => setProfile({ ...profile, district_id: e.target.value ? Number(e.target.value) : null })}>
-                    <option value="">—</option>
-                    {DISTRICTS.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-              </Field>
-              <div className={layout.full}>
-                <Field label="Adresse">
-                  {(id) => <TextInput id={id} value={profile.address ?? ''} onChange={(e) => setProfile({ ...profile, address: e.target.value || null })} />}
-                </Field>
-              </div>
-            </div>
-            <Toggle checked={profile.is_vulnerable} onChange={(v) => setProfile({ ...profile, is_vulnerable: v })} label="Personne vulnérable (ciblée par les alertes sanitaires F31)" />
-            <p className={[layout.muted, layout.small].join(' ')}>
-              L’e-mail et le mot de passe ne peuvent pas être modifiés ici : le citoyen garde seul l’accès à son espace.
-            </p>
-          </>
-        )}
-      </Drawer>
-
-      <Modal
+      <AccountDrawer userId={openId} onClose={() => update({ compte: null }, true)} />
+      <CreateStaffModal
         open={creating}
         onClose={() => setCreating(false)}
-        kicker="D08 · Personnel"
-        title="Créer un compte agent ou administrateur"
-        footer={
+        onCreated={(created) => update({ role: created === 'CITIZEN' ? null : created })}
+      />
+    </motion.div>
+  )
+}
+
+/** D08: a staff account with a temporary password, shown once */
+function CreateStaffModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (role: Role) => void }) {
+  const create = useCreateUser()
+  const empty = { name: '', last_name: '', email: '', role: 'AGENT' as Role }
+  const [draft, setDraft] = useState(empty)
+  const [created, setCreated] = useState<{ email: string; password: string } | null>(null)
+
+  const form = useApiForm({
+    labels: { name: 'Prénom', last_name: 'Nom', email: 'E-mail professionnel', password: 'Mot de passe' },
+    describeError: (error) => (isApiError(error) && error.status === 409 ? 'Cet e-mail est déjà utilisé.' : null),
+    submit: async () => {
+      const password = temporaryPassword()
+      await create.mutateAsync({ ...draft, name: draft.name.trim(), last_name: draft.last_name.trim(), email: draft.email.trim(), password })
+      return { email: draft.email.trim(), password }
+    },
+    onSuccess: (result) => {
+      setCreated(result)
+      onCreated(draft.role)
+      toast(`Compte ${draft.role === 'ADMIN' ? 'administrateur' : 'agent'} créé`)
+    },
+  })
+
+  const close = () => {
+    setCreated(null)
+    setDraft(empty)
+    onClose()
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={close}
+      kicker="D08 · Personnel"
+      title={created ? 'Compte créé' : 'Créer un compte agent ou administrateur'}
+      footer={
+        created ? (
+          <Button variant="primary" onClick={close}>
+            J’ai transmis le mot de passe
+          </Button>
+        ) : (
           <>
-            <Button variant="subtle" onClick={() => setCreating(false)}>
+            <Button variant="subtle" onClick={close}>
               Annuler
             </Button>
-            <Button
-              variant="primary"
-              icon="plus"
-              disabled={!draft.name || !draft.last_name || !draft.email.includes('@')}
-              onClick={() => {
-                createStaff(draft, actor.id)
-                setCreating(false)
-                setDraft({ name: '', last_name: '', email: '', role: 'AGENT' })
-                setTab(draft.role)
-              }}
-            >
+            <Button variant="primary" icon="plus" type="submit" form="create-staff" disabled={form.pending} aria-busy={form.pending}>
               Créer le compte
             </Button>
           </>
-        }
-      >
-        <div className={layout.formGrid}>
-          <Field label="Prénom">{(id) => <TextInput id={id} data-autofocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />}</Field>
-          <Field label="Nom">{(id) => <TextInput id={id} value={draft.last_name} onChange={(e) => setDraft({ ...draft, last_name: e.target.value })} />}</Field>
-          <div className={layout.full}>
-            <Field label="E-mail professionnel" hint="Un lien d’activation lui sera envoyé pour choisir son mot de passe.">
-              {(id, describedBy) => <TextInput id={id} type="email" aria-describedby={describedBy} value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />}
+        )
+      }
+    >
+      {created ? (
+        <div className={layout.stack}>
+          <p>
+            Mot de passe provisoire de <strong>{created.email}</strong>, affiché <strong>une seule fois</strong> :
+          </p>
+          <div className={layout.row}>
+            <code style={{ fontSize: 18, letterSpacing: 1 }}>{created.password}</code>
+            <Button
+              size="sm"
+              icon="file"
+              onClick={() =>
+                navigator.clipboard.writeText(created.password).then(
+                  () => toast('Mot de passe copié', 'info'),
+                  () => toast('Copie impossible : recopiez-le à la main', 'alert'),
+                )
+              }
+            >
+              Copier
+            </Button>
+          </div>
+          <p className={[layout.muted, layout.small].join(' ')}>À changer à la première connexion, depuis « Mon compte ». Il n’est conservé nulle part en clair.</p>
+        </div>
+      ) : (
+        <form
+          id="create-staff"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            void form.handleSubmit(undefined)
+          }}
+          className={layout.stack}
+        >
+          <ErrorSummary id={form.summaryId} errors={form.summary} formError={form.formError} />
+          <div className={layout.formGrid}>
+            <Field id={form.fieldId('name')} label="Prénom" required error={form.errors.name}>
+              {(id, describedBy, invalid) => <TextInput id={id} data-autofocus aria-describedby={describedBy} aria-invalid={invalid} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />}
+            </Field>
+            <Field id={form.fieldId('last_name')} label="Nom" required error={form.errors.last_name}>
+              {(id, describedBy, invalid) => <TextInput id={id} aria-describedby={describedBy} aria-invalid={invalid} value={draft.last_name} onChange={(e) => setDraft({ ...draft, last_name: e.target.value })} />}
+            </Field>
+            <div className={layout.full}>
+              <Field id={form.fieldId('email')} label="E-mail professionnel" required error={form.errors.email}>
+                {(id, describedBy, invalid) => <TextInput id={id} type="email" aria-describedby={describedBy} aria-invalid={invalid} value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />}
+              </Field>
+            </div>
+            <Field label="Rôle">
+              {(id) => (
+                <Select id={id} value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as Role })}>
+                  <option value="AGENT">Agent municipal</option>
+                  <option value="ADMIN">Administrateur</option>
+                </Select>
+              )}
             </Field>
           </div>
-          <Field label="Rôle">
-            {(id) => (
-              <Select id={id} value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as Role })}>
-                <option value="AGENT">Agent municipal</option>
-                <option value="ADMIN">Administrateur</option>
-              </Select>
-            )}
-          </Field>
-        </div>
-      </Modal>
-    </motion.div>
+        </form>
+      )}
+    </Modal>
   )
 }

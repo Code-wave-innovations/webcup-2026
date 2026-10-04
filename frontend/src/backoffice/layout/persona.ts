@@ -39,20 +39,21 @@ export const homePath = (persona: Persona) => (persona === 'ADMIN' ? '/admin' : 
 export const personaOf = (role: Role): Persona => (role === 'ADMIN' ? 'ADMIN' : 'AGENT')
 
 /** /agent/connexion?retour=…&expiree=1 */
-export function loginPath(persona: Persona, retour?: string, expired = false): string {
+export function loginPath(persona: Persona, retour?: string, ended: 'expired' | 'revoked' | null = null): string {
   const params = new URLSearchParams()
   if (retour) params.set('retour', retour)
-  if (expired) params.set('expiree', '1')
+  if (ended) params.set('expiree', ended === 'revoked' ? 'revoquee' : '1')
   const query = params.toString()
   return `${homePath(persona)}/connexion${query ? `?${query}` : ''}`
 }
 
 /**
  * Where to go after signing in: the requested page when the role may open it (never another site,
- * never the login page), otherwise the home of the role's space.
+ * never the login page), otherwise the home of the space they signed into when the role may open it
+ * (admins may land on /agent or /admin; agents always on /agent).
  */
-export function destinationAfterLogin(role: Role, retour: string | null): string {
-  const home = homePath(personaOf(role))
+export function destinationAfterLogin(role: Role, retour: string | null, space: Persona = personaOf(role)): string {
+  const home = homePath(role === 'ADMIN' ? space : 'AGENT')
   if (!retour || !/^\/(agent|admin)(\/|$|\?)/.test(retour) || /^\/(agent|admin)\/connexion/.test(retour)) return home
   if (retour.startsWith('/admin') && role !== 'ADMIN') return home
   return retour

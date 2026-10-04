@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
+import { useDistricts } from '../../api/districts'
 import { useReducedMotion } from '../../hooks/useMediaQuery'
 import { Icon, NovaMark } from '../../ui/Icon'
 import { hexBurst } from '../../ui/hexBurst'
@@ -8,7 +9,7 @@ import {
   stepSubtitle,
   stepTitle,
   validateIdentifier,
-  validateRegisterNames,
+  validateRegisterIdentity,
   validateRegisterSecrets,
 } from './accessWizard'
 import { MAX_ATTEMPTS } from './accessLock'
@@ -22,6 +23,9 @@ import { RegisterFacePanel } from './panels/RegisterFacePanel'
 import { RegisterIdentityPanel } from './panels/RegisterIdentityPanel'
 import { RegisterSecretsPanel } from './panels/RegisterSecretsPanel'
 import { useAccessControl } from './useAccessControl'
+import { HoneypotFields } from '../security/HoneypotFields'
+import { formGuardPayload } from '../security/formGuard'
+import { Turnstile } from '../security/Turnstile'
 import styles from './AccessHologram.module.css'
 
 interface AccessHologramProps {
@@ -67,16 +71,21 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [districtId, setDistrictId] = useState<number | null>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [lookingUp, setLookingUp] = useState(false)
   const [registering, setRegistering] = useState(false)
+  const [registerStartedAt, setRegisterStartedAt] = useState(() => Date.now())
+  const [turnstileNeeded, setTurnstileNeeded] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [capsLock, setCapsLock] = useState(false)
   const [granted, setGranted] = useState<Session | null>(null)
   const [faceFrames, setFaceFrames] = useState<Blob[] | null>(null)
   const [faceLink, setFaceLink] = useState<FaceLink | null>(null)
+  const { data: districts = [], isLoading: districtsLoading, isError: districtsFailed } = useDistricts()
 
   const access = useAccessControl(terraAuthService, onActivity)
   const { state, secondsLeft } = access
@@ -86,6 +95,19 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
   const codeRef = useRef<HTMLInputElement>(null)
   const codeSightRef = useRef<HTMLSpanElement>(null)
   const publish = useRef(onActivity)
+
+  useEffect(() => {
+    if (districtId == null && districts[0]) setDistrictId(districts[0].id)
+  }, [districts, districtId])
+
+  useEffect(() => {
+    if (step === 'register-1') {
+      setRegisterStartedAt(Date.now())
+      setTurnstileNeeded(false)
+      setTurnstileToken(null)
+    }
+  }, [step])
+
   useEffect(() => {
     publish.current = onActivity
   })
@@ -145,9 +167,9 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
   }
 
   const onRegisterNext = () => {
-    if (validateRegisterNames(name, lastName) === 'missing') {
-      return setFormError('Indiquez votre prénom et votre nom.')
-    }
+    const v = validateRegisterIdentity(name, lastName, districtId)
+    if (v === 'missing') return setFormError('Indiquez votre prénom et votre nom.')
+    if (v === 'district') return setFormError('Impossible de charger les quartiers.')
     setFormError(null)
     setStep('register-2')
   }
@@ -161,6 +183,15 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
   }
 
   const registerOnBackend = async () => {
+    if (districtId == null) {
+      setFormError('Impossible de charger les quartiers.')
+      setStep('register-1')
+      return
+    }
+    if (turnstileNeeded && !turnstileToken) {
+      setFormError('Validez la vérification anti-robot avant de continuer.')
+      return
+    }
     setRegistering(true)
     setFormError(null)
     const result = await registerCitizen({
@@ -168,10 +199,17 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
       password,
       name,
       last_name: lastName,
+      district_id: districtId,
+      ...formGuardPayload(registerStartedAt, turnstileToken),
     })
     setRegistering(false)
     if (!result.ok) {
       setFormError(result.error)
+      if (result.turnstileRequired) {
+        setTurnstileNeeded(true)
+        setTurnstileToken(null)
+        return
+      }
       if (result.conflict) {
         setLoginMode('code')
         setStep('login')
@@ -228,6 +266,7 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
       onSubmit={(e) => void submit(e)}
       aria-busy={checking}
     >
+      <HoneypotFields />
       <i className={styles.scan} aria-hidden="true" />
       <i className={styles.corners} aria-hidden="true" />
       {granted ? (
@@ -303,6 +342,10 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
               <RegisterIdentityPanel
                 name={name}
                 lastName={lastName}
+                districtId={districtId}
+                districts={districts}
+                districtsLoading={districtsLoading}
+                districtsFailed={districtsFailed}
                 error={formError}
                 reminder={identifier.trim()}
                 onNameChange={(value) => {
@@ -312,6 +355,10 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
                 onLastNameChange={(value) => {
                   clearError()
                   setLastName(value)
+                }}
+                onDistrictChange={(id) => {
+                  clearError()
+                  setDistrictId(id)
                 }}
                 onBack={backToIdentify}
               />
@@ -338,14 +385,47 @@ export function AccessHologram({ collapsed, onGranted, onActivity, formRef }: Ac
               />
             )}
             {step === 'register-3' && (
-              <RegisterFacePanel
-                email={resolveAuthEmail(identifier)}
-                name={name.trim() || 'citoyen'}
-                busy={registering}
-                onEnrolled={() => void registerOnBackend()}
-                onSkip={() => void registerOnBackend()}
-                onBack={() => setStep('register-2')}
-              />
+              <>
+                <RegisterFacePanel
+                  email={resolveAuthEmail(identifier)}
+                  name={name.trim() || 'citoyen'}
+                  busy={registering}
+                  onEnrolled={() => void registerOnBackend()}
+                  onSkip={() => void registerOnBackend()}
+                  onBack={() => setStep('register-2')}
+                />
+                {turnstileNeeded && (
+                  <Turnstile
+                    onToken={(token) => {
+                      setTurnstileToken(token)
+                      if (token) {
+                        setFormError(null)
+                        // Retry registration once the challenge succeeds.
+                        void (async () => {
+                          if (districtId == null) return
+                          setRegistering(true)
+                          const retry = await registerCitizen({
+                            email: resolveAuthEmail(identifier),
+                            password,
+                            name,
+                            last_name: lastName,
+                            district_id: districtId,
+                            ...formGuardPayload(registerStartedAt, token),
+                          })
+                          setRegistering(false)
+                          if (!retry.ok) {
+                            setFormError(retry.error)
+                            if (retry.turnstileRequired) setTurnstileToken(null)
+                            return
+                          }
+                          setGranted(retry.session)
+                          onGranted(retry.session)
+                        })()
+                      }
+                    }}
+                  />
+                )}
+              </>
             )}
           </div>
 

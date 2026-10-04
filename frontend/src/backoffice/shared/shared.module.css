@@ -411,3 +411,85 @@ button.tile:hover {
   padding: 4px 6px;
   border: 1px dashed var(--color-line-thin);
 }
+
+/* F48: an audit line opens its detail */
+.feedButton {
+  all: unset;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.feedButton:focus-visible {
+  outline: 2px solid var(--color-ice);
+  outline-offset: 2px;
+}
+
+.auditTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.auditTable th,
+.auditTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-line-thin);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.auditTable thead th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+/* F64: state of a service — icon + word, the colour only follows */
+.statePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stateAVAILABLE {
+  color: var(--color-ok);
+}
+
+.stateDEGRADED {
+  color: var(--color-progress);
+}
+
+.stateUNAVAILABLE {
+  color: var(--color-alert);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid currentColor;
+  background: var(--color-glass-light);
+}
+
+.preview p {
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.previewTitle {
+  font: 600 16px/1.2 var(--font-display);
+}
+
+.impact {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--color-progress);
+  font-size: 13.5px;
+}

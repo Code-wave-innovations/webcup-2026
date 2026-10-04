@@ -1,4 +1,5 @@
 import prisma from "./prisma";
+import { auditAs } from "./audit";
 import { notifyUser } from "./notify";
 import { formatSlotLabel } from "./datetime";
 
@@ -39,6 +40,8 @@ export const sendDueReminders = async (now = new Date()) => {
     });
     sent += 1;
   }
+  // F47: the system's own work is traced too (actor null), only when it did something
+  if (sent > 0) await auditAs(null, null, { action: "reminders.sent", entity: "Appointment", label: "Rappels automatiques", metadata: { sent } });
   return sent;
 };
 

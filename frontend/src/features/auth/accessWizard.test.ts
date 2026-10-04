@@ -6,6 +6,7 @@ import {
   stepSubtitle,
   stepTitle,
   validateIdentifier,
+  validateRegisterIdentity,
   validateRegisterNames,
   validateRegisterSecrets,
 } from './accessWizard'
@@ -37,6 +38,13 @@ describe('accessWizard', () => {
     expect(validateRegisterSecrets('longenough', 'longenough')).toBe('ok')
   })
 
+  it('validateRegisterIdentity requires names and district', () => {
+    expect(validateRegisterIdentity('Miora', 'Rakoto', null)).toBe('district')
+    expect(validateRegisterIdentity('Miora', 'Rakoto', 0)).toBe('district')
+    expect(validateRegisterIdentity('', 'Rakoto', 1)).toBe('missing')
+    expect(validateRegisterIdentity('Miora', 'Rakoto', 1)).toBe('ok')
+  })
+
   it('sessionFromRegister builds a resident session', () => {
     const session = sessionFromRegister('newbie@terra-nova.city', 'Miora')
     expect(session.name).toBe('Miora')
@@ -48,7 +56,7 @@ describe('accessWizard', () => {
   it('exposes French step titles', () => {
     expect(stepTitle('identify')).toBe('Demande d’approche')
     expect(stepTitle('register-3')).toBe('Empreinte de lumière')
-    expect(stepSubtitle('register-1')).toBe('Deux détails, et Terra Nova vous reconnaît.')
+    expect(stepSubtitle('register-1')).toBe('Identité et quartier — Terra Nova vous situe.')
     expect(stepSubtitle('register-3')).toBe('Enregistrez votre visage pour les prochaines entrées.')
     expect(stepSubtitle('login', { face: true })).toBe('Regardez la caméra pour entrer.')
   })

@@ -11,4 +11,12 @@ authRouter.get("/exists", rateLimit({ windowMs: 60 * 1000, max: 60 }), authContr
 // Passwordless session after face identify (same body as login)
 authRouter.get("/by-email", rateLimit({ windowMs: 60 * 1000, max: 30 }), authController.getByEmail);
 
+// F53: second step and enforced setup; D02: passkey sign-in
+const steps = rateLimit({ windowMs: 60 * 1000, max: 30 });
+authRouter.post("/2fa/verify", steps, authController.verifyTwoFactor);
+authRouter.post("/2fa/setup", steps, authController.setupTwoFactor);
+authRouter.post("/2fa/activate", steps, authController.activateTwoFactor);
+authRouter.post("/passkey/options", steps, authController.passkeyOptions);
+authRouter.post("/passkey/verify", steps, authController.passkeyVerify);
+
 export default authRouter;

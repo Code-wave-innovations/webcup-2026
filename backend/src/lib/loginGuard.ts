@@ -17,7 +17,8 @@ export type AttemptReason =
   | "LOCKED"
   | "IP_BLOCKED"
   | "DISABLED"
-  | "UNLOCKED_BY_STAFF";
+  | "UNLOCKED_BY_STAFF"
+  | "PASSKEY";
 
 type GuardResult =
   | { allowed: true; failures: number }
@@ -94,3 +95,22 @@ export const recordAttempt = (attempt: {
       user_id: attempt.userId ?? null,
     },
   });
+
+// F37 / F34: whether an account is locked right now, for the staff screens (IP blocks aside)
+export const lockState = async (email: string) => {
+  const guard = await checkLoginAllowed(email, UNKNOWN_IP);
+  if (guard.allowed) return { login_locked: false, locked_until: null as string | null };
+  return { login_locked: true, locked_until: new Date(Date.now() + guard.retryAfterSeconds * 1000).toISOString() };
+};
+
+// Emails locked right now (the candidates are those with enough recent failures)
+export const lockedEmails = async () => {
+  const candidates = await prisma.loginAttempt.groupBy({
+    by: ["email"],
+    where: { reason: "INVALID_CREDENTIALS", created_at: { gte: new Date(Date.now() - WINDOW_MS) } },
+    _count: { _all: true },
+    having: { email: { _count: { gte: MAX_ACCOUNT_FAILURES } } },
+  });
+  const states = await Promise.all(candidates.map(async (row) => ({ email: row.email, ...(await lockState(row.email)) })));
+  return states.filter((state) => state.login_locked);
+};

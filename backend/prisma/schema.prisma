@@ -79,40 +79,48 @@ enum AlertAudience {
 
 // D01 register, D03 login, D08 roles, D12 onboarding, D14 locale, F23/F24 accessibility
 model User {
-  id                   Int       @id @default(autoincrement())
-  created_at           DateTime  @default(now())
-  updated_at           DateTime  @updatedAt
-  email                String    @unique
-  password_hash        String
-  name                 String
-  last_name            String
-  phone                String?
-  address              String?
+  id                    Int       @id @default(autoincrement())
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  email                 String    @unique
+  password_hash         String
+  name                  String
+  last_name             String
+  phone                 String?
+  address               String?
   // Optional avatar file name under /public (set on register multipart)
-  profile              String?
-  district_id          Int?
-  role                 Role      @default(CITIZEN)
-  locale               String    @default("fr")
+  profile               String?
+  district_id           Int?
+  role                  Role      @default(CITIZEN)
+  locale                String    @default("fr")
   // F31: opt-in flag so health alerts can target vulnerable people
-  is_vulnerable        Boolean   @default(false)
-  is_active            Boolean   @default(true)
-  onboarding_completed Boolean   @default(false)
+  is_vulnerable         Boolean   @default(false)
+  is_active             Boolean   @default(true)
+  onboarding_completed  Boolean   @default(false)
   // F21/F23/F24: free-form UI preferences (high_contrast, font_scale, reduced_motion…)
-  preferences          Json?
-  last_login_at        DateTime?
+  preferences           Json?
+  last_login_at         DateTime?
+  // Bumped to sign out every device at once: sessions carry it (JWT "tv") and must match
+  token_version         Int       @default(0)
+  // F53: TOTP secret (set by setup, active once two_factor_enabled_at is set)
+  two_factor_secret     String?
+  two_factor_enabled_at DateTime?
 
-  district          District?             @relation(fields: [district_id], references: [id], onDelete: SetNull)
-  requests          CitizenRequest[]      @relation("RequestCitizen")
-  assigned          CitizenRequest[]      @relation("RequestAgent")
+  district          District?               @relation(fields: [district_id], references: [id], onDelete: SetNull)
+  requests          CitizenRequest[]        @relation("RequestCitizen")
+  assigned          CitizenRequest[]        @relation("RequestAgent")
   request_events    RequestEvent[]
   notifications     Notification[]
   announcements     Announcement[]
   alerts            Alert[]
-  appointments      Appointment[]         @relation("AppointmentCitizen")
-  appointment_slots AppointmentSlot[]     @relation("SlotAgent")
+  appointments      Appointment[]           @relation("AppointmentCitizen")
+  appointment_slots AppointmentSlot[]       @relation("SlotAgent")
   interruptions     ServiceInterruption[]
   login_attempts    LoginAttempt[]
   settings_updated  PlatformSetting[]
+  devices           UserDevice[]
+  recovery_codes    TwoFactorRecoveryCode[]
+  passkeys          Passkey[]
 
   @@index([role])
   @@index([district_id])
@@ -577,3 +585,84 @@ model TransitDeparture {
 }
 
 // Make one empty line for your model
+
+// ─── Audit (F47, F48) ───────────────────────────────────────────────────────
+
+// Who did what, when, on which record (before -> after). Immutable: no route updates or deletes
+// a row and nothing purges the table (F47). actor_id has no foreign key on purpose: the entry
+// keeps the actor's id and frozen name after the account is deleted.
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  created_at   DateTime @default(now())
+  // null = the system (scheduler, cron job)
+  actor_id     Int?
+  actor_role   Role?
+  actor_name   String?
+  // request.status_changed, service.updated, user.login_unlocked…
+  action       String   @db.VarChar(64)
+  // CitizenRequest, CityService, User…
+  entity       String   @db.VarChar(64)
+  entity_id    Int?
+  // NT-261003-4F9A2C, « État civil »…
+  entity_label String?
+  // [{ field, from, to }] or [{ field, masked: true }] for personal data
+  changes      Json?
+  // reason, number of people notified…
+  metadata     Json?
+  ip           String?  @db.VarChar(64)
+
+  @@index([entity, entity_id])
+  @@index([actor_id, created_at])
+  @@index([action])
+  @@index([created_at])
+}
+
+// ─── Sign-in security (D02, F53, F54) ───────────────────────────────────────
+
+// F54: devices a user has signed in from, to warn about new ones
+model UserDevice {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  // sha256 of the device id sent by the browser (X-Device-Id), or of the user agent
+  device_hash String   @db.VarChar(64)
+  // « Chrome sur macOS », read from the user agent
+  label       String   @db.VarChar(120)
+  first_seen  DateTime @default(now())
+  last_seen   DateTime @default(now())
+  last_ip     String?  @db.VarChar(64)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, device_hash])
+  @@index([first_seen])
+}
+
+// F53: single-use recovery codes, hashed like passwords
+model TwoFactorRecoveryCode {
+  id        Int       @id @default(autoincrement())
+  user_id   Int
+  code_hash String
+  used_at   DateTime?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
+// D02: passwordless sign-in with passkeys (WebAuthn)
+model Passkey {
+  id            Int       @id @default(autoincrement())
+  user_id       Int
+  credential_id String    @unique @db.VarChar(255)
+  public_key    Bytes
+  counter       Int       @default(0)
+  transports    String?
+  // « MacBook de Ada »
+  label         String    @db.VarChar(120)
+  created_at    DateTime  @default(now())
+  last_used_at  DateTime?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
