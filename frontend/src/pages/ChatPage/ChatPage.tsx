@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router'
 import { novaVoice } from '../../experience/audio/novaVoice'
+import { useCitizenUser } from '../../api/session'
 import { debugJump } from '../../experience/director/debugParams'
 import { director } from '../../experience/director/director'
 import { useDirectorStore } from '../../experience/director/directorStore'
 import { novaScenes } from '../../experience/nova/behavior/scenes'
-import type { Session } from '../../features/auth/authService'
+import { filmSessionFromCitizen, type Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
 import { ChatPanel } from '../../features/chat/ChatPanel'
 import { scriptedChatService } from '../../features/chat/chatService'
@@ -24,7 +25,9 @@ const ASK_AFTER_MS = 1900
 
 /** Act V: the Observatory at night, Nova on the balcony and the conversation beside it. Requires a session. */
 export default function ChatPage() {
-  const session = useAuthStore((s) => s.session)
+  const film = useAuthStore((s) => s.session)
+  const citizen = useCitizenUser()
+  const session = film ?? (citizen ? filmSessionFromCitizen(citizen) : null)
   const { search } = useLocation()
   // a debug jump (`?vue`) signs in by itself once the film has landed
   if (!session) return debugJump ? null : <Navigate to={{ pathname: '/', search }} replace />

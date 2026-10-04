@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { RequireSession } from './guards'
 import { AirlockPage } from '../pages/AirlockPage/AirlockPage'
 import { CityPage } from '../pages/CityPage/CityPage'
 import { ConsoleLayout } from '../pages/Console/ConsoleLayout'
@@ -18,6 +19,9 @@ const NovaBench = import.meta.env.DEV ? lazy(() => import('../dev/NovaBench')) :
 const ConsoleTestPage = import.meta.env.DEV ? lazy(() => import('../dev/ConsoleTestPage')) : null
 /** D04: write to municipal services (console over the dimmed city). */
 const ContactPage = lazy(() => import('../pages/Console/ContactPage'))
+const EspaceHubPage = lazy(() => import('../pages/Espace/EspaceHubPage'))
+const DemandesListPage = lazy(() => import('../pages/Espace/DemandesListPage'))
+const DemandeDetailPage = lazy(() => import('../pages/Espace/DemandeDetailPage'))
 
 function App() {
   return (
@@ -47,6 +51,36 @@ function App() {
                   }
                 />
               )}
+              <Route
+                path="espace"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <EspaceHubPage />
+                    </Suspense>
+                  </RequireSession>
+                }
+              />
+              <Route
+                path="espace/demandes"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <DemandesListPage />
+                    </Suspense>
+                  </RequireSession>
+                }
+              />
+              <Route
+                path="espace/demandes/:id"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <DemandeDetailPage />
+                    </Suspense>
+                  </RequireSession>
+                }
+              />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Route>

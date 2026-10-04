@@ -3,6 +3,7 @@ import { frameBus, frameState } from '../../experience/director/frameState'
 import type { Session } from '../../features/auth/authService'
 import { formatLocalTime } from '../../lib/format'
 import { Icon, NovaMark } from '../../ui/Icon'
+import { CitizenNav } from '../Console/CitizenNav'
 import { CITY_SECTIONS } from './citySections'
 import type { LiveScroll } from './useCityScroll'
 import styles from './CityChrome.module.css'
@@ -53,6 +54,7 @@ export function TopBar({ session, active, alert, exploring, onQuit, onToggleExpl
             </a>
           ) : null,
         )}
+        <CitizenNav variant="flyover" />
       </nav>
       <div className={styles.end}>
         <Clock />
