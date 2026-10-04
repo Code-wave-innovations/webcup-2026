@@ -7,16 +7,10 @@ import { distanceToMember, layoutBridge } from './bridgeLayout'
 const bridge = layoutBridge()
 
 describe('layoutBridge', () => {
-  it('keeps the pylon, its mast and every stay clear of the flyover camera', () => {
+  it('keeps every lamp clear of the flyover camera', () => {
     const sample = createPathSample()
     const camera = new Vector3()
-    const members = [
-      ...bridge.legs,
-      bridge.mast,
-      bridge.strut,
-      ...bridge.stays,
-      ...bridge.lamps.map((lamp) => ({ from: lamp.foot, to: lamp.head })),
-    ]
+    const members = bridge.lamps.map((lamp) => ({ from: lamp.foot, to: lamp.head }))
     let closest = Infinity
     for (let u = 0; u <= LAST_POSE; u += 0.005) {
       sampleCameraPath(u, sample)
@@ -26,20 +20,26 @@ describe('layoutBridge', () => {
     expect(closest).toBeGreaterThan(2.5)
   })
 
-  it('anchors the stays on both sides of the deck, fanning out both ways from the pylon', () => {
-    expect(bridge.stays).toHaveLength((BRIDGE.staysBack + BRIDGE.staysOut) * 2)
-    for (const stay of bridge.stays) {
-      expect(stay.to.y).toBeGreaterThan(stay.from.y + BRIDGE.pylonHeight - 1)
+  it('plants twin-column piers along the deck', () => {
+    expect(bridge.columns.length).toBeGreaterThan(4)
+    expect(bridge.caps.length).toBeGreaterThan(2)
+    for (const column of bridge.columns) {
+      expect(column.to.y).toBeGreaterThan(column.from.y)
+      expect(column.to.y).toBeLessThan(8)
     }
   })
 
-  it('stands the legs outside the deck where they cross it', () => {
-    const deckY = bridge.mast.from.y - BRIDGE.pylonHeight
-    for (const leg of bridge.legs) {
-      const k = (deckY - leg.from.y) / (leg.to.y - leg.from.y)
-      const atDeck = leg.from.clone().lerp(leg.to, k)
-      const centre = bridge.mast.from.clone().setY(deckY)
-      expect(atDeck.distanceTo(centre)).toBeGreaterThan(BRIDGE.roadHalf + BRIDGE.sidewalk + 0.15)
+  it('stands the pier columns beside the roadway', () => {
+    const road = bridge.road
+    for (const column of bridge.columns) {
+      const foot = column.from
+      let nearest = Infinity
+      for (let t = 0; t <= 1; t += 0.02) {
+        const point = road.getPoint(t)
+        nearest = Math.min(nearest, Math.hypot(point.x - foot.x, point.z - foot.z))
+      }
+      expect(nearest).toBeGreaterThan(1.2)
+      expect(nearest).toBeLessThan(BRIDGE.roadHalf + BRIDGE.sidewalk)
     }
   })
 })

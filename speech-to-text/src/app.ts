@@ -8,9 +8,10 @@ import { authPlugin } from "./plugins/auth.js";
 import { healthRoutes } from "./routes/health.js";
 import { realtimeTokensRoutes } from "./routes/realtime-tokens.js";
 import { realtimeWsRoutes } from "./routes/realtime-ws.js";
+import { speechRoutes, type SpeechRouteDeps } from "./routes/speech.js";
 import { transcriptionRoutes, type TranscriptionRouteDeps } from "./routes/transcriptions.js";
 
-export type AppDeps = TranscriptionRouteDeps & RealtimeSessionDeps;
+export type AppDeps = TranscriptionRouteDeps & RealtimeSessionDeps & SpeechRouteDeps;
 
 export async function buildApp(config: Config, deps: AppDeps = {}): Promise<FastifyInstance> {
     const app = Fastify({ logger: false });
@@ -29,6 +30,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
     await app.register(transcriptionRoutes(config, deps));
     await app.register(realtimeTokensRoutes(config));
     await app.register(realtimeWsRoutes(config, deps));
+    await app.register(speechRoutes(config, deps));
 
     return app;
 }

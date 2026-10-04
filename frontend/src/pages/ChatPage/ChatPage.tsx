@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router'
+import { novaVoice } from '../../experience/audio/novaVoice'
 import { debugJump } from '../../experience/director/debugParams'
 import { director } from '../../experience/director/director'
 import { useDirectorStore } from '../../experience/director/directorStore'
@@ -8,6 +9,7 @@ import type { Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
 import { ChatPanel } from '../../features/chat/ChatPanel'
 import { scriptedChatService } from '../../features/chat/chatService'
+import { CHAT_SUGGESTIONS, scriptedReply } from '../../features/chat/chatScript'
 import { useNovaChat } from '../../features/chat/useNovaChat'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { useReducedMotion } from '../../hooks/useMediaQuery'
@@ -57,6 +59,17 @@ function Observatory({ session }: { session: Session }) {
   useEffect(() => {
     if (arrived) return novaScenes.arriveAtObservatory()
   }, [arrived])
+
+  // the answers to the suggestions are generated ahead, so that Nova says them as soon as they are written
+  useEffect(() => {
+    novaVoice.warm(CHAT_SUGGESTIONS.map((suggestion) => scriptedReply(suggestion, { name: session.name }).text))
+  }, [session.name])
+
+  // the welcome bubble is read aloud once Nova is on the balcony (the replies by the reactions)
+  const welcome = chat.messages[0]?.role === 'nova' ? chat.messages[0].text : ''
+  useEffect(() => {
+    if (arrived && welcome) novaVoice.say(welcome)
+  }, [arrived, welcome])
 
   // a suggestion picked in the city (`?q=`) is asked as soon as Nova is there
   const question = params.get('q')

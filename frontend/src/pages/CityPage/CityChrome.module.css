@@ -19,7 +19,7 @@
   display: none;
 }
 
-.bar[data-exploring='true'] .round[aria-pressed='true'] {
+.bar[data-exploring='true'] .explore {
   border-color: var(--color-ice);
   color: var(--color-ice-bright);
 }
@@ -121,6 +121,23 @@
 }
 
 .round:hover {
+  background: var(--color-glass-light);
+}
+
+.explore {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px 0 12px;
+  border: 1px solid var(--color-line);
+  background: var(--color-glass);
+  color: var(--color-ice-bright);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.explore:hover {
   background: var(--color-glass-light);
 }
 
@@ -235,7 +252,14 @@
   }
 
   .badge small,
-  .clock span {
+  .clock span,
+  .explore span {
     display: none;
+  }
+
+  .explore {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
   }
 }
