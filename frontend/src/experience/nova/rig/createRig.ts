@@ -156,7 +156,7 @@ function detectFace(scene: Object3D, meshes: Mesh[], bones: Partial<Record<BoneN
  * Wraps a delivered GLB: clones it (skinned meshes included), recognises the bones and clips by name,
  * lowers T-pose arms, normalises it to Nova's size and fills in the missing clips.
  */
-export function createGltfRig(gltf: { scene: Object3D; animations?: AnimationClip[] | null }, source: string): NovaRig {
+export function createGltfRig(gltf: { scene: Object3D; animations: AnimationClip[] }, source: string): NovaRig {
   const scene = cloneSkinned(gltf.scene)
   const fit = new Group()
   fit.add(scene)
@@ -196,12 +196,10 @@ export function createGltfRig(gltf: { scene: Object3D; animations?: AnimationCli
   relaxArms(root, bones)
 
   const space = new RigSpace(root, bones)
-  // Some loads omit `animations` (partial GLB / CDN hiccup); never call `.find` on undefined.
-  const animations = gltf.animations ?? []
-  const clipNames = matchClips(animations.map((c) => c.name))
+  const clipNames = matchClips(gltf.animations.map((c) => c.name))
   const own: Partial<Record<ClipName, AnimationClip>> = {}
   for (const [clip, name] of Object.entries(clipNames) as Array<[ClipName, string]>) {
-    const animation = animations.find((a) => a.name === name)
+    const animation = gltf.animations.find((a) => a.name === name)
     if (animation) own[clip] = clip === 'walk' && bones.Hips ? stripRootMotion(animation, bones.Hips.name) : animation
   }
   const { clips, generated } = completeClips(own, space, bones, anchors)

@@ -33,11 +33,7 @@ export const useActiveAlerts = (token?: string | null) => {
     queryFn: () =>
       http.get<ActiveAlert[]>('/alerts/active', token ? { headers: { Authorization: `Bearer ${token}` } } : undefined).then((response) => {
         queryClient.setQueryData(alertKeys.nextStart(), headerTime(response.headers['x-alert-next-at']))
-        // Prod proxies sometimes answer a wrapped object; a non-array must not reach `.find` in AlertCenter.
-        const body = response.data as ActiveAlert[] | { data?: ActiveAlert[] } | null
-        if (Array.isArray(body)) return body
-        if (body && Array.isArray(body.data)) return body.data
-        return []
+        return response.data
       }),
     refetchInterval: REFRESH.alerts,
     // a banner must not wait for the tab to be focused again
