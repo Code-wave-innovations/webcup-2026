@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
+import { signOutCitizen } from '../../api/session'
 import { debugJump, debugParams } from '../../experience/director/debugParams'
 import { director } from '../../experience/director/director'
 import { useSmoothScroll } from '../../app/smoothScroll'
 import { useDirectorStore } from '../../experience/director/directorStore'
 import { novaScenes } from '../../experience/nova/behavior/scenes'
 import { AnnouncementList } from '../../features/announcements/AnnouncementList'
+import { ContactPanel } from '../../features/contact/ContactPanel'
 import type { Session } from '../../features/auth/authService'
 import { useAuthStore } from '../../features/auth/authStore'
 import { CityGauges } from '../../features/cityStatus/CityGauges'
@@ -102,6 +104,7 @@ function CityView({ session }: { session: Session }) {
         if (store.status === 'ready') director.exit()
         else store.setPhase('approach')
         useAuthStore.getState().signOut()
+        signOutCitizen()
         navigate('/')
       },
       reduced ? 0 : LEAVE_MS,
@@ -151,8 +154,8 @@ function CityView({ session }: { session: Session }) {
                 <ButtonLink href={`#${REPORT.id}`} magnetic data-nova-look>
                   Signaler un problème
                 </ButtonLink>
-                <ButtonLink variant="ghost" href={`#${SERVICES.id}`} magnetic data-nova-look>
-                  Survoler la ville
+                <ButtonLink variant="ghost" href={`#${COUNCIL.id}`} magnetic data-nova-look>
+                  Écrire à la mairie
                 </ButtonLink>
               </div>
               <QuickServices />
@@ -194,9 +197,10 @@ function CityView({ session }: { session: Session }) {
         <CitySection
           info={COUNCIL}
           side="left"
-          title="Le Haut Conseil parle à toute la ville"
-          lead={'Annonces, consignes, alertes\u00a0: un seul canal, visible sur tous les écrans.'}
+          title={<>Une question&nbsp;? Écrivez à la mairie</>}
+          lead="Depuis la Tour du Conseil, votre message part aux services municipaux. Les annonces de la ville restent visibles juste en dessous."
         >
+          <ContactPanel />
           <AnnouncementList />
         </CitySection>
 

@@ -91,12 +91,13 @@ export const useBulkUpdate = () =>
     onSuccess: () => refreshAround(),
   })
 
-/** D04: anonymous contact message (requires honeypot + form_started_at; Turnstile when soft-limited). */
+/** D04: contact message (anonymous needs honeypot + form_started_at; Turnstile when soft-limited). */
 export type CreateContactInput = FormGuardPayload & {
   subject: string
   message: string
-  contact_name: string
-  contact_email: string
+  contact_name?: string
+  contact_email?: string
+  service_id?: number
 }
 
 export type CreatedContact = {
@@ -114,6 +115,7 @@ export const createContact = (input: CreateContactInput) =>
       message: input.message,
       contact_name: input.contact_name,
       contact_email: input.contact_email,
+      service_id: input.service_id,
       website: input.website,
       form_started_at: input.form_started_at,
       turnstile_token: input.turnstile_token,

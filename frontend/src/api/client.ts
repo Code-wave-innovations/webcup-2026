@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance } from 'axios'
 import { toApiError } from './errors'
-import { expireSession, useSessionStore } from './session'
+import { authTokenForSpace, expireSession } from './session'
 
 // Fall back to the local backend when a variable is missing from .env
 export const BaseUrl = import.meta.env.VITE_BASE_URL || 'http://localhost:9002'
@@ -34,19 +34,23 @@ function deviceId(): string | null {
 
 function authorize(instance: AxiosInstance) {
   instance.interceptors.request.use((config) => {
-    const token = useSessionStore.getState().token
+    // Citizen film → nova-auth-citizen; /agent|/admin → nova-auth-staff.
+    const token = authTokenForSpace()
     if (token) config.headers.set('Authorization', `Bearer ${token}`)
+    else config.headers.delete('Authorization')
     const device = deviceId()
     if (device) config.headers.set('X-Device-Id', device)
     return config
   })
   instance.interceptors.response.use(undefined, (error: unknown) => {
     const apiError = toApiError(error)
-    // The token was refused (expired, account disabled): end the session everywhere.
-    // A wrong password (401 INVALID_CREDENTIALS) is not an expired session.
-    if (apiError.status === 401 && apiError.code === 'UNAUTHORIZED') expireSession('expired')
-    // « Déconnecter tous les appareils » was used on this account (BO-05)
-    if (apiError.status === 401 && apiError.code === 'SESSION_REVOKED') expireSession('revoked')
+    const sentAuth = Boolean(axios.isAxiosError(error) && error.config?.headers?.Authorization)
+    if (sentAuth) {
+      // The token was refused (expired, account disabled): end that space’s session.
+      // A wrong password (401 INVALID_CREDENTIALS) is not an expired session.
+      if (apiError.status === 401 && apiError.code === 'UNAUTHORIZED') expireSession('expired')
+      if (apiError.status === 401 && apiError.code === 'SESSION_REVOKED') expireSession('revoked')
+    }
     return Promise.reject(apiError)
   })
 }

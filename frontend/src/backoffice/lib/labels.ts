@@ -51,7 +51,7 @@ export const NEEDS_ACTION: RequestStatus[] = ['SUBMITTED', 'IN_REVIEW', 'IN_PROG
 export const FINAL_STATUSES: RequestStatus[] = ['RESOLVED', 'REJECTED', 'CLOSED']
 
 export const TYPE_LABEL: Record<RequestType, string> = {
-  CONTACT: 'Message',
+  CONTACT: 'Contact',
   PROCEDURE: 'Démarche',
   INCIDENT: 'Signalement',
 }
@@ -70,7 +70,7 @@ export const EVENT_LABEL: Record<RequestEventType, string> = {
   STATUS_CHANGED: 'Changement d’état',
   ASSIGNED: 'Assignation',
   PRIORITY_CHANGED: 'Priorité modifiée',
-  COMMENT: 'Message',
+  COMMENT: 'Commentaire',
 }
 
 export const ROLE_LABEL: Record<Role, string> = { CITIZEN: 'Citoyen', AGENT: 'Agent', ADMIN: 'Administrateur' }

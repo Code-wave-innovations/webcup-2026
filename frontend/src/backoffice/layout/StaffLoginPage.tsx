@@ -10,7 +10,7 @@ import {
   verifyTwoFactor,
 } from '../../api/auth'
 import { messageFor, toApiError } from '../../api/errors'
-import { isStaffRole, signIn, useSessionUser } from '../../api/session'
+import { isStaffRole, signIn, useStaffUser } from '../../api/session'
 import type { AuthResponse, LoginStep, TwoFactorSetup, User } from '../../api/types'
 import { useApiForm } from '../../hooks/useApiForm'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
@@ -122,7 +122,7 @@ export default function StaffLoginPage() {
   const [params] = useSearchParams()
   const retour = params.get('retour')
   const ended = params.get('expiree')
-  const user = useSessionUser()
+  const staff = useStaffUser()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [citizen, setCitizen] = useState<User | null>(null)
@@ -200,8 +200,8 @@ export default function StaffLoginPage() {
     }
   }
 
-  // Already signed in as staff: straight to the workspace they opened.
-  if (user && isStaffRole(user.role) && !citizen) return <Navigate to={destinationAfterLogin(user.role, retour, persona)} replace />
+  // Already signed in as staff: straight to the workspace they opened (ignores a leftover CITIZEN JWT).
+  if (staff && !citizen) return <Navigate to={destinationAfterLogin(staff.role, retour, persona)} replace />
 
   const submit = (event: FormEvent) => {
     event.preventDefault()

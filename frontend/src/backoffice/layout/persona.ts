@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router'
-import { useSessionUser } from '../../api/session'
+import { useAdminUser, useAgentUser, useStaffUser } from '../../api/session'
 import type { Role, User } from '../../api/types'
 import type { Persona } from '../mocks/types'
 
@@ -28,9 +28,19 @@ const SIGNED_OUT: User = {
   last_login_at: null,
 }
 
-/** The signed-in staff member (the screens live under `RequireStaff`). */
+/** The signed-in staff member (AGENT or ADMIN). Ignores a leftover CITIZEN JWT. */
 export function useActor(): User {
-  return useSessionUser() ?? SIGNED_OUT
+  return useStaffUser() ?? SIGNED_OUT
+}
+
+/** Agent JWT only — null if the session is an admin (or a citizen). */
+export function useAgentActor(): User | null {
+  return useAgentUser()
+}
+
+/** Admin JWT only — null if the session is an agent (or a citizen). */
+export function useAdminActor(): User | null {
+  return useAdminUser()
 }
 
 export const homePath = (persona: Persona) => (persona === 'ADMIN' ? '/admin' : '/agent')

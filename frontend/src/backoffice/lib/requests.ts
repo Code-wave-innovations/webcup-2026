@@ -3,8 +3,11 @@ import { fullName } from './lookups'
 
 /** Who sent it: the account, the visitor without an account (D04), or a deleted account (F33). */
 export function requesterLabel(r: Pick<RequestListItem, 'citizen' | 'contact_name' | 'contact_email'>): string {
+  // Account first: a leftover staff JWT must never look like the assignee when none is set.
   if (r.citizen) return fullName(r.citizen)
-  if (r.contact_name || r.contact_email) return `Visiteur sans compte · ${r.contact_email ?? r.contact_name}`
+  if (r.contact_name && r.contact_email) return `${r.contact_name} · ${r.contact_email}`
+  if (r.contact_name) return r.contact_name
+  if (r.contact_email) return `Visiteur sans compte · ${r.contact_email}`
   return 'Compte supprimé'
 }
 

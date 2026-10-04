@@ -202,7 +202,7 @@ La correspondance entre statuts est définie une seule fois, dans `src/api/reque
 - [ ] Backend : filtre `citizen_id` ; ajouts à `dashboard/stats` (`open_by_agent`, `overdue`, `incidents_by_district`) ; `bulk` en option
 - [ ] `src/api/requests.ts`, `requestStatus.ts` et `dashboard.ts`
 - [ ] `RequestConfirmation`
-- [ ] Contact `/ville/contact`, avec un lien depuis le sas
+- [x] Contact `/ville/contact`, avec un lien depuis le sas
 - [ ] Signalement branché : quartiers de l'API, lieu, position, photo, faisceau réel ; mise à jour des tests de `analyzeReport`
 - [ ] Démarche dynamique `/ville/demarches/:slug`
 - [ ] `/ville/espace/demandes` et `/ville/espace/demandes/:id`

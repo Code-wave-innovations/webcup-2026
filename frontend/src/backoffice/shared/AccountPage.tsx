@@ -14,7 +14,7 @@ import {
   useSetupMyTwoFactor,
   useUpdateMe,
 } from '../../api/me'
-import { useSessionUser } from '../../api/session'
+import { useStaffUser } from '../../api/session'
 import type { TwoFactorSetup } from '../../api/types'
 import { useApiForm } from '../../hooks/useApiForm'
 import { formatDateTime, formatRelative } from '../lib/format'
@@ -34,7 +34,7 @@ import layout from '../ui/layout.module.css'
 
 /** BO-05: « Mon compte », the same page in both spaces: profile, password, second factor, passkeys, devices. */
 export default function AccountPage() {
-  const user = useSessionUser()
+  const user = useStaffUser()
   const security = useMySecurity()
   if (!user) return null
   return (
@@ -62,7 +62,7 @@ export default function AccountPage() {
 }
 
 function ProfilePanel() {
-  const user = useSessionUser()!
+  const user = useStaffUser()!
   const update = useUpdateMe()
   const [draft, setDraft] = useState({ name: user.name, last_name: user.last_name, phone: user.phone ?? '' })
   const form = useApiForm({
