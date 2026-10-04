@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 
-/** The STT service (transcription and Nova's voice): the production one in a production build unless `.env` says otherwise. */
-export const sttApiUrl = import.meta.env.VITE_STT_API_URL || (import.meta.env.PROD ? 'https://webcup-stt.duckdns.org' : 'http://localhost:9100')
+export const sttApiUrl = import.meta.env.VITE_STT_API_URL || 'http://localhost:9100'
 
 export type RealtimeMode = 'FAST' | 'BALANCED' | 'ACCURATE'
 

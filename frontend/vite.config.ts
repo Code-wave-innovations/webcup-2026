@@ -6,6 +6,8 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // SWIFTASK_API_KEY (Nova's voice) is read by the browser too, so it ends up in the public bundle
+  envPrefix: ['VITE_', 'SWIFTASK_'],
   build: {
     // three.js + postprocessing + R3F + drei are one deliberate vendor chunk (≈ 300 kB gzipped)
     chunkSizeWarningLimit: 1200,

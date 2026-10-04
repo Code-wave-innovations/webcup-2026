@@ -15,8 +15,6 @@ export const authPlugin = (config: Config): FastifyPluginAsync =>
         if (req.url.startsWith("/v1/transcriptions/realtime")) return;
         // Ephemeral token endpoint: the browser has no API key (it receives the short-lived token instead).
         if (req.url.startsWith("/v1/realtime/tokens")) return;
-        // Nova's voice: an <audio> src cannot send headers either, it carries the same ?token=.
-        if (req.url.startsWith("/v1/speech")) return;
         const header = req.headers.authorization;
         if (!header?.startsWith("Bearer ") || header.slice(7) !== config.STT_API_KEY) {
           return reply

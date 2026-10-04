@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from 'react'
-import { sttApiUrl } from './useRealtimeTranscription'
 
 export interface SpeakOptions {
   /** a pre-generated recording to play instead of Nova's voice (Malagasy: `public/tts/`) */
@@ -7,17 +6,28 @@ export interface SpeakOptions {
 }
 
 /**
- * Nova's voice is a male neural voice from Swiftask's text-to-speech, served by the STT service
- * (`GET /v1/speech`, cached on its disk). There is no other voice: a line that cannot be fetched stays silent.
- * Each sentence is a separate recording, so the fixed sentences of a line are reused from the cache.
+ * Nova's voice is a male neural voice from Swiftask's text-to-speech (its ElevenLabs bot, `POST /api/ai/elevenlabs`),
+ * called straight from the browser with `SWIFTASK_API_KEY`. There is no other voice: a line that cannot be
+ * had stays silent. Each sentence is a separate recording; their urls are permanent, so they are remembered in
+ * this browser and a fixed sentence is generated once.
  */
+const SWIFTASK_API_URL = 'https://graphql.swiftask.ai'
+/** Swiftask API key: Vite only exposes `VITE_*` variables to the browser, and the value ends up in the public bundle */
+const swiftaskApiKey = (): string => import.meta.env.SWIFTASK_API_KEY ?? ''
+const SWIFTASK_TTS_BOT = 'elevenlabs'
+/** a male voice of Swiftask's ElevenLabs account, by name (the bot rejects ids and falls back to a female voice) */
+const VOICE = 'George'
+const MODEL = 'eleven_multilingual_v2'
+/** Nova's delivery: some variation (sounds less read), close to the voice's timbre, a touch of enthusiasm */
+const VOICE_SETTINGS = { stability: 0.42, similarity_boost: 0.8, style: 0.3, use_speaker_boost: true }
 const MAX_SENTENCE = 300
-/** Swiftask takes 5 to 7 s to generate a new sentence */
+/** Swiftask takes 5 to 10 s to generate a new sentence */
 const FETCH_TIMEOUT_MS = 30_000
-/** a token is renewed this long before it expires */
-const TOKEN_MARGIN_MS = 30_000
-/** recordings kept in this tab (object URLs), oldest dropped first */
-const MEMORY_CACHE = 120
+/** sentence → url of its recording, kept in this browser (per voice: a new voice never plays an old recording) */
+const STORAGE_KEY = `nova:voix:${VOICE}:${MODEL}`
+/** the Swiftask conversation the lines go to (without one, Swiftask creates a new one per request) */
+const SESSION_KEY = 'nova:voix:session'
+const MAX_REMEMBERED = 400
 /** recordings generated at the same time by a warm-up */
 const WARM_CONCURRENCY = 2
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='
@@ -70,8 +80,7 @@ let generation = 0
 let player: HTMLAudioElement | null = null
 /** ends the recording being played (stop) */
 let abortPlayback: (() => void) | null = null
-let token: { value: string; expiresAt: number } | null = null
-/** sentence → object URL of its recording (a promise while it downloads) */
+/** sentence → url of its recording (a promise while Swiftask generates it) */
 const recordings = new Map<string, Promise<string | null>>()
 const listeners = new Set<() => void>()
 
@@ -100,8 +109,65 @@ export function isVoiceBusy(): boolean {
   return busy
 }
 
+/**
+ * Nova's robot timbre, added in the browser to Swiftask's voice (the recordings stay untouched):
+ * a ring modulator for the metallic buzz, a short comb echo for the hollow "inside a helmet" sound,
+ * a high-pass that thins the voice. `null` plays the voice as recorded.
+ */
+const ROBOT: { ringHz: number; ringMix: number; combMs: number; combFeedback: number; highpassHz: number } | null = {
+  ringHz: 55,
+  ringMix: 0.45,
+  combMs: 8,
+  combFeedback: 0.4,
+  highpassHz: 160,
+}
+let robotContext: AudioContext | null = null
+
+/** Routes the player through the robot effect (WebAudio); without WebAudio, the voice plays as recorded. */
+function robotize(audio: HTMLAudioElement): void {
+  if (!ROBOT || typeof AudioContext === 'undefined') return
+  const context = new AudioContext()
+  const source = context.createMediaElementSource(audio)
+  const bus = context.createGain()
+
+  // dry voice plus the voice multiplied by a low sine (ring modulation)
+  const dry = context.createGain()
+  dry.gain.value = 1 - ROBOT.ringMix
+  const ring = context.createGain()
+  ring.gain.value = 0
+  const carrier = context.createOscillator()
+  carrier.frequency.value = ROBOT.ringHz
+  const depth = context.createGain()
+  depth.gain.value = ROBOT.ringMix
+  carrier.connect(depth).connect(ring.gain)
+  carrier.start()
+  source.connect(dry).connect(bus)
+  source.connect(ring).connect(bus)
+
+  // comb echo: a few milliseconds fed back into itself
+  const comb = context.createDelay(0.05)
+  comb.delayTime.value = ROBOT.combMs / 1000
+  const feedback = context.createGain()
+  feedback.gain.value = ROBOT.combFeedback
+  bus.connect(comb).connect(feedback).connect(comb)
+
+  const highpass = context.createBiquadFilter()
+  highpass.type = 'highpass'
+  highpass.frequency.value = ROBOT.highpassHz
+  const compressor = context.createDynamicsCompressor()
+  bus.connect(highpass)
+  comb.connect(highpass)
+  highpass.connect(compressor).connect(context.destination)
+  robotContext = context
+}
+
 function audioPlayer(): HTMLAudioElement {
-  player ??= new Audio()
+  if (!player) {
+    player = new Audio()
+    // the recordings come from Swiftask's file server: WebAudio may only process them with CORS
+    player.crossOrigin = 'anonymous'
+    robotize(player)
+  }
   return player
 }
 
@@ -122,66 +188,115 @@ export function unlockSpeech(): void {
   if (!canPlayAudio()) return
   const audio = audioPlayer()
   audio.src = SILENT_WAV
+  void robotContext?.resume()
   void audio.play().catch(() => undefined)
 }
 
-/** A short-lived token from the STT service (the browser never holds a key), reused until it expires. */
-async function speechToken(): Promise<string> {
-  if (token && token.expiresAt - TOKEN_MARGIN_MS > Date.now()) return token.value
-  const res = await fetch(`${sttApiUrl}/v1/realtime/tokens`, { method: 'POST' })
-  if (!res.ok) throw new Error(`speech token ${res.status}`)
-  const body = (await res.json()) as { token: string; expiresAt: string }
-  token = { value: body.token, expiresAt: Date.parse(body.expiresAt) }
-  return token.value
+function readStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : fallback
+  } catch {
+    return fallback
+  }
 }
 
-/** The recording of one sentence as an object URL (null when it could not be had); downloaded once per tab. */
+function writeStorage(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // private window or full storage: remembered for this visit only
+  }
+}
+
+/** Keeps a generated recording's url for the next visits (the oldest are forgotten first). */
+function remember(sentence: string, url: string): void {
+  const urls = readStorage<Record<string, string>>(STORAGE_KEY, {})
+  delete urls[sentence]
+  urls[sentence] = url
+  const kept = Object.entries(urls).slice(-MAX_REMEMBERED)
+  writeStorage(STORAGE_KEY, Object.fromEntries(kept))
+}
+
+/** Asks Swiftask to record one sentence with Nova's voice; resolves to the url of the mp3. */
+async function generate(sentence: string): Promise<string> {
+  const apiKey = swiftaskApiKey()
+  if (!apiKey) throw new Error('SWIFTASK_API_KEY is not set')
+  const sessionId = readStorage<number | null>(SESSION_KEY, null) ?? undefined
+  const res = await fetch(`${SWIFTASK_API_URL}/api/ai/${SWIFTASK_TTS_BOT}`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ input: sentence, sessionId, extraConfig: { voice: VOICE, model_id: MODEL, ...VOICE_SETTINGS } }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  })
+  const body = (await res.json().catch(() => ({}))) as { isBotError?: boolean; sessionId?: number; files?: Array<{ url?: string }>; text?: string }
+  const url = body.files?.[0]?.url
+  if (!res.ok || body.isBotError || !url) throw new Error(`Swiftask ${res.status}: ${body.text ?? 'no audio'}`)
+  if (typeof body.sessionId === 'number') writeStorage(SESSION_KEY, body.sessionId)
+  return url
+}
+
+/** The url of one sentence's recording (null when it could not be had): remembered, else generated once. */
 function recording(sentence: string): Promise<string | null> {
   const known = recordings.get(sentence)
-  if (known) {
-    // most recently used last
-    recordings.delete(sentence)
-    recordings.set(sentence, known)
-    return known
-  }
-  const loading = speechToken()
-    .then((value) => fetch(`${sttApiUrl}/v1/speech?${new URLSearchParams({ text: sentence, token: value })}`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }))
-    .then((res) => (res.ok ? res.blob() : Promise.reject(new Error(`speech ${res.status}`))))
-    .then((blob) => URL.createObjectURL(blob))
-    .catch(() => {
-      // not kept: the next time it is asked for, it is tried again
-      recordings.delete(sentence)
-      return null
-    })
+  if (known) return known
+  const stored = readStorage<Record<string, string>>(STORAGE_KEY, {})[sentence]
+  const loading = stored
+    ? Promise.resolve(stored)
+    : generate(sentence)
+        .then((url) => {
+          remember(sentence, url)
+          return url
+        })
+        .catch((error: unknown) => {
+          // not kept: the next time it is asked for, it is tried again
+          recordings.delete(sentence)
+          if (import.meta.env.DEV) console.warn('[voix de Nova] Swiftask text-to-speech failed:', error)
+          return null
+        })
   recordings.set(sentence, loading)
-  while (recordings.size > MEMORY_CACHE) {
-    const [oldest, url] = recordings.entries().next().value!
-    recordings.delete(oldest)
-    void url.then((u) => u && URL.revokeObjectURL(u))
-  }
   return loading
 }
 
-/** Plays one source on the shared player; resolves when it ends, fails or is stopped. */
-function play(src: string): Promise<void> {
+/**
+ * Plays one source on the shared player; resolves when it ends, fails or is stopped, with `blocked` when
+ * the browser refused to play before any click (autoplay rules).
+ */
+function play(src: string): Promise<'done' | 'blocked'> {
   const audio = audioPlayer()
   return new Promise((resolve) => {
-    const finish = () => {
-      audio.removeEventListener('ended', finish)
-      audio.removeEventListener('error', finish)
+    const finish = (outcome: 'done' | 'blocked' = 'done') => {
+      audio.removeEventListener('ended', onEnd)
+      audio.removeEventListener('error', onEnd)
       abortPlayback = null
       setState({ speaking: false })
-      resolve()
+      resolve(outcome)
     }
+    const onEnd = () => finish()
     abortPlayback = finish
-    audio.addEventListener('ended', finish)
-    audio.addEventListener('error', finish)
+    audio.addEventListener('ended', onEnd)
+    audio.addEventListener('error', onEnd)
     audio.src = src
+    // the robot effect's context starts suspended until the visitor's first click
+    void robotContext?.resume()
     audio
       .play()
       .then(() => setState({ speaking: true }))
-      .catch(finish)
+      .catch((error: unknown) => finish(error instanceof DOMException && error.name === 'NotAllowedError' ? 'blocked' : 'done'))
   })
+}
+
+/** A line refused before the visitor's first click is said at that click (unless another line came since). */
+function sayAtFirstGesture(text: string, options: SpeakOptions, run: number): void {
+  const events = ['pointerdown', 'keydown'] as const
+  const resume = () => {
+    for (const event of events) document.removeEventListener(event, resume, true)
+    if (run === generation) {
+      unlockSpeech()
+      void speakMessage(text, options)
+    }
+  }
+  for (const event of events) document.addEventListener(event, resume, { capture: true, once: true })
 }
 
 /**
@@ -198,7 +313,11 @@ export async function speakMessage(text: string, options: SpeakOptions = {}): Pr
   for (const source of sources) {
     const src = await source
     if (run !== generation) return
-    if (src) await play(src)
+    if (src && (await play(src)) === 'blocked') {
+      setState({ busy: false })
+      if (run === generation) sayAtFirstGesture(text, options, run)
+      return
+    }
     if (run !== generation) return
   }
   setState({ busy: false })
@@ -206,7 +325,7 @@ export async function speakMessage(text: string, options: SpeakOptions = {}): Pr
 
 /**
  * Generates the recordings of lines Nova is about to say (in the background, a few at a time), so that
- * they play at once: the STT service keeps them on disk for every visitor, this tab in memory.
+ * they play at once (and are remembered in this browser).
  */
 export async function warmSpeech(texts: readonly string[]): Promise<void> {
   const queue = [...new Set(texts.flatMap(sentencesOf))]
@@ -216,11 +335,10 @@ export async function warmSpeech(texts: readonly string[]): Promise<void> {
   await Promise.all(Array.from({ length: WARM_CONCURRENCY }, worker))
 }
 
-/** Test-only: forget the token, the player and the recordings. */
+/** Test-only: forget the player and the recordings of this tab. */
 export function resetSpeechForTests(): void {
   stopSpeaking()
   player = null
-  token = null
   recordings.clear()
 }
 
