@@ -57,36 +57,6 @@
   text-decoration: underline;
 }
 
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.bubble {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 15px;
-  border: 1px solid var(--color-line);
-  border-left: 2px solid var(--color-ice);
-  background: var(--color-glass-light);
-  font-size: 16px;
-  line-height: 1.45;
-  margin: 0;
-}
-
-.bubble b {
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-ice);
-}
-
-.embeddedForm {
-  display: contents;
-}
-
 .pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

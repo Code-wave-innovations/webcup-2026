@@ -16,6 +16,17 @@ export const configSchema = z.object({
     ANTHROPIC_API_KEY: z.string().min(1),
     CLAUDE_REFINER_MODEL: z.string().default("claude-sonnet-4-5-20250929"),
     CLAUDE_ASSISTANT_MODEL: z.string().optional(),
+    /** Nova's voice (`GET /v1/speech`, Swiftask text-to-speech): disabled (503) without a key. */
+    SWIFTASK_API_KEY: z.string().optional(),
+    SWIFTASK_API_URL: z.string().optional(),
+    SWIFTASK_TTS_BOT: z.string().optional(),
+    /** a voice name of Swiftask's ElevenLabs account (not an id) */
+    SWIFTASK_TTS_VOICE: z.string().optional(),
+    SWIFTASK_TTS_MODEL: z.string().optional(),
+    TTS_MAX_CHARS: z.coerce.number().default(600),
+    /** Characters sent to the provider per minute (cached lines are free). */
+    TTS_CHARS_PER_MINUTE: z.coerce.number().default(6000),
+    TTS_CACHE_DIR: z.string().default("tmp/tts-cache"),
     MAX_AUDIO_BYTES: z.coerce.number().default(25_000_000),
     CORS_ORIGINS: z
         .string()

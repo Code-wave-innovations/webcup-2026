@@ -10,6 +10,7 @@ import { NovaSpeechBubble } from '../experience/nova/NovaSpeechBubble'
 import { useDirectorStore } from '../experience/director/directorStore'
 import { AlertCenter } from '../features/announcements/AlertCenter'
 import { ReminderWatcher } from '../features/appointments/ReminderWatcher'
+import { useCitizenUser } from '../api/session'
 import { toSession } from '../features/auth/authService'
 import { useAuthStore } from '../features/auth/authStore'
 import { DEMO_ACCOUNTS } from '../features/auth/demoAccounts'
@@ -32,7 +33,8 @@ export function FilmLayout() {
   const cinematic = useDirectorStore((s) => s.cinematic)
   // console pages are usable at once: the city fades in behind them when it is ready
   const consoleOpen = useDirectorStore((s) => s.console)
-  const session = useAuthStore((s) => s.session)
+  const filmSession = useAuthStore((s) => s.session)
+  const citizen = useCitizenUser()
   const debugSignIn = useRef(false)
 
   // the letterbox bars retract once the city is reached (or after a return to the cockpit)
@@ -40,12 +42,13 @@ export function FilmLayout() {
     if (phase === 'city' || phase === 'explore' || phase === 'approach') useDirectorStore.getState().setCinematic(false)
   }, [phase])
 
-  // `?vue` / `?arrivee` land in the city without a login: use the resident demo account, as the prototype did
+  // `?vue` / `?arrivee` land in the city without a login: demo film chrome only (no API JWT).
+  // Skip when a real citizen session already fills the city gate.
   useEffect(() => {
-    if (!debugJump || debugSignIn.current || session || phase === 'approach' || phase === 'entry') return
+    if (!debugJump || debugSignIn.current || filmSession || citizen || phase === 'approach' || phase === 'entry') return
     debugSignIn.current = true
     useAuthStore.getState().signIn(toSession(DEMO_ACCOUNTS.miora))
-  }, [phase, session])
+  }, [phase, filmSession, citizen])
 
   return (
     <>

@@ -57,6 +57,17 @@ export function toSession(account: Account): Session {
   return { accountId: account.id, name: account.name, roleLabel: account.roleLabel, role: account.role, email: account.email }
 }
 
+/** Film chrome session from the citizen JWT slot (DevLogin / API without the demo airlock). */
+export function filmSessionFromCitizen(user: { id: number; name: string; email: string }): Session {
+  return {
+    accountId: String(user.id),
+    name: user.name,
+    roleLabel: 'Habitant·e',
+    role: 'resident',
+    email: user.email,
+  }
+}
+
 export function sessionFromApi(token: string, user: ApiUser): Session {
   const citizen = user.role === 'CITIZEN'
   return {

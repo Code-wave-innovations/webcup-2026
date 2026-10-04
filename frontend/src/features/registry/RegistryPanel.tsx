@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plate } from '../../ui/Badges'
-import { ButtonLink } from '../../ui/Button'
+import { ButtonLink, ButtonRouteLink } from '../../ui/Button'
 import { CountUp } from '../../ui/CountUp'
 import { Row, RowList } from '../../ui/Rows'
 import text from '../../ui/text.module.css'
@@ -44,9 +44,15 @@ export function RegistryPanel({ visible }: { visible: boolean }) {
               <strong>« {entry.request} »</strong>
               <small>{entry.meta}</small>
             </span>
-            <ButtonLink variant="ghost" small href={`#${entry.section}`}>
-              Voir
-            </ButtonLink>
+            {entry.section.startsWith('/') ? (
+              <ButtonRouteLink variant="ghost" small to={entry.section}>
+                Voir
+              </ButtonRouteLink>
+            ) : (
+              <ButtonLink variant="ghost" small href={`#${entry.section}`}>
+                Voir
+              </ButtonLink>
+            )}
           </Row>
         ))}
       </RowList>

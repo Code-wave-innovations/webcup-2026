@@ -3,6 +3,7 @@ import { frameBus, frameState } from '../../experience/director/frameState'
 import type { Session } from '../../features/auth/authService'
 import { formatLocalTime } from '../../lib/format'
 import { Icon, NovaMark } from '../../ui/Icon'
+import { CitizenNav } from '../Console/CitizenNav'
 import { CITY_SECTIONS } from './citySections'
 import type { LiveScroll } from './useCityScroll'
 import styles from './CityChrome.module.css'
@@ -41,38 +42,48 @@ interface TopBarProps {
 export function TopBar({ session, active, alert, exploring, onQuit, onToggleExplore }: TopBarProps) {
   return (
     <header className={styles.bar} data-alert={alert} data-exploring={exploring}>
-      <div className={styles.brand}>
-        <NovaMark />
-        <span>NOVA</span>
-      </div>
-      <nav className={styles.links} aria-label="Rubriques">
-        {CITY_SECTIONS.map((section, i) =>
-          section.nav ? (
-            <a key={section.id} href={`#${section.id}`} aria-current={current(i === active)}>
-              {section.nav}
-            </a>
-          ) : null,
-        )}
-      </nav>
-      <div className={styles.end}>
-        <Clock />
-        <div className={styles.badge}>
-          <span>{session.name}</span>
-          <small>{session.roleLabel}</small>
+      <div className={styles.shell}>
+        <div className={styles.brand}>
+          <NovaMark />
+          <span>NOVA</span>
         </div>
-        <button
-          type="button"
-          className={styles.explore}
-          aria-label={exploring ? 'Reprendre le survol' : 'Explorer la ville'}
-          aria-pressed={exploring}
-          onClick={onToggleExplore}
-        >
-          <Icon name="rocket" />
-          <span>{exploring ? 'Reprendre le survol' : 'Explorer la ville'}</span>
-        </button>
-        <button type="button" className={styles.round} aria-label="Quitter la ville et revenir au contrôle d'accès" onClick={onQuit}>
-          <Icon name="logout" />
-        </button>
+        <nav className={styles.links} aria-label="Rubriques">
+          {CITY_SECTIONS.map((section, i) =>
+            section.nav ? (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                aria-current={current(i === active)}
+                aria-label={section.navFull ?? section.nav}
+                title={section.navFull ?? section.nav}
+              >
+                {section.nav}
+              </a>
+            ) : null,
+          )}
+          <i className={styles.sep} aria-hidden="true" />
+          <CitizenNav variant="flyover" />
+        </nav>
+        <div className={styles.end}>
+          <Clock />
+          <div className={styles.badge}>
+            <span>{session.name}</span>
+            <small>{session.roleLabel}</small>
+          </div>
+          <button
+            type="button"
+            className={styles.explore}
+            aria-label={exploring ? 'Reprendre le survol' : 'Explorer la ville'}
+            aria-pressed={exploring}
+            onClick={onToggleExplore}
+          >
+            <Icon name="rocket" />
+            <span>{exploring ? 'Reprendre' : 'Explorer'}</span>
+          </button>
+          <button type="button" className={styles.round} aria-label="Quitter la ville et revenir au contrôle d'accès" onClick={onQuit}>
+            <Icon name="logout" />
+          </button>
+        </div>
       </div>
     </header>
   )

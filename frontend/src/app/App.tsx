@@ -5,7 +5,7 @@ import { CityPage } from '../pages/CityPage/CityPage'
 import { ConsoleLayout } from '../pages/Console/ConsoleLayout'
 import { NotFoundPage } from '../pages/Console/NotFoundPage'
 import { FilmLayout } from './FilmLayout'
-import { RequireRole } from './guards'
+import { RequireRole, RequireSession } from './guards'
 
 const ChatPage = lazy(() => import('../pages/ChatPage/ChatPage'))
 const TeamPage = lazy(() => import('../pages/TeamPage/TeamPage'))
@@ -21,6 +21,9 @@ const ConsoleTestPage = import.meta.env.DEV ? lazy(() => import('../dev/ConsoleT
 const ContactPage = lazy(() => import('../pages/Console/ContactPage'))
 const BookAppointmentPage = lazy(() => import('../pages/Console/BookAppointmentPage'))
 const MyAppointmentsPage = lazy(() => import('../pages/Console/MyAppointmentsPage'))
+const EspaceHubPage = lazy(() => import('../pages/Espace/EspaceHubPage'))
+const DemandesListPage = lazy(() => import('../pages/Espace/DemandesListPage'))
+const DemandeDetailPage = lazy(() => import('../pages/Espace/DemandeDetailPage'))
 
 function App() {
   return (
@@ -71,6 +74,36 @@ function App() {
                   }
                 />
               )}
+              <Route
+                path="espace"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <EspaceHubPage />
+                    </Suspense>
+                  </RequireSession>
+                }
+              />
+              <Route
+                path="espace/demandes"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <DemandesListPage />
+                    </Suspense>
+                  </RequireSession>
+                }
+              />
+              <Route
+                path="espace/demandes/:id"
+                element={
+                  <RequireSession>
+                    <Suspense fallback={null}>
+                      <DemandeDetailPage />
+                    </Suspense>
+                  </RequireSession>
+                }
+              />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Route>

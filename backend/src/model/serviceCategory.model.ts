@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
-import { idOrSlugWhere } from "../lib/validation";
+import { idOrSlugWhere, type ParamValue } from "../lib/validation";
 
 const activeServices = { where: { is_active: true } };
 
@@ -10,7 +10,7 @@ const serviceCategoryModel = {
       orderBy: [{ sort_order: "asc" }, { name: "asc" }],
       include: { _count: { select: { services: activeServices } } },
     }),
-  getOne: (idOrSlug: string) =>
+  getOne: (idOrSlug: ParamValue) =>
     prisma.serviceCategory.findFirst({
       where: idOrSlugWhere(idOrSlug),
       include: {

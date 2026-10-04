@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createIncident } from '../../api/requests'
 import { useDistricts } from '../../api/districts'
-import { useSessionStore } from '../../api/session'
+import { useCitizenSessionStore } from '../../api/session'
 import { useAuthStore } from '../auth/authStore'
 import { useApiForm } from '../../hooks/useApiForm'
 import { Button } from '../../ui/Button'
@@ -43,9 +43,9 @@ interface ReportValues {
 /** One sentence is enough: NOVA proposes the category, the district and the urgency while the visitor types. */
 export function ReportForm() {
   const draft = useReportStore((s) => s.draft)
+  const citizenToken = useCitizenSessionStore((s) => s.token)
   const filmToken = useAuthStore((s) => s.session?.token)
-  const apiToken = useSessionStore((s) => s.token)
-  const signedIn = Boolean(filmToken || apiToken)
+  const signedIn = Boolean(citizenToken || filmToken)
   const { editDraft, applySuggestion, accept } = useReportStore.getState()
   const districts = useDistricts()
   const [coords, setCoords] = useState<Coords | null>(null)

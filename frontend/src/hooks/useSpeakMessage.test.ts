@@ -71,8 +71,8 @@ describe('speakMessage', () => {
         const body = JSON.parse(String(init.body))
         expect(body.extraConfig.voice).toBe('George')
         sessions.push(body.sessionId)
-        generated.push(body.input)
         if (speechStatus !== 200) return Response.json({ error: 'down' }, { status: speechStatus })
+        generated.push(body.input)
         return Response.json({ sessionId: 7, files: [{ url: `https://files.example/${generated.length - 1}.mp3` }] })
       }),
     )

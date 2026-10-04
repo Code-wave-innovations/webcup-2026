@@ -4,6 +4,8 @@ import type { CreatedContact } from '../../api/requests'
 import { usePublicSettings } from '../../api/settings'
 import { ContactForm } from '../../features/contact/ContactForm'
 import { RequestConfirmation } from '../../features/contact/RequestConfirmation'
+import { useMaintenanceMode } from '../../features/maintenance/maintenanceMode'
+import { PlatformIncident } from '../../features/maintenance/PlatformIncident'
 import styles from '../../features/contact/Contact.module.css'
 import { GlassPanel } from '../../ui/GlassPanel'
 import text from '../../ui/text.module.css'
@@ -12,13 +14,18 @@ import { ConsolePage } from './ConsolePage'
 /** D04 / D16: write to municipal services and see an explicit send confirmation. */
 export default function ContactPage() {
   const settings = usePublicSettings()
+  const readOnly = useMaintenanceMode()
   const [sent, setSent] = useState<CreatedContact | null>(null)
   const contact = settings.data?.support_contact
 
   return (
     <ConsolePage
-      title="Écrire à la mairie"
-      lead="Transmettez une question ou une difficulté aux services municipaux. Vous recevez tout de suite une confirmation avec une référence."
+      title={readOnly && !sent ? 'Coordonnées et consignes' : 'Écrire à la mairie'}
+      lead={
+        readOnly && !sent
+          ? 'Pendant l’incident, le message en ligne est en pause. Les coordonnées de la mairie et les numéros d’urgence restent là.'
+          : 'Transmettez une question ou une difficulté aux services municipaux. Vous recevez tout de suite une confirmation avec une référence.'
+      }
     >
       {sent ? (
         <GlassPanel>
@@ -30,7 +37,7 @@ export default function ContactPage() {
         </GlassPanel>
       ) : (
         <div className={styles.layout}>
-          <ContactForm onSent={setSent} />
+          {readOnly ? <PlatformIncident showContacts={false} linkTo="city" /> : <ContactForm onSent={setSent} />}
           <GlassPanel className={styles.aside}>
             <h2>Coordonnées de la mairie</h2>
             {settings.isPending && <p className={text.note}>Chargement des coordonnées…</p>}
@@ -59,7 +66,11 @@ export default function ContactPage() {
                 </div>
               </dl>
             )}
-            <p className={text.note}>Le formulaire reste le canal le plus simple pour laisser une trace et un numéro de suivi.</p>
+            <p className={text.note}>
+              {readOnly
+                ? 'Ces coordonnées restent le moyen de joindre la mairie pendant l’incident.'
+                : 'Le formulaire reste le canal le plus simple pour laisser une trace et un numéro de suivi.'}
+            </p>
           </GlassPanel>
         </div>
       )}

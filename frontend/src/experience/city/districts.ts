@@ -15,7 +15,7 @@ export const DISTRICTS: readonly District[] = [
   { anchor: 'central', intro: 'Le Dôme central : tous les guichets de la ville, ouverts jour et nuit.', mood: 'happy' },
   { anchor: 'trois', intro: 'Le Dôme 3. Un souci ? Décrivez-le en une phrase, je préviens le Haut Conseil.' },
   { anchor: 'serre', intro: 'La Serre 1 nous nourrit et nous fait respirer. Tout est au vert.', mood: 'happy' },
-  { anchor: 'conseil', intro: 'La Tour du Conseil. Une question pour la mairie ? Écrivez ici, vous repartez avec une référence.', mood: 'focused' },
+  { anchor: 'conseil', intro: 'La Tour du Conseil. Annonces et consignes pour toute la ville, ici.', mood: 'focused' },
   { anchor: 'observatoire', intro: "L'Observatoire. Montez me voir, on discute sous les étoiles.", mood: 'happy' },
   { intro: 'Et voilà Terra Nova. Chaque demande et chaque réponse sont dans le registre.', mood: 'happy' },
 ]

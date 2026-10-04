@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
-import { signOutCitizen } from '../../api/session'
+import { signOutCitizen, useCitizenUser } from '../../api/session'
 import { debugJump, debugParams } from '../../experience/director/debugParams'
 import { director } from '../../experience/director/director'
 import { useSmoothScroll } from '../../app/smoothScroll'
 import { useDirectorStore } from '../../experience/director/directorStore'
 import { novaScenes } from '../../experience/nova/behavior/scenes'
 import { AnnouncementList } from '../../features/announcements/AnnouncementList'
-import { ContactPanel } from '../../features/contact/ContactPanel'
-import type { Session } from '../../features/auth/authService'
+import { filmSessionFromCitizen, type Session } from '../../features/auth/authService'
+import { useMaintenanceMode } from '../../features/maintenance/maintenanceMode'
+import { PlatformIncident } from '../../features/maintenance/PlatformIncident'
 import { useAuthStore } from '../../features/auth/authStore'
 import { CityGauges } from '../../features/cityStatus/CityGauges'
 import { RegistryPanel } from '../../features/registry/RegistryPanel'
@@ -18,7 +19,7 @@ import { NextAppointment } from '../../features/appointments/NextAppointment'
 import { QuickServices, ServiceShowcase } from '../../features/services/ServiceShowcase'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { PHONE_QUERY, useMediaQuery, useReducedMotion } from '../../hooks/useMediaQuery'
-import { ButtonLink } from '../../ui/Button'
+import { ButtonLink, ButtonRouteLink } from '../../ui/Button'
 import { NovaInvite } from './NovaInvite'
 import { ExploreHud } from '../../experience/city/explore/ExploreHud'
 import { exploreActions } from '../../experience/city/explore/exploreActions'
@@ -37,7 +38,10 @@ const sectionIndex = (id: string) => CITY_SECTIONS.findIndex((s) => s.id === id)
 
 /** Acts III and IV: the city. Requires a session; without one, back to the airlock. */
 export function CityPage() {
-  const session = useAuthStore((s) => s.session)
+  const film = useAuthStore((s) => s.session)
+  const citizen = useCitizenUser()
+  // Citizen JWT wins when both exist (API login mirrors into film + citizen).
+  const session = citizen ? filmSessionFromCitizen(citizen) : film
   const { search } = useLocation()
   // a debug jump signs in by itself once the film has landed
   if (!session) return debugJump ? null : <Navigate to={{ pathname: '/', search }} replace />
@@ -45,6 +49,7 @@ export function CityPage() {
 }
 
 function CityView({ session }: { session: Session }) {
+  const readOnly = useMaintenanceMode()
   const status = useDirectorStore((s) => s.status)
   const phase = useDirectorStore((s) => s.phase)
   const alert = useDirectorStore((s) => s.alert)
@@ -147,17 +152,32 @@ function CityView({ session }: { session: Session }) {
               <h1 ref={headingRef} className={styles.headline} id="arrival-title" tabIndex={-1} data-reveal="headline">
                 Le cœur numérique de&nbsp;Terra&nbsp;Nova
               </h1>
+              {readOnly && <PlatformIncident />}
               <p className={styles.lead} data-reveal="rest">
-                Signalez un problème, suivez sa résolution, accédez aux services de la ville. Faites défiler&nbsp;: vous survolez Terra Nova pendant
-                que le soleil se couche.
+                {readOnly
+                  ? 'L’envoi de demandes est suspendu. Les services, les annonces, les consignes et les coordonnées restent consultables.'
+                  : 'Signalez un problème, suivez sa résolution, accédez aux services de la ville. Faites défiler\u00a0: vous survolez Terra Nova pendant que le soleil se couche.'}
               </p>
               <div className={styles.actions} data-reveal="rest">
-                <ButtonLink href={`#${REPORT.id}`} magnetic data-nova-look>
-                  Signaler un problème
-                </ButtonLink>
-                <ButtonLink variant="ghost" href={`#${COUNCIL.id}`} magnetic data-nova-look>
-                  Écrire à la mairie
-                </ButtonLink>
+                {readOnly ? (
+                  <>
+                    <ButtonLink href={`#${SERVICES.id}`} magnetic data-nova-look>
+                      Consulter les services
+                    </ButtonLink>
+                    <ButtonLink variant="ghost" href={`#${COUNCIL.id}`} magnetic data-nova-look>
+                      Annonces et consignes
+                    </ButtonLink>
+                  </>
+                ) : (
+                  <>
+                    <ButtonLink href={`#${REPORT.id}`} magnetic data-nova-look>
+                      Signaler un problème
+                    </ButtonLink>
+                    <ButtonRouteLink variant="ghost" to="/ville/contact" data-nova-look>
+                      Écrire à la mairie
+                    </ButtonRouteLink>
+                  </>
+                )}
               </div>
               <QuickServices />
               <NextAppointment />
@@ -181,8 +201,12 @@ function CityView({ session }: { session: Session }) {
         <CitySection
           info={REPORT}
           side="left"
-          title={<>Un problème&nbsp;? Dites‑le en une phrase</>}
-          lead="Votre demande part au Haut Conseil. Un faisceau s'allume au-dessus du secteur concerné."
+          title={readOnly ? 'Signalement en pause' : <>Un problème&nbsp;? Dites‑le en une phrase</>}
+          lead={
+            readOnly
+              ? 'Pendant l’incident, un nouveau signalement ne part pas. Les consignes et les coordonnées sont à l’arrivée, et les annonces à la Tour du Conseil.'
+              : "Votre demande part au Haut Conseil. Un faisceau s'allume au-dessus du secteur concerné."
+          }
         >
           <ReportPanel />
         </CitySection>
@@ -199,10 +223,13 @@ function CityView({ session }: { session: Session }) {
         <CitySection
           info={COUNCIL}
           side="left"
-          title={<>Une question&nbsp;? Écrivez à la mairie</>}
-          lead="Depuis la Tour du Conseil, votre message part aux services municipaux. Les annonces de la ville restent visibles juste en dessous."
+          title={readOnly ? 'Annonces et consignes' : 'Le Haut Conseil parle à toute la ville'}
+          lead={
+            readOnly
+              ? 'Le message à la mairie est en pause. Les annonces et les alertes restent affichées ici.'
+              : 'Annonces, consignes, alertes\u00a0: un seul canal, visible sur tous les écrans.'
+          }
         >
-          <ContactPanel />
           <AnnouncementList />
         </CitySection>
 
