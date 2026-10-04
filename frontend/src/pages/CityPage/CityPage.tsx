@@ -7,7 +7,6 @@ import { useSmoothScroll } from '../../app/smoothScroll'
 import { useDirectorStore } from '../../experience/director/directorStore'
 import { novaScenes } from '../../experience/nova/behavior/scenes'
 import { AnnouncementList } from '../../features/announcements/AnnouncementList'
-import { ContactPanel } from '../../features/contact/ContactPanel'
 import { filmSessionFromCitizen, type Session } from '../../features/auth/authService'
 import { useMaintenanceMode } from '../../features/maintenance/maintenanceMode'
 import { PlatformIncident } from '../../features/maintenance/PlatformIncident'
@@ -19,7 +18,7 @@ import { useReportStore } from '../../features/reports/reportStore'
 import { QuickServices, ServiceShowcase } from '../../features/services/ServiceShowcase'
 import { useBodyClass } from '../../hooks/useBodyClass'
 import { PHONE_QUERY, useMediaQuery, useReducedMotion } from '../../hooks/useMediaQuery'
-import { ButtonLink } from '../../ui/Button'
+import { ButtonLink, ButtonRouteLink } from '../../ui/Button'
 import { NovaInvite } from './NovaInvite'
 import { ExploreHud } from '../../experience/city/explore/ExploreHud'
 import { exploreActions } from '../../experience/city/explore/exploreActions'
@@ -173,9 +172,9 @@ function CityView({ session }: { session: Session }) {
                     <ButtonLink href={`#${REPORT.id}`} magnetic data-nova-look>
                       Signaler un problème
                     </ButtonLink>
-                    <ButtonLink variant="ghost" href={`#${COUNCIL.id}`} magnetic data-nova-look>
+                    <ButtonRouteLink variant="ghost" to="/ville/contact" data-nova-look>
                       Écrire à la mairie
-                    </ButtonLink>
+                    </ButtonRouteLink>
                   </>
                 )}
               </div>
@@ -222,14 +221,13 @@ function CityView({ session }: { session: Session }) {
         <CitySection
           info={COUNCIL}
           side="left"
-          title={readOnly ? 'Annonces et consignes' : <>Une question&nbsp;? Écrivez à la mairie</>}
+          title={readOnly ? 'Annonces et consignes' : 'Le Haut Conseil parle à toute la ville'}
           lead={
             readOnly
               ? 'Le message à la mairie est en pause. Les annonces et les alertes restent affichées ici.'
-              : 'Depuis la Tour du Conseil, votre message part aux services municipaux. Les annonces de la ville restent visibles juste en dessous.'
+              : 'Annonces, consignes, alertes\u00a0: un seul canal, visible sur tous les écrans.'
           }
         >
-          <ContactPanel />
           <AnnouncementList />
         </CitySection>
 

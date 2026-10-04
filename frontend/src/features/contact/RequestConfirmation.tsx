@@ -8,13 +8,11 @@ interface RequestConfirmationProps {
   message: string
   /** when signed in, offer to open the request list */
   followTo?: string
-  /** flyover card: no leave-the-section link */
-  embedded?: boolean
   onAgain: () => void
 }
 
 /** D16: replaces the form after a successful send — reference first, not a toast. */
-export function RequestConfirmation({ reference, message, followTo, embedded = false, onAgain }: RequestConfirmationProps) {
+export function RequestConfirmation({ reference, message, followTo, onAgain }: RequestConfirmationProps) {
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [copied, setCopied] = useState(false)
 
@@ -49,13 +47,12 @@ export function RequestConfirmation({ reference, message, followTo, embedded = f
       </div>
       <p className={styles.confirmNext}>Un agent va la prendre en charge. Vous serez prévenu·e dès qu’il y aura une suite.</p>
       <div className={styles.confirmActions}>
-        {!embedded &&
-          (followTo ? (
-            <ButtonRouteLink to={followTo}>Suivre ma demande</ButtonRouteLink>
-          ) : (
-            <ButtonRouteLink to="/ville">Retour à la ville</ButtonRouteLink>
-          ))}
-        <Button type="button" variant={embedded ? 'solid' : 'ghost'} onClick={onAgain}>
+        {followTo ? (
+          <ButtonRouteLink to={followTo}>Suivre ma demande</ButtonRouteLink>
+        ) : (
+          <ButtonRouteLink to="/ville">Retour à la ville</ButtonRouteLink>
+        )}
+        <Button type="button" variant="ghost" onClick={onAgain}>
           Envoyer un autre message
         </Button>
       </div>

@@ -5,7 +5,7 @@ import styles from './CitizenNav.module.css'
 
 const current = (active: boolean) => (active ? 'true' : undefined)
 
-/** Shared Accueil + Contact + Mon espace. On the flyover, Contact is already a city section — omit it. */
+/** Shared Accueil + Contact + Mon espace for the console and the city flyover. */
 export function CitizenNav({ variant }: { variant: 'console' | 'flyover' }) {
   const { pathname } = useLocation()
   const signedIn = useCitizenSignedIn()
@@ -22,11 +22,9 @@ export function CitizenNav({ variant }: { variant: 'console' | 'flyover' }) {
           Accueil
         </Link>
       )}
-      {variant === 'console' && (
-        <Link to="/ville/contact" aria-current={current(onContact)}>
-          Contact
-        </Link>
-      )}
+      <Link to="/ville/contact" aria-current={current(onContact)}>
+        Contact
+      </Link>
       <Link
         to="/ville/espace"
         aria-current={current(onEspace)}

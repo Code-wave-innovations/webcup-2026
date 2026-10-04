@@ -25,8 +25,6 @@ const LABELS = {
 
 interface ContactFormProps {
   onSent: (result: CreatedContact) => void
-  /** Inside a CitySection glass card: no nested panel, tighter fields. */
-  embedded?: boolean
 }
 
 /** Prefill from `nova-auth-citizen`; demo airlock chrome (`authStore`) only when that slot is empty. */
@@ -51,7 +49,7 @@ function useContactIdentity(): { name: string; email: string; asCitizen: boolean
 }
 
 /** D04: message to municipal services — name/email only when nobody is signed in. */
-export function ContactForm({ onSent, embedded = false }: ContactFormProps) {
+export function ContactForm({ onSent }: ContactFormProps) {
   const identity = useContactIdentity()
   const services = usePublicServices()
   const [startedAt] = useState(() => Date.now())
@@ -111,60 +109,66 @@ export function ContactForm({ onSent, embedded = false }: ContactFormProps) {
     void form.handleSubmit({})
   }
 
-  const fields = (
-    <form className={embedded ? styles.embeddedForm : undefined} noValidate onSubmit={submit}>
-      <HoneypotFields />
-      <ErrorSummary id={form.summaryId} errors={form.summary} formError={form.formError} />
-      {identity ? (
-        <p className={text.note}>
-          Envoyé en tant que <strong>{identity.name}</strong> ({identity.email}).
-        </p>
-      ) : (
-        <div className={styles.pair}>
-          <Field label={LABELS.contact_name} htmlFor={form.fieldId('contact_name')} required error={form.errors.contact_name}>
-            {(control) => (
-              <input
-                {...control}
-                autoComplete="name"
-                value={contactName}
-                onChange={(e) => {
-                  setContactName(e.target.value)
-                  form.clearError('contact_name')
-                }}
-              />
-            )}
-          </Field>
-          <Field label={LABELS.contact_email} htmlFor={form.fieldId('contact_email')} required error={form.errors.contact_email}>
-            {(control) => (
-              <input
-                {...control}
-                type="email"
-                autoComplete="email"
-                value={contactEmail}
-                onChange={(e) => {
-                  setContactEmail(e.target.value)
-                  form.clearError('contact_email')
-                }}
-              />
-            )}
-          </Field>
-        </div>
-      )}
-      <Field label={LABELS.subject} htmlFor={form.fieldId('subject')} required error={form.errors.subject}>
-        {(control) => (
-          <input
-            {...control}
-            maxLength={200}
-            placeholder="Ex. Question sur les horaires de la navette"
-            value={subject}
-            onChange={(e) => {
-              setSubject(e.target.value)
-              form.clearError('subject')
-            }}
-          />
+return (
+    <GlassPanel className={styles.form}>
+      <h2>Votre message</h2>
+      <p className={text.note}>
+        {identity
+          ? 'Le message part avec votre identité de connexion.'
+          : 'Sans compte, laissez un nom et un e-mail pour que les services puissent vous répondre.'}
+      </p>
+      <form noValidate onSubmit={submit}>
+        <HoneypotFields />
+        <ErrorSummary id={form.summaryId} errors={form.summary} formError={form.formError} />
+        {identity ? (
+          <p className={text.note}>
+            Envoyé en tant que <strong>{identity.name}</strong> ({identity.email}).
+          </p>
+        ) : (
+          <div className={styles.pair}>
+            <Field label={LABELS.contact_name} htmlFor={form.fieldId('contact_name')} required error={form.errors.contact_name}>
+              {(control) => (
+                <input
+                  {...control}
+                  autoComplete="name"
+                  value={contactName}
+                  onChange={(e) => {
+                    setContactName(e.target.value)
+                    form.clearError('contact_name')
+                  }}
+                />
+              )}
+            </Field>
+            <Field label={LABELS.contact_email} htmlFor={form.fieldId('contact_email')} required error={form.errors.contact_email}>
+              {(control) => (
+                <input
+                  {...control}
+                  type="email"
+                  autoComplete="email"
+                  value={contactEmail}
+                  onChange={(e) => {
+                    setContactEmail(e.target.value)
+                    form.clearError('contact_email')
+                  }}
+                />
+              )}
+            </Field>
+          </div>
         )}
-      </Field>
-      {!embedded && (
+        <Field label={LABELS.subject} htmlFor={form.fieldId('subject')} required error={form.errors.subject}>
+          {(control) => (
+            <input
+              {...control}
+              maxLength={200}
+              placeholder="Ex. Question sur les horaires de la navette"
+              value={subject}
+              onChange={(e) => {
+                setSubject(e.target.value)
+                form.clearError('subject')
+              }}
+            />
+          )}
+        </Field>
         <Field
           label={LABELS.service_id}
           htmlFor={form.fieldId('service_id')}
@@ -190,48 +194,34 @@ export function ContactForm({ onSent, embedded = false }: ContactFormProps) {
             </select>
           )}
         </Field>
-      )}
-      <Field label={LABELS.message} htmlFor={form.fieldId('message')} required error={form.errors.message}>
-        {(control) => (
-          <textarea
-            {...control}
-            rows={embedded ? 4 : 6}
-            maxLength={4000}
-            placeholder="Décrivez votre question ou la difficulté rencontrée."
-            value={message}
-            onChange={(e) => {
-              setMessage(e.target.value)
-              form.clearError('message')
+        <Field label={LABELS.message} htmlFor={form.fieldId('message')} required error={form.errors.message}>
+          {(control) => (
+            <textarea
+              {...control}
+              rows={6}
+              maxLength={4000}
+              placeholder="Décrivez votre question ou la difficulté rencontrée."
+              value={message}
+              onChange={(e) => {
+                setMessage(e.target.value)
+                form.clearError('message')
+              }}
+            />
+          )}
+        </Field>
+        {turnstileNeeded && (
+          <Turnstile
+            onToken={(token) => {
+              setTurnstileToken(token)
             }}
           />
         )}
-      </Field>
-      {turnstileNeeded && (
-        <Turnstile
-          onToken={(token) => {
-            setTurnstileToken(token)
-          }}
-        />
-      )}
-      <div className={styles.actions}>
-        <Button type="submit" disabled={form.pending || (turnstileNeeded && !turnstileToken)} {...(embedded ? { 'data-nova-look': true } : {})}>
-          {form.pending ? 'Envoi…' : 'Envoyer le message'}
-        </Button>
-      </div>
-    </form>
-  )
-
-  if (embedded) return fields
-
-  return (
-    <GlassPanel className={styles.form}>
-      <h2>Votre message</h2>
-      <p className={text.note}>
-        {identity
-          ? 'Le message part avec votre identité de connexion.'
-          : 'Sans compte, laissez un nom et un e-mail pour que les services puissent vous répondre.'}
-      </p>
-      {fields}
+        <div className={styles.actions}>
+          <Button type="submit" disabled={form.pending || (turnstileNeeded && !turnstileToken)}>
+            {form.pending ? 'Envoi…' : 'Envoyer le message'}
+          </Button>
+        </div>
+      </form>
     </GlassPanel>
   )
 }
