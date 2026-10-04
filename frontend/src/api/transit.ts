@@ -1,31 +1,36 @@
 import { keepPreviousData, useMutation, useQueries, useQuery } from '@tanstack/react-query'
+import { defineMessages, messagesFor, type Locale } from '../i18n'
 import { http } from './client'
 import { queryClient, REFRESH } from './queryClient'
 import type { DayType, TransitLine, TransitLineDetail, TransitLineStatus, TransitLineSummary, TransitMode, TransitStop, TransitStopBase, TransitStopDetail } from './types'
 
 // F36: municipal transport (GET /api/transit/*, public; managing lines and stops is open to the staff)
 
-export const TRANSIT_MODE_LABEL: Record<TransitMode, string> = {
-  BUS: 'Bus',
-  TRAM: 'Tram',
-  METRO: 'Métro',
-  SHUTTLE: 'Navette',
-  CABLE: 'Téléphérique',
-}
+const modeMessages = defineMessages(
+  { BUS: 'Bus', TRAM: 'Tram', METRO: 'Métro', SHUTTLE: 'Navette', CABLE: 'Téléphérique' },
+  { BUS: 'Bus', TRAM: 'Tram', METRO: 'Metro', SHUTTLE: 'Shuttle', CABLE: 'Cable car' },
+)
 
-export const TRANSIT_STATUS_LABEL: Record<TransitLineStatus, string> = {
-  NORMAL: 'Trafic normal',
-  DISRUPTED: 'Perturbée',
-  INTERRUPTED: 'Interrompue',
-}
+const statusMessages = defineMessages(
+  { NORMAL: 'Trafic normal', DISRUPTED: 'Perturbée', INTERRUPTED: 'Interrompue' },
+  { NORMAL: 'Normal service', DISRUPTED: 'Disrupted', INTERRUPTED: 'Suspended' },
+)
 
-export const DAY_TYPE_LABEL: Record<DayType, string> = {
-  WEEKDAY: 'Lundi au vendredi',
-  SATURDAY: 'Samedi',
-  SUNDAY: 'Dimanche et jours fériés',
-}
+const dayTypeMessages = defineMessages(
+  { WEEKDAY: 'Lundi au vendredi', SATURDAY: 'Samedi', SUNDAY: 'Dimanche et jours fériés' },
+  { WEEKDAY: 'Monday to Friday', SATURDAY: 'Saturday', SUNDAY: 'Sunday and public holidays' },
+)
 
-export const DAY_TYPES = Object.keys(DAY_TYPE_LABEL) as DayType[]
+/** French snapshot for the back-office (always FR). Citizen UI: `transit*Label(..., locale)`. */
+export const TRANSIT_MODE_LABEL = modeMessages.fr
+export const TRANSIT_STATUS_LABEL = statusMessages.fr
+export const DAY_TYPE_LABEL = dayTypeMessages.fr
+
+export const transitModeLabel = (mode: TransitMode, locale?: Locale) => messagesFor(modeMessages, locale)[mode]
+export const transitStatusLabel = (status: TransitLineStatus, locale?: Locale) => messagesFor(statusMessages, locale)[status]
+export const dayTypeLabel = (day: DayType, locale?: Locale) => messagesFor(dayTypeMessages, locale)[day]
+
+export const DAY_TYPES = Object.keys(dayTypeMessages.fr) as DayType[]
 
 export interface StopFilters {
   district_id?: number

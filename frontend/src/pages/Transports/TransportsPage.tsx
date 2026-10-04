@@ -10,12 +10,60 @@ import { NetworkStatus } from '../../features/transit/NetworkStatus'
 import { StopDepartures } from '../../features/transit/StopDepartures'
 import styles from '../../features/transit/Transit.module.css'
 import { useFavoriteStops } from '../../features/transit/useFavoriteStops'
+import { defineMessages, useMessages } from '../../i18n'
 import { ButtonRouteLink } from '../../ui/Button'
 import { Field } from '../../ui/Field'
 import { GlassPanel } from '../../ui/GlassPanel'
 import { RowButton } from '../../ui/Rows'
 import text from '../../ui/text.module.css'
 import { ConsolePage } from '../Console/ConsolePage'
+
+const messages = defineMessages(
+  {
+    title: 'Transports',
+    lead: 'L’état du réseau, les prochains départs à vos arrêts et les horaires de chaque ligne, sur un seul écran. Mis à jour chaque minute.',
+    network: 'État du réseau',
+    nearMe: 'Prochains départs près de chez moi',
+    district: 'Quartier',
+    pickDistrict: 'Choisir un quartier',
+    clearChosen: 'Retirer l’arrêt recherché',
+    loginFavorites: 'Connectez-vous pour enregistrer vos arrêts favoris : ils s’afficheront en premier.',
+    noStops: 'Aucun arrêt dans ce quartier.',
+    pickOrSearch: 'Choisissez votre quartier ou cherchez un arrêt pour voir les prochains départs.',
+    searchedStop: 'Arrêt recherché',
+    myStop: 'Mon arrêt',
+    searchTitle: 'Chercher un arrêt ou une ligne',
+    searchLabel: 'Nom de l’arrêt, de la ligne ou de la rue',
+    searchPlaceholder: 'Ex. Grand Dôme, T1',
+    noMatch: 'Aucun arrêt ni ligne ne correspond.',
+    results: 'Résultats',
+    seeLine: 'Voir la ligne',
+    nextDepartures: 'Prochains départs',
+    back: 'Retour à l’accueil',
+  },
+  {
+    title: 'Transport',
+    lead: 'Network status, the next departures at your stops and each line’s timetable, on one screen. Updated every minute.',
+    network: 'Network status',
+    nearMe: 'Next departures near me',
+    district: 'District',
+    pickDistrict: 'Choose a district',
+    clearChosen: 'Remove the searched stop',
+    loginFavorites: 'Sign in to save your favourite stops: they will show first.',
+    noStops: 'No stop in this district.',
+    pickOrSearch: 'Choose your district or search for a stop to see the next departures.',
+    searchedStop: 'Searched stop',
+    myStop: 'My stop',
+    searchTitle: 'Search for a stop or a line',
+    searchLabel: 'Stop name, line or street',
+    searchPlaceholder: 'e.g. Grand Dome, T1',
+    noMatch: 'No stop or line matches.',
+    results: 'Results',
+    seeLine: 'See the line',
+    nextDepartures: 'Next departures',
+    back: 'Back to home',
+  },
+)
 
 /**
  * F36: municipal transport on one screen. Network status, the next departures at the resident's stops
@@ -27,6 +75,7 @@ export default function TransportsPage() {
   const user = useSessionUser()
   const favorites = useFavoriteStops()
   const districts = useDistricts()
+  const m = useMessages(messages)
 
   const lineCode = params.get('ligne')?.toUpperCase() || undefined
   const chosenStop = Number(params.get('arret')) || undefined
@@ -67,7 +116,7 @@ export default function TransportsPage() {
     (id): id is number => id !== undefined,
   )
   const departures = useTransitStopsDepartures(stopIds)
-  const tagOf = (id: number) => (id === chosenStop ? 'Arrêt recherché' : favorites.ids.includes(id) ? 'Mon arrêt' : undefined)
+  const tagOf = (id: number) => (id === chosenStop ? m.searchedStop : favorites.ids.includes(id) ? m.myStop : undefined)
 
   const lines = useTransitLines()
   const stopResults = useTransitStops({ q }, q.length > 0)
@@ -75,24 +124,21 @@ export default function TransportsPage() {
   const lineResults = q ? (lines.data ?? []).filter((line) => line.code.toLowerCase().includes(needle) || line.name.toLowerCase().includes(needle)) : []
 
   return (
-    <ConsolePage
-      title="Transports"
-      lead="L’état du réseau, les prochains départs à vos arrêts et les horaires de chaque ligne, sur un seul écran. Mis à jour chaque minute."
-    >
+    <ConsolePage title={m.title} lead={m.lead}>
       {lineCode && <LineSheet key={lineCode} code={lineCode} onClose={() => update({ ligne: null })} />}
 
       <section className={styles.section} aria-labelledby="reseau">
-        <h2 id="reseau">État du réseau</h2>
+        <h2 id="reseau">{m.network}</h2>
         <NetworkStatus onOpenLine={openLine} />
       </section>
 
       <section className={styles.section} aria-labelledby="mes-arrets">
-        <h2 id="mes-arrets">Prochains départs près de chez moi</h2>
+        <h2 id="mes-arrets">{m.nearMe}</h2>
         <div className={styles.toolbar}>
           <div className={styles.grow}>
-            <Field label="Quartier" htmlFor="transport-quartier">
+            <Field label={m.district} htmlFor="transport-quartier">
               <select id="transport-quartier" value={districtId ?? ''} onChange={(event) => update({ quartier: event.target.value || null })}>
-                <option value="">Choisir un quartier</option>
+                <option value="">{m.pickDistrict}</option>
                 {districts.data?.map((district) => (
                   <option key={district.id} value={district.id}>
                     {district.name}
@@ -103,17 +149,17 @@ export default function TransportsPage() {
           </div>
           {chosenStop && (
             <button type="button" className={styles.textButton} onClick={() => update({ arret: null })}>
-              Retirer l’arrêt recherché
+              {m.clearChosen}
             </button>
           )}
         </div>
-        {!favorites.canSave && <p className={text.note}>Connectez-vous pour enregistrer vos arrêts favoris : ils s’afficheront en premier.</p>}
+        {!favorites.canSave && <p className={text.note}>{m.loginFavorites}</p>}
         {favorites.error && <p className={text.error}>{messageFor(favorites.error)}</p>}
         {districtStops.isError && <p className={text.error}>{messageFor(districtStops.error)}</p>}
 
         {stopIds.length === 0 ? (
           <GlassPanel>
-            <p>{districtId ? 'Aucun arrêt dans ce quartier.' : 'Choisissez votre quartier ou cherchez un arrêt pour voir les prochains départs.'}</p>
+            <p>{districtId ? m.noStops : m.pickOrSearch}</p>
           </GlassPanel>
         ) : (
           <div className={styles.stops}>
@@ -135,19 +181,19 @@ export default function TransportsPage() {
       </section>
 
       <section className={styles.section} aria-labelledby="chercher">
-        <h2 id="chercher">Chercher un arrêt ou une ligne</h2>
-        <Field label="Nom de l’arrêt, de la ligne ou de la rue" htmlFor="transport-q">
-          <input id="transport-q" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Ex. Grand Dôme, T1" />
+        <h2 id="chercher">{m.searchTitle}</h2>
+        <Field label={m.searchLabel} htmlFor="transport-q">
+          <input id="transport-q" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={m.searchPlaceholder} />
         </Field>
         {stopResults.isError && <p className={text.error}>{messageFor(stopResults.error)}</p>}
-        {q && stopResults.data && lineResults.length === 0 && stopResults.data.length === 0 && <p className={text.note}>Aucun arrêt ni ligne ne correspond.</p>}
+        {q && stopResults.data && lineResults.length === 0 && stopResults.data.length === 0 && <p className={text.note}>{m.noMatch}</p>}
         {(lineResults.length > 0 || (!!q && !!stopResults.data?.length)) && (
-          <ul className={styles.results} aria-label="Résultats">
+          <ul className={styles.results} aria-label={m.results}>
             {lineResults.map((line) => (
               <li key={`line-${line.id}`}>
                 <RowButton onClick={() => openLine(line.code)}>
                   <LineBadge line={line} />
-                  <small>Voir la ligne</small>
+                  <small>{m.seeLine}</small>
                 </RowButton>
               </li>
             ))}
@@ -161,7 +207,7 @@ export default function TransportsPage() {
                         {[stop.district?.name, stop.lines.map((line) => line.code).join(', ')].filter(Boolean).join(' · ')}
                       </small>
                     </span>
-                    <small>Prochains départs</small>
+                    <small>{m.nextDepartures}</small>
                   </RowButton>
                 </li>
               ))}
@@ -180,7 +226,7 @@ export default function TransportsPage() {
 
       <div>
         <ButtonRouteLink to="/ville" variant="ghost" small>
-          Retour à l’accueil
+          {m.back}
         </ButtonRouteLink>
       </div>
     </ConsolePage>

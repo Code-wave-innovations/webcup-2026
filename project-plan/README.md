@@ -139,7 +139,7 @@ Ces règles sont détaillées dans le PLAN-00 et s'appliquent à tous les plans 
 | 09 | À faire | |
 | 10 | À faire | |
 | 11 | En cours | Étapes 0–1 faites : mesure de référence, bundles (back-office et pages hors film −79 %) |
-| 12 | En cours (4 oct.) | Socle `src/i18n`, sélecteur FR/EN, écrans citoyens traduits. Reste : traductions EN du seed (§ 4 du plan) |
+| 12 | En cours (4 oct.) | Socle `src/i18n`, sélecteur FR/EN, écrans citoyens (annonces, transports, version légère inclus). Reste : traductions EN du seed (§ 4 du plan) |
 
 ## Quand une nouvelle vague arrive
 

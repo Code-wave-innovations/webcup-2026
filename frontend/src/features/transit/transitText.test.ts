@@ -16,10 +16,16 @@ const departure = (lineId: number, minutes: number, direction: string | null = '
 })
 
 describe('waitLabel', () => {
-  it('reads minutes then hours', () => {
-    expect(waitLabel(0)).toBe('à l’instant')
-    expect(waitLabel(4)).toBe('dans 4 min')
-    expect(waitLabel(65)).toBe('dans 1 h 05')
+  it('reads minutes then hours (fr)', () => {
+    expect(waitLabel(0, 'fr')).toBe('à l’instant')
+    expect(waitLabel(4, 'fr')).toBe('dans 4 min')
+    expect(waitLabel(65, 'fr')).toBe('dans 1 h 05')
+  })
+
+  it('reads minutes then hours (en)', () => {
+    expect(waitLabel(0, 'en')).toBe('now')
+    expect(waitLabel(4, 'en')).toBe('in 4 min')
+    expect(waitLabel(65, 'en')).toBe('in 1 h 05')
   })
 })
 

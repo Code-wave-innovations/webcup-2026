@@ -1,7 +1,8 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import { messageFor } from '../../api/errors'
-import { TRANSIT_STATUS_LABEL } from '../../api/transit'
+import { transitStatusLabel } from '../../api/transit'
 import type { TransitStopDetail } from '../../api/types'
+import { defineMessages, useLocale, useMessages } from '../../i18n'
 import { Pill } from '../../ui/Badges'
 import { GlassPanel } from '../../ui/GlassPanel'
 import { Icon } from '../../ui/Icon'
@@ -9,6 +10,29 @@ import text from '../../ui/text.module.css'
 import { LineBadge } from './LineBadge'
 import { groupDepartures, STATUS_TONE, waitLabel } from './transitText'
 import styles from './Transit.module.css'
+
+const messages = defineMessages(
+  {
+    loading: 'Chargement des départs…',
+    notAccessible: ' · accès non adapté aux fauteuils',
+    removeFavorite: (name: string) => `Retirer ${name} de mes arrêts`,
+    addFavorite: (name: string) => `Ajouter ${name} à mes arrêts`,
+    noMore: 'Plus de départ aujourd’hui à cet arrêt.',
+    lineTimes: (code: string) => `Horaires de la ligne ${code}`,
+    towards: (direction: string) => `vers ${direction}`,
+    interrupted: 'Service interrompu : pas de départ assuré.',
+  },
+  {
+    loading: 'Loading departures…',
+    notAccessible: ' · not wheelchair accessible',
+    removeFavorite: (name) => `Remove ${name} from my stops`,
+    addFavorite: (name) => `Add ${name} to my stops`,
+    noMore: 'No more departures today at this stop.',
+    lineTimes: (code) => `Timetable for line ${code}`,
+    towards: (direction) => `to ${direction}`,
+    interrupted: 'Service suspended: no departure guaranteed.',
+  },
+)
 
 interface StopDeparturesProps {
   query: UseQueryResult<TransitStopDetail>
@@ -23,11 +47,13 @@ interface StopDeparturesProps {
  * then the next 3 departures by line and direction, in minutes and clock time.
  */
 export function StopDepartures({ query, tag, favorite, onOpenLine }: StopDeparturesProps) {
+  const m = useMessages(messages)
+  const locale = useLocale()
   const stop = query.data
   if (!stop) {
     return (
       <GlassPanel aria-busy={query.isPending}>
-        {query.isError ? <p className={text.error}>{messageFor(query.error)}</p> : <p className={text.note}>Chargement des départs…</p>}
+        {query.isError ? <p className={text.error}>{messageFor(query.error)}</p> : <p className={text.note}>{m.loading}</p>}
       </GlassPanel>
     )
   }
@@ -45,7 +71,7 @@ export function StopDepartures({ query, tag, favorite, onOpenLine }: StopDepartu
           <h3>{stop.name}</h3>
           <small className={text.note}>
             {[stop.district?.name, stop.address].filter(Boolean).join(' · ')}
-            {!stop.accessible && ' · accès non adapté aux fauteuils'}
+            {!stop.accessible && m.notAccessible}
           </small>
         </div>
         {favorite && (
@@ -55,7 +81,7 @@ export function StopDepartures({ query, tag, favorite, onOpenLine }: StopDepartu
             aria-pressed={favorite.active}
             disabled={favorite.disabled}
             onClick={favorite.onToggle}
-            aria-label={favorite.active ? `Retirer ${stop.name} de mes arrêts` : `Ajouter ${stop.name} à mes arrêts`}
+            aria-label={favorite.active ? m.removeFavorite(stop.name) : m.addFavorite(stop.name)}
           >
             <Icon name="star" />
           </button>
@@ -66,7 +92,7 @@ export function StopDepartures({ query, tag, favorite, onOpenLine }: StopDepartu
         <div key={line.id} className={styles.warning} role="note">
           <div className={styles.disruptionHead}>
             <LineBadge line={line} />
-            <Pill tone={STATUS_TONE[line.status]}>{TRANSIT_STATUS_LABEL[line.status]}</Pill>
+            <Pill tone={STATUS_TONE[line.status]}>{transitStatusLabel(line.status, locale)}</Pill>
           </div>
           {line.status_message && <p className={styles.message}>{line.status_message}</p>}
         </div>
@@ -74,11 +100,11 @@ export function StopDepartures({ query, tag, favorite, onOpenLine }: StopDepartu
 
       {groups.length === 0 ? (
         <div className={styles.ended}>
-          <p>Plus de départ aujourd’hui à cet arrêt.</p>
+          <p>{m.noMore}</p>
           <div className={styles.lineLinks}>
             {stop.lines.map((line) => (
               <button key={line.id} type="button" className={styles.textButton} onClick={() => onOpenLine(line.code)}>
-                Horaires de la ligne {line.code}
+                {m.lineTimes(line.code)}
               </button>
             ))}
           </div>
@@ -91,16 +117,16 @@ export function StopDepartures({ query, tag, favorite, onOpenLine }: StopDepartu
                 <LineBadge line={group.line} withName={false} />
                 <span>
                   <strong>{group.line.name}</strong>
-                  {group.direction && <small>vers {group.direction}</small>}
+                  {group.direction && <small>{m.towards(group.direction)}</small>}
                 </span>
               </button>
               {interrupted.has(group.line.id) ? (
-                <p className={styles.cancelled}>Service interrompu : pas de départ assuré.</p>
+                <p className={styles.cancelled}>{m.interrupted}</p>
               ) : (
                 <ol className={styles.times}>
                   {group.departures.map((departure) => (
                     <li key={departure.id}>
-                      <strong>{waitLabel(departure.minutes_until)}</strong>
+                      <strong>{waitLabel(departure.minutes_until, locale)}</strong>
                       <small>{departure.time}</small>
                     </li>
                   ))}
