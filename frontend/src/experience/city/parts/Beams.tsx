@@ -4,6 +4,7 @@ import { AdditiveBlending, Color, CylinderGeometry, DoubleSide, ShaderMaterial, 
 import { director } from '../../director/director'
 import { useDirectorStore } from '../../director/directorStore'
 import { FRAME_PRIORITY } from '../../framePriority'
+import { ANCHORS } from '../landmarks'
 import { COUNCIL_TOWER, DOME_BASE, DOME_FLATTEN, DOMES } from '../cityConfig'
 import beamVert from '../glsl/beam.vert.glsl?raw'
 import beamFrag from '../glsl/beam.frag.glsl?raw'
@@ -30,7 +31,7 @@ function beamMaterial(uniforms: { uCouleur: { value: Color }; uForce: { value: n
 
 const DOME_THREE = DOMES.find((d) => d.id === 'trois')!
 
-/** The light beam rising over dome 3 while the visitor's report is open; it turns green, then dims, once resolved. */
+/** The light beam over the reported district; it turns green, then dims, once resolved. */
 export function SignalBeam() {
   const meshRef = useRef<Mesh>(null)
   const { geometry, material, uniforms, state } = useMemo(() => {
@@ -44,7 +45,9 @@ export function SignalBeam() {
     const mesh = meshRef.current
     if (!mesh || director.stage !== 'city') return
     const dt = director.dt
-    const status = useDirectorStore.getState().signalStatus
+    const { signalStatus: status, signalAnchor } = useDirectorStore.getState()
+    const spot = ANCHORS[signalAnchor]
+    mesh.position.set(spot.x, spot.y, spot.z)
     const target = status >= 0 && status < 3 ? 1 : status === 3 ? 0.35 : 0
     state.strength += (target - state.strength) * Math.min(1, dt * 2.5)
     if (status >= 0) {

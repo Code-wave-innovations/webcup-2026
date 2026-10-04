@@ -1,9 +1,18 @@
+import axios from 'axios'
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
-import { http } from './client'
+import { http, rootApiUrl } from './client'
 import { dashboardKeys } from './dashboard'
+import { toApiError } from './errors'
 import type { FormGuardPayload } from '../features/security/formGuard'
 import { queryClient, REFRESH } from './queryClient'
 import type { Paginated, RequestDetail, RequestListItem, RequestPriority, RequestStatus, RequestType, UpdatedRequest } from './types'
+
+/**
+ * The city film keeps its own session token. These calls send it themselves: the shared `http` client
+ * would treat a 401 as an expired staff session and sign the back-office out.
+ */
+const filmHttp = axios.create({ baseURL: rootApiUrl })
+filmHttp.interceptors.response.use(undefined, (error: unknown) => Promise.reject(toApiError(error)))
 
 // D04 / D11 / F22 / F25 / F49: citizen requests as the staff processes them (/api/requests)
 
@@ -127,3 +136,58 @@ export const useCreateContact = () =>
     mutationFn: createContact,
     onSuccess: () => refreshAround(),
   })
+
+/** F25: what the citizen suggested. The agent sets the real priority. */
+export type UrgencyHint = 'LOW' | 'NORMAL' | 'HIGH'
+
+export interface CreateIncidentInput {
+  token: string
+  subject: string
+  message: string
+  category: string
+  district_id?: number
+  location_label?: string
+  latitude?: number
+  longitude?: number
+  urgency_hint: UrgencyHint
+  attachment?: File
+}
+
+export const createIncident = (input: CreateIncidentInput) => {
+  const headers = { Authorization: `Bearer ${input.token}` }
+  if (input.attachment) {
+    const form = new FormData()
+    form.set('type', 'INCIDENT')
+    form.set('subject', input.subject)
+    form.set('message', input.message)
+    form.set('category', input.category)
+    if (input.district_id) form.set('district_id', String(input.district_id))
+    if (input.location_label) form.set('location_label', input.location_label)
+    if (input.latitude !== undefined) form.set('latitude', String(input.latitude))
+    if (input.longitude !== undefined) form.set('longitude', String(input.longitude))
+    form.set('data', JSON.stringify({ urgency_hint: input.urgency_hint }))
+    form.set('attachment', input.attachment)
+    return filmHttp.post<CreatedContact>('/requests', form, { headers }).then((r) => r.data)
+  }
+  return filmHttp
+    .post<CreatedContact>(
+      '/requests',
+      {
+        type: 'INCIDENT' as const,
+        subject: input.subject,
+        message: input.message,
+        category: input.category,
+        district_id: input.district_id,
+        location_label: input.location_label,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        data: { urgency_hint: input.urgency_hint },
+      },
+      { headers },
+    )
+    .then((r) => r.data)
+}
+
+/** F25: the citizen's own report, polled with the film token (internal notes stay hidden by the API). */
+export const fetchOwnRequest = (id: number, token: string) =>
+  filmHttp.get<RequestDetail>(`/requests/${id}`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.data)

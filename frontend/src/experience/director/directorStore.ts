@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { PoiId } from '../city/cityConfig'
 import type { FlightPhase } from '../city/explore/flightPath'
+import type { AnchorId } from './frameState'
 
 /** WebGL availability: `unsupported` shows the painted fallback sky instead of the 3D scene. */
 export type EngineStatus = 'loading' | 'ready' | 'unsupported'
@@ -12,8 +13,8 @@ export type EngineStatus = 'loading' | 'ready' | 'unsupported'
  */
 export type FilmPhase = 'approach' | 'entry' | 'descent' | 'city' | 'explore'
 
-/** Report shown by the light beam over dome 3: -1 none, 0 received → 3 resolved. */
-export type SignalStatus = -1 | 0 | 1 | 2 | 3
+  /** Report shown by the light beam: -1 none, 0 received → 3 resolved. */
+  export type SignalStatus = -1 | 0 | 1 | 2 | 3
 
 /** Where the explore visit stands, for the interface (the per-frame flight values are read from `director.flight`). */
 export interface ExploreStatus {
@@ -33,6 +34,8 @@ interface DirectorState {
   cinematic: boolean
   alert: boolean
   signalStatus: SignalStatus
+  /** Landmark the report beam rises from. Dome 3 until a district is known. */
+  signalAnchor: AnchorId
   explore: ExploreStatus
   /** a console page (/ville/*) covers the city: no loading screen, the scene stops redrawing */
   console: boolean
@@ -41,6 +44,7 @@ interface DirectorState {
   setCinematic: (cinematic: boolean) => void
   setAlert: (alert: boolean) => void
   setSignalStatus: (signalStatus: SignalStatus) => void
+  setSignalAnchor: (signalAnchor: AnchorId) => void
   setExplore: (explore: ExploreStatus) => void
   setConsole: (console: boolean) => void
 }
@@ -52,6 +56,7 @@ export const useDirectorStore = create<DirectorState>()((set) => ({
   cinematic: false,
   alert: false,
   signalStatus: -1,
+  signalAnchor: 'trois',
   explore: { site: null, destination: null, flight: null, leaving: false },
   console: false,
   setStatus: (status) => set({ status }),
@@ -59,6 +64,7 @@ export const useDirectorStore = create<DirectorState>()((set) => ({
   setCinematic: (cinematic) => set({ cinematic }),
   setAlert: (alert) => set({ alert }),
   setSignalStatus: (signalStatus) => set({ signalStatus }),
+  setSignalAnchor: (signalAnchor) => set({ signalAnchor }),
   setExplore: (explore) => set({ explore }),
   setConsole: (console) => set({ console }),
 }))
