@@ -27,8 +27,10 @@ describe('splitSentences', () => {
 describe('speakMessage', () => {
   /** every source the player was given, in order */
   let played: string[]
-  /** sentences asked to the STT service */
+  /** sentences asked to Swiftask */
   let generated: string[]
+  /** the Swiftask conversation each request went to */
+  let sessions: Array<number | undefined>
   let speechStatus: number
 
   beforeEach(() => {
@@ -54,24 +56,32 @@ describe('speakMessage', () => {
         pause = () => {}
       },
     )
+    sessions = []
+    vi.stubEnv('SWIFTASK_API_KEY', 'test-key')
+    const store = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+    })
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string) => {
-        if (url.endsWith('/v1/realtime/tokens')) return Response.json({ token: 'tok', expiresAt: new Date(Date.now() + 300_000).toISOString() }, { status: 201 })
-        const params = new URL(url).searchParams
-        expect(params.get('token')).toBe('tok')
-        generated.push(params.get('text')!)
-        return speechStatus === 200 ? new Response(new Blob([`mp3:${params.get('text')}`])) : new Response('', { status: speechStatus })
+      vi.fn(async (url: string, init: RequestInit) => {
+        expect(url).toBe('https://graphql.swiftask.ai/api/ai/elevenlabs')
+        expect((init.headers as Record<string, string>).authorization).toBe('Bearer test-key')
+        const body = JSON.parse(String(init.body))
+        expect(body.extraConfig.voice).toBe('George')
+        sessions.push(body.sessionId)
+        generated.push(body.input)
+        if (speechStatus !== 200) return Response.json({ error: 'down' }, { status: speechStatus })
+        return Response.json({ sessionId: 7, files: [{ url: `https://files.example/${generated.length - 1}.mp3` }] })
       }),
     )
-    let next = 0
-    vi.spyOn(URL, 'createObjectURL').mockImplementation(() => `blob:${next++}`)
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
   })
 
   afterEach(() => {
     stopSpeaking()
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
     vi.restoreAllMocks()
   })
 
@@ -80,7 +90,7 @@ describe('speakMessage', () => {
     const unsubscribe = subscribeSpeaking(() => changes.push([isSpeaking(), isVoiceBusy()]))
     await speakMessage('Bonjour ! Je suis **Nova**.')
     expect(generated).toEqual(['Bonjour !', 'Je suis Nova.'])
-    expect(played).toEqual(['blob:0', 'blob:1'])
+    expect(played).toEqual(['https://files.example/0.mp3', 'https://files.example/1.mp3'])
     expect(isSpeaking()).toBe(false)
     expect(isVoiceBusy()).toBe(false)
     expect(changes.at(0)).toEqual([false, true])
@@ -88,18 +98,34 @@ describe('speakMessage', () => {
     unsubscribe()
   })
 
+  it('remembers recordings in the browser and keeps lines in one Swiftask conversation', async () => {
+    await speakMessage('Bonjour !')
+    resetSpeechForTests()
+    await speakMessage('Bonjour ! Encore vous.')
+    expect(generated).toEqual(['Bonjour !', 'Encore vous.'])
+    expect(sessions).toEqual([undefined, 7])
+  })
+
+  it('stays silent without an API key', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.stubEnv('SWIFTASK_API_KEY', '')
+    await speakMessage('Bonjour.')
+    expect(generated).toEqual([])
+    expect(played).toEqual([])
+  })
+
   it('reuses a sentence already recorded in this tab', async () => {
     await speakMessage('Bonjour !')
     await speakMessage('Bonjour ! Encore vous.')
     expect(generated).toEqual(['Bonjour !', 'Encore vous.'])
-    expect(played).toEqual(['blob:0', 'blob:0', 'blob:1'])
+    expect(played).toEqual(['https://files.example/0.mp3', 'https://files.example/0.mp3', 'https://files.example/1.mp3'])
   })
 
   it('a new line interrupts the previous one', async () => {
     const first = speakMessage('Première ligne.')
     const second = speakMessage('Deuxième ligne.')
     await Promise.all([first, second])
-    expect(played).toEqual(['blob:1'])
+    expect(played).toEqual(['https://files.example/1.mp3'])
   })
 
   it('stop silences at once', async () => {
@@ -131,7 +157,7 @@ describe('speakMessage', () => {
     expect(isVoiceBusy()).toBe(false)
     allowed = true
     document.dispatchEvent(new Event('pointerdown'))
-    await vi.waitFor(() => expect(played.filter((src) => src.startsWith('blob:'))).toEqual(['blob:0', 'blob:0']))
+    await vi.waitFor(() => expect(played.filter((src) => src.startsWith('https:'))).toEqual(['https://files.example/0.mp3', 'https://files.example/0.mp3']))
   })
 
   it('stays silent when the voice cannot be had (no other voice), and tries again next time', async () => {
@@ -142,7 +168,7 @@ describe('speakMessage', () => {
     expect(isVoiceBusy()).toBe(false)
     speechStatus = 200
     await speakMessage('Bonjour.')
-    expect(played).toEqual(['blob:0'])
+    expect(played).toEqual(['https://files.example/0.mp3'])
   })
 
   it('stays silent on an empty text', async () => {
