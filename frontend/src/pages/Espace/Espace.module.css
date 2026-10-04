@@ -4,6 +4,82 @@
   gap: 14px;
 }
 
+.hubGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.compteStack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profileForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.profileRow {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.dangerZone {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-color: color-mix(in srgb, var(--color-alert) 45%, var(--color-line));
+}
+
+.dangerZone h2 {
+  color: var(--color-alert);
+}
+
+.consequences {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--color-text-muted);
+}
+
+.dangerButton {
+  align-self: flex-start;
+  border-color: var(--color-alert);
+  color: var(--color-alert);
+  background: color-mix(in srgb, var(--color-alert) 12%, transparent);
+}
+
+.dangerButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-alert) 22%, transparent);
+}
+
+.dialogStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.checkboxRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.95rem;
+}
+
+.checkboxRow input {
+  margin-top: 0.25rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+}
+
+
 .card h2 {
   margin: 0;
   font: 700 1.15rem/1.2 var(--font-display);
