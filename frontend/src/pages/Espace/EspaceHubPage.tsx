@@ -10,7 +10,7 @@ import text from '../../ui/text.module.css'
 import { ConsolePage } from '../Console/ConsolePage'
 import styles from './Espace.module.css'
 
-/** D03 / D11 / F39: personal hub — entry to Mes demandes and Mes rendez-vous. */
+/** D03 / D11 / F33 / F39: personal hub — demandes, rendez-vous, compte. */
 export default function EspaceHubPage() {
   const user = useCitizenUser()
   const open = useRequests({ scope: 'open', limit: 1 })
@@ -30,60 +30,71 @@ export default function EspaceHubPage() {
           : undefined
       }
     >
-      <GlassPanel className={styles.card}>
-        <h2>Mes demandes</h2>
-        {(open.isPending || waiting.isPending) && <p className={text.note}>Chargement…</p>}
-        {open.isError && (
-          <p className={text.error}>
-            {messageFor(open.error)}{' '}
-            <button type="button" onClick={() => void open.refetch()}>
-              Réessayer
-            </button>
-          </p>
-        )}
-        {open.data && waiting.data && (
-          <>
-            <p>
-              {open.data.meta.total} en cours
-              {waiting.data.meta.total > 0 ? ` · ${waiting.data.meta.total} à compléter` : ''}
+      <div className={styles.hubGrid}>
+        <GlassPanel className={styles.card}>
+          <h2>Mes demandes</h2>
+          {(open.isPending || waiting.isPending) && <p className={text.note}>Chargement…</p>}
+          {open.isError && (
+            <p className={text.error}>
+              {messageFor(open.error)}{' '}
+              <button type="button" onClick={() => void open.refetch()}>
+                Réessayer
+              </button>
             </p>
-            <div className={styles.cardActions}>
-              <ButtonRouteLink to="/ville/espace/demandes">Voir mes demandes</ButtonRouteLink>
-            </div>
-          </>
-        )}
-      </GlassPanel>
-
-      <GlassPanel className={styles.card}>
-        <h2>Mes rendez-vous</h2>
-        {upcoming.isPending && <p className={text.note}>Chargement…</p>}
-        {upcoming.isError && (
-          <p className={text.error}>
-            {messageFor(upcoming.error)}{' '}
-            <button type="button" onClick={() => void upcoming.refetch()}>
-              Réessayer
-            </button>
-          </p>
-        )}
-        {upcoming.data && (
-          <>
-            {next ? (
+          )}
+          {open.data && waiting.data && (
+            <>
               <p>
-                Prochain : <strong>{next.service.name}</strong>, {next.when.day_label} de {next.when.start_time} à {next.when.end_time} · {next.where.location} ({countdown(next.when.starts_at, now)})
-                {upcoming.data.meta.total > 1 ? ` · ${upcoming.data.meta.total} rendez-vous à venir` : ''}
+                {open.data.meta.total} en cours
+                {waiting.data.meta.total > 0 ? ` · ${waiting.data.meta.total} à compléter` : ''}
               </p>
-            ) : (
-              <p>Aucun rendez-vous à venir.</p>
-            )}
-            <div className={styles.cardActions}>
-              <ButtonRouteLink to="/ville/rendez-vous">Voir mes rendez-vous</ButtonRouteLink>
-              <ButtonRouteLink variant="ghost" to="/ville/rendez-vous/nouveau">
-                Prendre rendez-vous
-              </ButtonRouteLink>
-            </div>
-          </>
-        )}
-      </GlassPanel>
+              <div className={styles.cardActions}>
+                <ButtonRouteLink to="/ville/espace/demandes">Voir mes demandes</ButtonRouteLink>
+              </div>
+            </>
+          )}
+        </GlassPanel>
+
+        <GlassPanel className={styles.card}>
+          <h2>Mes rendez-vous</h2>
+          {upcoming.isPending && <p className={text.note}>Chargement…</p>}
+          {upcoming.isError && (
+            <p className={text.error}>
+              {messageFor(upcoming.error)}{' '}
+              <button type="button" onClick={() => void upcoming.refetch()}>
+                Réessayer
+              </button>
+            </p>
+          )}
+          {upcoming.data && (
+            <>
+              {next ? (
+                <p>
+                  Prochain : <strong>{next.service.name}</strong>, {next.when.day_label} de {next.when.start_time}{' '}
+                  à {next.when.end_time} · {next.where.location} ({countdown(next.when.starts_at, now)})
+                  {upcoming.data.meta.total > 1 ? ` · ${upcoming.data.meta.total} rendez-vous à venir` : ''}
+                </p>
+              ) : (
+                <p>Aucun rendez-vous à venir.</p>
+              )}
+              <div className={styles.cardActions}>
+                <ButtonRouteLink to="/ville/rendez-vous">Voir mes rendez-vous</ButtonRouteLink>
+                <ButtonRouteLink variant="ghost" to="/ville/rendez-vous/nouveau">
+                  Prendre rendez-vous
+                </ButtonRouteLink>
+              </div>
+            </>
+          )}
+        </GlassPanel>
+
+        <GlassPanel className={styles.card}>
+          <h2>Compte</h2>
+          <p>Modifier vos informations ou fermer votre compte citoyen.</p>
+          <div className={styles.cardActions}>
+            <ButtonRouteLink to="/ville/espace/compte">Gérer mon compte</ButtonRouteLink>
+          </div>
+        </GlassPanel>
+      </div>
     </ConsolePage>
   )
 }

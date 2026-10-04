@@ -4,3 +4,15 @@
   inset: 0;
   z-index: 3;
 }
+
+.deletedNotice {
+  position: relative;
+  z-index: 4;
+  margin: 16px auto 0;
+  max-width: 28rem;
+  padding: 12px 16px;
+  border: 1px solid var(--color-ice);
+  background: var(--color-glass);
+  color: var(--color-ice-bright);
+  text-align: center;
+}
