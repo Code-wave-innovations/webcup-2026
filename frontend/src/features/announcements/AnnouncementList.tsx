@@ -1,4 +1,5 @@
 import { messageFor } from '../../api/errors'
+import { isNetworkFailure } from '../../api/essentialCache'
 import { useLatestAnnouncements } from '../../api/announcements'
 import type { AnnouncementCategory } from '../../api/types'
 import { useNow } from '../../hooks/useNow'
@@ -47,7 +48,13 @@ export function AnnouncementList() {
         </RowButtons>
       )}
 
-      {announcements.isError ? (
+      {announcements.isError && announcements.data && isNetworkFailure(announcements.error) && (
+        <p className={text.note}>Dernières annonces reçues. Elles se mettront à jour au retour du réseau.</p>
+      )}
+      {announcements.isError && announcements.data && !isNetworkFailure(announcements.error) && (
+        <p className={text.error}>{messageFor(announcements.error)}</p>
+      )}
+      {announcements.isError && !announcements.data ? (
         <p className={text.error}>{messageFor(announcements.error)}</p>
       ) : (
         <RowList aria-label="Dernières annonces" aria-busy={announcements.isPending}>

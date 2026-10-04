@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router'
 import { useSlots } from '../../api/appointments'
 import { messageFor } from '../../api/errors'
+import { isNetworkFailure } from '../../api/essentialCache'
 import { useProcedures } from '../../api/procedures'
 import { useCatalogue, useService, useServiceCategories } from '../../api/services'
 import type { CityService, Procedure, ServiceDetail } from '../../api/types'
@@ -255,7 +256,7 @@ function Catalogue({ category, titleId, headingRef, onCategory, onService }: Vie
           </p>
         </header>
 
-        {services.isError ? (
+        {services.isError && !services.data ? (
           <p className={styles.error} role="alert">
             <Icon name="alert" /> {messageFor(services.error)}
           </p>
@@ -265,27 +266,39 @@ function Catalogue({ category, titleId, headingRef, onCategory, onService }: Vie
               <span key={i} className={styles.ghostCard} />
             ))}
           </div>
-        ) : services.data.data.length === 0 ? (
-          <div className={styles.none}>
-            <p>Aucun service ne correspond{q ? ` à « ${q} »` : ' à cette catégorie'}.</p>
-            <button
-              type="button"
-              onClick={() => {
-                setQuery('')
-                onCategory(null)
-              }}
-            >
-              Voir tous les services
-            </button>
-          </div>
         ) : (
-          <ul key={services.data.data.map((s) => s.id).join('-')} className={[styles.cards, services.isPlaceholderData && styles.stale].filter(Boolean).join(' ')}>
-            {services.data.data.map((service, i) => (
-              <li key={service.id} style={{ '--i': i } as CSSProperties}>
-                <ServiceCard service={service} onOpen={() => onService(service)} />
-              </li>
-            ))}
-          </ul>
+          <>
+            {services.isError &&
+              (isNetworkFailure(services.error) ? (
+                <p className={styles.muted}>Dernier catalogue connu. Il se mettra à jour au retour du réseau.</p>
+              ) : (
+                <p className={styles.error} role="alert">
+                  <Icon name="alert" /> {messageFor(services.error)}
+                </p>
+              ))}
+            {services.data.data.length === 0 ? (
+              <div className={styles.none}>
+                <p>Aucun service ne correspond{q ? ` à « ${q} »` : ' à cette catégorie'}.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('')
+                    onCategory(null)
+                  }}
+                >
+                  Voir tous les services
+                </button>
+              </div>
+            ) : (
+              <ul key={services.data.data.map((s) => s.id).join('-')} className={[styles.cards, services.isPlaceholderData && styles.stale].filter(Boolean).join(' ')}>
+                {services.data.data.map((service, i) => (
+                  <li key={service.id} style={{ '--i': i } as CSSProperties}>
+                    <ServiceCard service={service} onOpen={() => onService(service)} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </section>
     </div>
@@ -436,8 +449,10 @@ function ServiceSheet({ preview, titleId, headingRef, onCategory, onService }: V
           Démarches en ligne
           {steps.length > 0 && <span className={styles.tally}>{steps.length}</span>}
         </h3>
-        {procedures.isPending && !detail.data ? (
+        {procedures.isPending && steps.length === 0 ? (
           <span className={styles.ghostLine} aria-hidden="true" />
+        ) : procedures.isError && steps.length === 0 ? (
+          <p className={styles.muted}>Les démarches n’ont pas pu être chargées. Les horaires et les coordonnées ci-dessus restent valables.</p>
         ) : steps.length === 0 ? (
           <p className={styles.muted}>Ce service ne propose pas encore de démarche en ligne : contactez-le directement.</p>
         ) : (
@@ -474,8 +489,6 @@ function ServiceSheet({ preview, titleId, headingRef, onCategory, onService }: V
           </ul>
         </section>
       )}
-
-      {detail.isError && <p className={styles.error}>{messageFor(detail.error)}</p>}
 
       {others.length > 0 && (
         <section className={styles.block}>
