@@ -1,34 +1,63 @@
-import { SECTORS, type Category, type Sector, type Urgency } from './reportModel'
+import type { UrgencyHint } from '../../api/requests'
+import type { Category } from './reportModel'
+
+export interface NamedDistrict {
+  id: number
+  code: string
+  name: string
+}
 
 export interface ReportSuggestion {
   category: Category
-  sector: Sector
-  urgency: Urgency
+  /** null: the sentence names no known district, so the current choice stays */
+  districtId: number | null
+  urgency: UrgencyHint
 }
 
-const isSector = (value: string): value is Sector => (SECTORS as readonly string[]).includes(value)
+const fold = (value: string) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+/** District names and the words people actually use ("quartier sud", "centre-ville", "serres"). */
+const DISTRICT_RULES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/centre[-\s]?ville|\bcentre\b/, 'CENTRE'],
+  [/quartier\s+sud|\bsud\b/, 'SUD'],
+  [/quartier\s+nord|\bnord\b/, 'NORD'],
+  [/quartier\s+est|\bl['’]est\b|\bcote\s+est\b/, 'EST'],
+  [/quartier\s+ouest|\bouest\b|\bserre\b/, 'OUEST'],
+]
+
+function matchDistrict(text: string, districts: readonly NamedDistrict[]): number | null {
+  for (const [pattern, code] of DISTRICT_RULES) {
+    if (!pattern.test(text)) continue
+    const found = districts.find((district) => district.code === code)
+    if (found) return found.id
+  }
+  for (const district of districts) {
+    const name = fold(district.name)
+    if (name.length > 3 && text.includes(name)) return district.id
+  }
+  return null
+}
 
 /**
- * NOVA's keyword reading of a report: proposes a category, a sector and an urgency the visitor can
- * correct. Later rules win (a fire on the ring road is a safety matter before a transport one).
+ * NOVA's keyword reading of a report: proposes a category, a district and an urgency the visitor can
+ * correct. Later rules win (a fire on a bus is a safety matter before a transport one).
+ * "est" as a verb ("le lampadaire est cassé") is not the east district.
  */
-export function analyzeReport(text: string, currentSector: Sector): ReportSuggestion {
-  const t = text.toLowerCase()
-  let category: Category = 'Vie quotidienne'
-  let sector: Sector = currentSector
-  let urgency: Urgency = 'Moyenne'
+export function analyzeReport(text: string, districts: readonly NamedDistrict[]): ReportSuggestion {
+  const t = fold(text)
+  let category: Category = 'Autre'
+  let urgency: UrgencyHint = 'NORMAL'
 
-  if (/\bsas\b|porte|badge|intrus|bloqu/.test(t)) category = 'Sécurité'
-  if (/navette|\bbus\b|transport|anneau|borne|retard|pont/.test(t)) category = 'Transports'
-  if (/\beau\b|fuite|\bair\b|serre|odeur|énergie|energie|capteur/.test(t)) category = 'Environnement'
-  if (/danger|\bfeu\b|incendie|fumée|fumee/.test(t)) category = 'Sécurité'
+  if (/dechet|ordure|proprete|poubelle/.test(t)) category = 'Propreté et déchets'
+  if (/voirie|nid de poule|trottoir|chaussee/.test(t)) category = 'Voirie'
+  if (/lampadaire|eclairage|reverber|lumiere|luminaire/.test(t)) category = 'Éclairage public'
+  if (/navette|\bbus\b|transport|tram|retard/.test(t)) category = 'Transports'
+  if (/\beau\b|fuite|energie|electricite|coupure/.test(t)) category = 'Eau et énergie'
+  if (/\bsas\b|badge|intrus|securite|agression|bloqu/.test(t)) category = 'Sécurité'
+  if (/danger|\bfeu\b|incendie|fumee/.test(t)) category = 'Sécurité'
 
-  const dome = t.match(/d[oô]me\s*(\d)/)
-  if (dome && isSector(`Dôme ${dome[1]}`)) sector = `Dôme ${dome[1]}` as Sector
-  if (/serre/.test(t)) sector = 'Serre 1'
-  if (/anneau|pont/.test(t)) sector = 'Anneau nord'
+  if (/mineur|pas urgent|quand vous pouvez/.test(t)) urgency = 'LOW'
+  if (/fuite|danger|\bfeu\b|incendie|fumee|urgent|depuis ce matin|inond/.test(t)) urgency = 'HIGH'
 
-  if (/fuite|danger|\bfeu\b|incendie|fumée|fumee|bloqu|urgent|depuis ce matin/.test(t)) urgency = 'Haute'
-
-  return { category, sector, urgency }
+  return { category, districtId: matchDistrict(t, districts), urgency }
 }
